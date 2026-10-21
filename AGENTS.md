@@ -37,11 +37,12 @@ Import pipeline for retail grocery receipts into PostgreSQL over LAN. Python 3.1
 - Always go through `uv run`; bare `pytest`/`mypy`/`ruff` run outside the project environment.
 - The code runs on Linux. When working from Windows, run every verification check in WSL on this checkout, never in Windows, and add no Windows-only branch:
   `wsl -- bash -lc 'UV_PROJECT_ENVIRONMENT=$HOME/.venvs/$(basename "$PWD") PYTHONPYCACHEPREFIX=$HOME/.cache/pyc uv run <command>'`
-- Standard check suite:
+- Standard check suite, after `uv sync --locked`:
   - `uv run ruff check`
   - `uv run ruff format --check`
   - `uv run mypy` (strict mode)
   - `uv run pytest`
+  - `uv run pytest -m integration` (needs `RRI_TEST_DATABASE_URL` pointing at a throwaway PostgreSQL; fails when unset; never a production database)
 - CI runs exactly the checks run locally, on every push. Keep local commands and CI workflows in sync.
 - Unmarked tests must not touch the network. Tests calling real external services carry the `live` marker and run only on request (`uv run pytest -m live`).
 - Record external API responses once into static fixtures (`tests/fixtures/`); tests read only fixtures.

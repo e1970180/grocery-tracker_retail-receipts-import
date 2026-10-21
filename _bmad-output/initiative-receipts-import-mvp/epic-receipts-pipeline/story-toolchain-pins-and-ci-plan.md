@@ -40,7 +40,7 @@ Oneshot: about 100 lines across `pyproject.toml`, `uv.lock`, `tests/`, and one w
 - medium, patch: libpq bypasses the socket guard (reproduced: an unmarked test reached `192.0.2.1` and timed out). The guard now refuses `psycopg.connect` in unmarked tests; `tests/test_network_guard.py` keeps the repro.
 - medium, patch: `with psycopg.connect(...)` commits on exit, so a fixture user's writes would persist. The fixture now rolls back before exit.
 - low, patch: integration tests were held to localhost by the socket guard; they are now exempt like `live`, since they target an explicit test DSN.
-- medium, defer: AGENTS.md's check list lacks `uv sync --locked`, `pytest -m integration` and the test DSN variable. Editing AGENTS.md is the owner's call.
+- medium, defer → fixed: AGENTS.md's check list lacked `uv sync --locked`, `pytest -m integration` and the test DSN variable. Added after the owner approved the edit (2026-10-21).
 - false: risk/route mismatch. Risk comes from the ticket; the route follows the workflow's LOC rule; quick review is pinned by the oneshot step. The plan-copy mismatch was the diff taken before the frontmatter edit.
 - low, rejected: actions pinned by tag, not SHA. The exact-pin rule covers `pyproject.toml`; SHA pinning adds upkeep with no reachable threat at this scale.
 - false: untracked provisional postgres tag. Ticket 2's description already owns the alignment.
