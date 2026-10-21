@@ -60,6 +60,8 @@ scratch/
 # Ingest data & archives
 doc-inbox/Arhive/
 doc-inbox/Archive/
+# Real receipts with personal data; tests use redacted or synthetic fixtures under tests/fixtures/.
+doc-inbox/fixtures/
 data/
 
 # Docker overrides

@@ -1,0 +1,187 @@
+# Lanes after the tracer: A = 5 -> 6 -> 7 -> 12 -> 13 (app/jobs, app/notify, adapters/gemini, adapters/postgres); B = 8 -> 9 -> 10 -> 11 (domain/chains + registry); C = 14 (migrations, docs/contracts).
+
+[[entry]]
+id = 1
+type = "story"
+title = "Toolchain pins and CI"
+description = "Pins the spine's stack in pyproject.toml (exact versions, ruff target py314, fixing the recorded ruff source conflict), adds the integration marker, and a GitHub Actions workflow that runs the standard check suite and the integration tests against a PostgreSQL service container; every later story's integration tests use this harness."
+verify = "A push runs ruff check, ruff format --check, mypy strict, pytest and pytest -m integration green in CI, with the same commands as the local WSL suite."
+covers = []
+after = []
+hitl = false
+risk = "low"
+references = ["architecture-receipts-import/architecture-receipts-import.md#stack"]
+
+[[entry]]
+id = 2
+type = "story"
+title = "Runtime baseline and first deployment"
+description = "Adds the pydantic-settings config with the environment guard and secret redaction, the closed outcome and failure-reason enums in domain with the texts file loader keyed by them and emoji validation, the Dockerfile and compose service with its volume, the migrate command applying numbered SQL as the schema owner, and the first sparse-checkout deployment to the home server; the owner first creates the dev and production bots, databases and three roles, provides the Gemini key, and confirms the PostgreSQL server version, to which the CI service-container image is aligned."
+verify = "On the home server, git clone + compose build succeeds, `compose run --rm <service> migrate` runs against the production database, the service starts and logs readiness, and it refuses to start with a mismatched environment or a texts file missing a key."
+covers = ["CAP-8"]
+after = [1]
+hitl = true
+risk = "medium"
+references = ["architecture-receipts-import/architecture-receipts-import.md#consistency-conventions", "architecture-receipts-import/architecture-receipts-import.md#structural-seed"]
+
+[[entry]]
+id = 3
+type = "story"
+title = "Chain reference consumer contract and reader"
+description = "Publishes the chains_v1 consumer contract 1.0.0 in docs/contracts/ with its docs/api-versions.md entry, and adds the PostgreSQL reader that returns the active chains, which the tracer's pass 1 and registry consume; the admin then creates the reference table, view and five rows in dev and production."
+verify = "An integration test reads chains_v1 from a CI database seeded per the contract, and the reader returns the five chains from the dev database."
+covers = ["CAP-2", "CAP-6"]
+after = [2]
+hitl = true
+risk = "high"
+references = ["architecture-receipts-import/architecture-receipts-import.md#ad-18--known-chains-come-from-an-admin-owned-reference"]
+
+[[entry]]
+id = 4
+type = "story"
+title = "Tracer: a Spar receipt end to end"
+description = "Builds the thinnest real path through every layer: NormalizedReceipt with Decimal money and the Zagreb-to-UTC function, covering every discount and settlement kind in the addendum so plug-ins add no migration, and the ports; the SQLite queue with the offset committed with the jobs; the vendored Telegram client with the gate for photos, image documents and PDFs, download and success reaction; Gemini pass 1 using entry 3's reader before each call, and pass 2 on the valid path; the plug-in interface including pass-1 time normalization, the registry and the Spar plug-in; the receipt schema migration with dedup and source-reference constraints, the feed table and the writer-role grants; the one-transaction writer; and the single loop. The owner supplies Spar samples and approves the one-time live recording."
+verify = "On the dev bot, the owner sends a Spar PDF, sees the success reaction, and the stored receipt with lines, regular and effective prices and settlement matches its hand-verified record; the Spar fixture tests pass offline."
+covers = ["CAP-1", "CAP-2", "CAP-3", "CAP-4", "CAP-5", "CAP-7", "CAP-8"]
+after = [2, 3]
+hitl = true
+risk = "high"
+references = ["architecture-receipts-import/architecture-receipts-import.md#ad-14--one-loop-one-thread-adopted", "architecture-receipts-import/architecture-receipts-import.md#ad-15--telegram-transport-is-the-vendored-reference-pack", "architecture-receipts-import/architecture-receipts-import.md#ad-17--one-normalized-receipt-shape"]
+
+[[entry]]
+id = 5
+type = "story"
+title = "Gemini result classifier and retry timing"
+description = "Adds the single classifier mapping every Gemini result to unavailable, blocked, invalid or valid with the retry delay from RetryInfo, Retry-After or capped backoff, plus image preprocessing (EXIF, pixel cap); the job state machine in the next story consumes its classes."
+verify = "Unit tests on responses recorded once from the live API, including a 429 with RetryInfo, a timeout, an auth failure and a schema-invalid reply, return the expected class and delay; a photo, an image document and a PDF each reach the Gemini request in its accepted form."
+covers = ["CAP-1", "CAP-2", "CAP-9"]
+after = [4]
+hitl = true
+risk = "high"
+references = ["architecture-receipts-import/architecture-receipts-import.md#ad-7--one-classification-of-extraction-results-adopted","architecture-receipts-import/architecture-receipts-import.md#ad-4--two-pass-extraction-adopted"]
+
+[[entry]]
+id = 6
+type = "story"
+title = "Job waits, attempts and resume"
+description = "Completes the job state machine on the classifier's classes: waits with no attempt for unavailable and blocked, the shared attempt limit restarting from pass 1, the unsupported-twice rule with an unknown-chain fixture yielding other, the consistency mismatch as invalid, oversize after getFile as failed, the write_pending wait state (entry 13 classifies the PostgreSQL errors that enter it), the shortened long poll while jobs wait, payload_version resume, and counting step starts for entry 13 to treat."
+verify = "Unit tests with fake ports drive every transition of the AD-3 state diagram, including a restart between steps resuming from the persisted state without calling Gemini again from write_pending."
+covers = ["CAP-5", "CAP-9"]
+after = [5]
+hitl = false
+risk = "high"
+references = ["architecture-receipts-import/architecture-receipts-import.md#ad-3--one-owner-of-job-state"]
+
+[[entry]]
+id = 7
+type = "story"
+title = "Deduplication: pre-check and own-write"
+description = "Adds the advisory pre-check after pass 1 using the plug-ins' pass-1 time normalization from the tracer, the duplicate final state on a dedup-key conflict from another source, and own-write recognition by source reference, on the constraints the tracer's migration created."
+verify = "Integration tests show a different photo of the same purchase ending as duplicate with one stored row, the pre-check skipping pass 2, a crash after commit resolving to stored, and a failure injected mid-write leaving no receipt, lines or settlement."
+covers = ["CAP-6", "CAP-7", "CAP-9"]
+after = [6]
+hitl = false
+risk = "high"
+references = ["architecture-receipts-import/architecture-receipts-import.md#ad-8--dedup-is-a-database-constraint", "architecture-receipts-import/architecture-receipts-import.md#ad-9--a-job-recognizes-its-own-earlier-write"]
+
+[[entry]]
+id = 8
+type = "story"
+title = "Lidl plug-in"
+description = "Adds the Lidl plug-in to the tracer's registry: separate POPUST and Lidl Plus discount lines, the ignored footer POPUST, the branch with leading zeros; the owner supplies Lidl samples and approves the live recording."
+verify = "Fixture tests reproduce the hand-verified Lidl records, paper and PDF where issued, including a discounted line and the footer trap, to the cent."
+covers = ["CAP-2", "CAP-3", "CAP-4"]
+after = [4]
+hitl = true
+risk = "medium"
+
+[[entry]]
+id = 9
+type = "story"
+title = "Kaufland plug-in"
+description = "Adds the Kaufland plug-in: fiscal-line purchase time, ignored bank-terminal date and subtotal and Povratna naknada lines, Kaufland Card versus Štedite discounts, deposit refunds, branch check; the owner supplies Kaufland samples and approves the live recording."
+verify = "Fixture tests reproduce the hand-verified Kaufland records, including both discount kinds, a coupon and a deposit refund exceeding the purchase, to the cent."
+covers = ["CAP-2", "CAP-3", "CAP-4"]
+after = [8]
+hitl = true
+risk = "medium"
+
+[[entry]]
+id = 10
+type = "story"
+title = "DM plug-in"
+description = "Adds the DM plug-in: STORNO RETKA drops both lines, branch from the receipt number; the owner supplies DM samples and approves the live recording."
+verify = "Fixture tests reproduce the hand-verified DM records, including a cancelled line, to the cent."
+covers = ["CAP-2", "CAP-3", "CAP-4"]
+after = [9]
+hitl = true
+risk = "medium"
+
+[[entry]]
+id = 11
+type = "story"
+title = "Müller plug-in"
+description = "Adds the Müller plug-in: bonus points as a settlement entry, deposits as ordinary lines; the owner supplies Müller samples and approves the live recording."
+verify = "Fixture tests reproduce the hand-verified Müller record with bonus points and its full settlement breakdown, to the cent."
+covers = ["CAP-2", "CAP-3", "CAP-4"]
+after = [10]
+hitl = true
+risk = "medium"
+
+[[entry]]
+id = 12
+type = "story"
+title = "Full outcome matrix and effect order"
+description = "Completes notify for every outcome-matrix row: duplicate (reaction and message), unsupported chain (sender message, admin message), inconsistency and no-valid-result (failure reaction, message, admin reason and file copy, none on oversize), in-progress once, and not-accepted for unsupported content or a declared or unconfirmed size over 20 MB; plus the AD-11 effect order, local file deletion and the startup sweep."
+verify = "Unit tests with fake ports produce each matrix row's reaction, message and admin notification from the texts file, and a failed send leaves the job state unchanged."
+covers = ["CAP-5", "CAP-6", "CAP-8", "CAP-9"]
+after = [7]
+hitl = false
+risk = "medium"
+references = ["architecture-receipts-import/architecture-receipts-import.md#ad-11--order-of-effects-per-job"]
+
+[[entry]]
+id = 13
+type = "story"
+title = "Operational alerts and per-job error boundary"
+description = "Adds the closed set of alert kinds sent once on start and once on recovery, including chain_reference for a plug-in missing or inactive in the reference, and the loop's per-job error boundary: PostgreSQL connection-class errors classified into entry 6's write_pending wait with postgres_unreachable, three unrecorded step starts from entry 6's counter treated as internal, and internal:<state>; using notify from entry 12."
+verify = "Unit tests show a PostgreSQL connection error alerting once, recovering once and keeping the job in write_pending, and an induced internal error alerting once while the loop moves on."
+covers = ["CAP-9", "CAP-10"]
+after = [12]
+hitl = false
+risk = "medium"
+references = ["architecture-receipts-import/architecture-receipts-import.md#ad-13--operational-alerts-on-state-change-adopted", "architecture-receipts-import/architecture-receipts-import.md#ad-16--per-job-error-boundary"]
+
+[[entry]]
+id = 14
+type = "story"
+title = "Resolver feed contract resolver_v1"
+description = "Adds the resolver_v1 views over the tracer's tables and feed with SELECT for the Resolver role by migration, and publishes the contract 1.0.0 in docs/contracts/ with its docs/api-versions.md entry; the admin creates the Resolver login role."
+verify = "An integration test connecting as the Resolver role reads seq > cursor, sees a stored receipt with Z timestamps and decimal-string money, and is refused on the internal tables."
+covers = ["CAP-11"]
+after = [4]
+hitl = true
+risk = "high"
+references = ["architecture-receipts-import/architecture-receipts-import.md#ad-12--the-resolver-reads-a-feed-not-tables-adopted"]
+
+[[entry]]
+id = 15
+type = "story"
+title = "Refactor sweep"
+description = "Cleanup only, scoped at start from the other entries' plans and the review findings deferred during the epic."
+verify = "The standard check suite and integration tests pass with no behavior change."
+covers = []
+after = [11, 13, 14]
+hitl = false
+risk = "low"
+
+[[entry]]
+id = 16
+type = "story"
+title = "Production acceptance demo"
+description = "Redeploys the finished service to the home server and demonstrates on the production bot every outcome-matrix row, a receipt of each chain, a restart during an extraction outage, a PostgreSQL outage alert, and a stored receipt read through resolver_v1."
+verify = "The owner observes each listed case on production and signs off against the epic's Done when."
+covers = ["CAP-1", "CAP-2", "CAP-6", "CAP-8", "CAP-9", "CAP-10", "CAP-11"]
+after = [15]
+hitl = true
+risk = "high"
