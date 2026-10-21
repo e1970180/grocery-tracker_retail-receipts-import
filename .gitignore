@@ -1,0 +1,66 @@
+# OS / editor cruft
+.DS_Store
+Thumbs.db
+desktop.ini
+*.swp
+*~
+.vscode/
+.idea/
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+
+# Virtual environments
+.venv/
+venv/
+ENV/
+env/
+
+# Pytest / coverage
+.pytest_cache/
+.coverage
+htmlcov/
+
+# Environment variables
+.env
+.env.*
+!.env.example
+
+# AI Agent environments
+.agent/
+.agents/
+.claude/
+# Claude Code MCP config (contains the n8n token).
+.mcp.json
+# Claude Code: personal permissions and personal instructions.
+.claude/settings.local.json
+CLAUDE.local.md
+# Agent scratch scripts (AGENTS.md: no inline python -c, scripts go to scratch/).
+scratch/
+
+# Ingest data & archives
+doc-inbox/Arhive/
+doc-inbox/Archive/
+data/
+
+# Docker overrides
+compose.override.yaml

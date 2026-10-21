@@ -1,0 +1,59 @@
+[project]
+name = "retail-receipts-import"
+version = "0.1.0"
+description = "Import pipeline for retail grocery receipts into PostgreSQL over LAN"
+readme = "README.md"
+requires-python = ">=3.14"
+dependencies = []
+
+[dependency-groups]
+dev = [
+    "mypy==1.15.0",
+    "pytest==8.3.5",
+    "ruff==0.9.9",
+]
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.ruff]
+target-version = "py313"
+line-length = 100
+extend-exclude = [
+    "docs",
+    "_bmad",
+    "_bmad-output",
+    ".claude",
+    ".agents",
+    ".agent",
+    "doc-inbox",
+    "scratch",
+]
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "UP", "B", "SIM"]
+
+[tool.mypy]
+files = ["src", "tests"]
+python_version = "3.14"
+strict = true
+explicit_package_bases = true
+mypy_path = "src"
+exclude = [
+    "^docs/",
+    "^_bmad/",
+    "^_bmad-output/",
+    "^\\.claude/",
+    "^\\.agents/",
+    "^\\.agent/",
+    "^doc-inbox/",
+    "^scratch/",
+]
+
+[tool.pytest.ini_options]
+minversion = "8.0"
+testpaths = ["tests"]
+markers = [
+    "live: marks tests calling real external services (run only on request)",
+]

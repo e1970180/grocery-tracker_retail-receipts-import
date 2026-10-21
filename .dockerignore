@@ -1,0 +1,8 @@
+# An allow-list: the build context holds the source and the contract schemas only.
+*
+!pyproject.toml
+!uv.lock
+!src/
+!docs/contracts/
+**/__pycache__
+**/*.pyc

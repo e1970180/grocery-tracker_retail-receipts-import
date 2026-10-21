@@ -1,0 +1,6 @@
+# Deployed on Linux (srv22), developed on Windows: keep LF in the repo.
+* text=auto eol=lf
+*.png binary
+*.jpg binary
+*.pdf binary
+tests/fixtures/bundles/**/attachments/* binary
