@@ -54,7 +54,7 @@ A family shopping at Croatian grocery chains wants every purchase recorded as cl
 ## Constraints
 
 - **Extraction.** Use Gemini Flash only. The pricing tier is the admin's operational choice, so cost depends on that tier. Receipt images leave the host, including the items, branch address and masked loyalty-card number. While the service is unavailable, retries follow its own signals, such as the wait time in a 429 response, not a fixed schedule.
-- **Telegram intake.** Telegram intake is built in this project. The Telegram reference pack in `doc-inbox/` is requirements only, never imported code.
+- **Telegram intake.** Telegram intake is built in this project. The tested code of the Telegram reference pack in `doc-inbox/` may be copied into this project and owned here; it is never an external dependency.
 - **Telegram as an external service.**
   - Data and cost: receipt files are already in Telegram, because the family sends them there. The service adds only reply texts and the admin's file copy. Cost is zero.
   - Telegram outage: intake pauses, and Telegram holds unfetched updates for about 24 h.
