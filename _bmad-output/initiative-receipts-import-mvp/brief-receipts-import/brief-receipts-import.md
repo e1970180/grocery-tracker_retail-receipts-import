@@ -21,14 +21,14 @@ The legacy pipeline solved much of this, but it is tied to the n8n platform. The
 
 ## The Solution
 
-- **Intake.** A Telegram bot accepts receipts in private chats from an allowlist of family members, identified by Telegram user ID. A receipt arrives as a photo or as a document (image or PDF file). Anything else is ignored or rejected with a reaction.
+- **Intake.** A Telegram bot accepts receipts in private chats from an allowlist of family members, identified by Telegram user ID. A receipt arrives as a photo or as a document (image or PDF file). Anything else gets a "not accepted" reaction, with no message.
 - **Extraction.** A strong vision model reads the receipt. One extraction, guided by chain-specific prompts, yields store detection, line items, discounts, branch, purchase date and time, and how the bill was settled. Both clean digital receipts and crumpled paper photos are valid input.
 - **Pricing.** For every line the service keeps what was printed and computes the regular price before discount and the effective price actually paid.
 - **Settlement.** The receipt records how it was settled: card, cash, bonus points, receipt-level coupons, deposit refunds. A settlement amount can be negative when deposit refunds exceed the purchase and the cashier pays money back.
 - **Deduplication.** The same purchase sent twice is stored once. On a duplicate, the sender sees a dedicated reaction and the message "Данный чек уже внесен в систему" (this receipt is already in the system).
 - **Storage.** Each receipt is written to PostgreSQL over the LAN atomically, together with its items and settlement.
 - **Feedback.** On success the sender sees a success reaction. On failure the sender sees a failure reaction and a message that explains the problem, and the admin gets a Telegram notification with a copy of the file. Recovery means resending a better photo or file; there is no manual-correction tool.
-- **Consistency.** The service checks that items and settlement agree, to catch extraction errors. A receipt that fails the check is not written and takes the failure path. The exact tolerance is decided in the PRD.
+- **Consistency.** The service checks that items and settlement agree, to catch extraction errors. A receipt that fails the check is not written and takes the failure path. The tolerance is ±0.01 EUR. A stricter rule would leave a receipt with a legitimate 1-cent rounding difference unstored forever, because resending reproduces the same result.
 - **Unknown chain.** A receipt from a chain not on the supported list is not written. The sender and the admin each get a Telegram message.
 - **Extraction-service outages.** If the extraction service is unavailable, the sender sees an "in progress" reaction. Retries follow the service's own signals, such as the wait time in a 429 response. The receipt is never lost: it waits with no deadline, survives a restart of the service, and is processed once the service is back. If the service responds but gives no valid result, for any reason, including a receipt whose store or purchase date cannot be read, the receipt gets a limited number of attempts and then takes the failure path.
 - **Operational alerts.** Errors the service catches in its own work are sent to the admin in Telegram, not only to logs.
@@ -45,13 +45,13 @@ The legacy pipeline solved much of this, but it is tied to the n8n platform. The
 - While the extraction service is available, a receipt reaches the database within 10 minutes of sending. Speed is not critical.
 - No accepted receipt is lost, even through an extraction-service outage or a restart.
 - No purchase is stored twice.
-- Every failure reaches both the sender and the admin, with a reason.
+- Every failure reaches both the sender and the admin, with a reason, unless Telegram stays down longer than its retry rules allow.
 
 ## Scope
 
 **In (MVP):**
 - Telegram intake from allowlisted users: receipts sent as a photo or as a document (image or PDF file).
-- Extraction through Gemini Flash on a paid tier.
+- Extraction through Gemini Flash.
 - Chains seen so far: Kaufland, Lidl, DM, Müller, Spar.
 - EUR only.
 - Line-level discounts, receipt-level discounts, deposits, bonus points.
@@ -69,14 +69,23 @@ The legacy pipeline solved much of this, but it is tied to the n8n platform. The
 - Migrating legacy data, or compatibility with the legacy schema or workflow.
 - Manual-correction tooling.
 - Measuring extraction accuracy.
+- Re-extracting past receipts from stored originals.
+- Guaranteed delivery of notifications through a long Telegram outage.
 
 ## Constraints and Decisions
 
-- **External service: Gemini Flash, paid tier.** The paid tier keeps receipt data out of model training.
+- **External service: Gemini Flash.** The pricing tier is the admin's operational choice and is outside this brief.
   - Data leaving the host: receipt images, which include the purchased items, branch address, and masked loyalty-card number.
-  - Cost: cents per month at about 2 receipts a day.
+  - Cost: depends on the tier the admin chooses.
   - When Gemini is down or gives no valid result: see "Extraction-service outages" under The Solution.
+- **External service: Telegram.**
+  - Data leaving the host: the receipt files are already in Telegram because the family sends them there. The service adds only reply texts and the admin's file copy.
+  - Cost: zero.
+  - When Telegram is down: intake pauses, and Telegram holds unfetched messages for about 24 hours.
+  - Failed sends: outgoing reactions, messages, and alerts are retried under Telegram's own rules, then only logged.
+  - A failed notification never blocks or undoes a database write. Notifications are not queued durably.
 - **Intake lives in this project.** The Telegram reference pack in `doc-inbox/` serves as requirements only, never as imported code.
+- **Local receipt file.** The service keeps its own copy of a receipt file only until the receipt has a final outcome: stored, duplicate, or failed. The original stays in Telegram, so past receipts are not re-extracted.
 - **User-facing texts.** All messages sent to users and the admin live in a file outside the code, so they can be edited without touching code.
 - **Data model.** Designed fresh, with self-explanatory names. The legacy schema is a reference for meaning only.
 - **Identifiers and the deduplication key.** Decided in architecture.
