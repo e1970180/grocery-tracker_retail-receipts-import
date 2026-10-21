@@ -84,7 +84,7 @@ The legacy pipeline solved much of this, but it is tied to the n8n platform. The
   - When Telegram is down: intake pauses, and Telegram holds unfetched messages for about 24 hours.
   - Failed sends: outgoing reactions, messages, and alerts are retried under Telegram's own rules, then only logged.
   - A failed notification never blocks or undoes a database write. Notifications are not queued durably.
-- **Intake lives in this project.** The Telegram reference pack in `doc-inbox/` serves as requirements only, never as imported code.
+- **Intake lives in this project.** The tested code of the Telegram reference pack in `doc-inbox/` may be copied into this project and owned here; it is never an external dependency.
 - **Local receipt file.** The service keeps its own copy of a receipt file only until the receipt has a final outcome: stored, duplicate, or failed. The original stays in Telegram, so past receipts are not re-extracted.
 - **User-facing texts.** All messages sent to users and the admin live in a file outside the code, so they can be edited without touching code.
 - **Data model.** Designed fresh, with self-explanatory names. The legacy schema is a reference for meaning only.

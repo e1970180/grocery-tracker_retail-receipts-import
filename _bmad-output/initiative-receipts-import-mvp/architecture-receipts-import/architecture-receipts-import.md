@@ -169,7 +169,7 @@ stateDiagram-v2
 
 - **Binds:** CAP-11
 - **Prevents:** the Resolver depending on internal tables, or losing events while it is down.
-- **Rule:** The contract is a set of versioned read-only views in a dedicated `resolver_v<major>` schema. They expose the feed (a bigint `seq` cursor, increasing in commit order of this single writer, plus `receipt_id`) and the stored receipt data. The Resolver has its own role with `SELECT` on that schema only, and keeps its own cursor. `LISTEN/NOTIFY` may be added as a wake-up hint, never as the delivery. A breaking change creates a new major schema next to the old one. The contract lives in `docs/contracts/` and its version in `docs/api-versions.md`.
+- **Rule:** The contract is a set of versioned read-only views in a dedicated `resolver_v<major>` schema. They expose the feed (a bigint `seq` cursor, increasing in commit order of this single writer, plus `receipt_id`; `seq` may have gaps, so the Resolver reads `seq > cursor` and never assumes contiguity) and the stored receipt data. The Resolver has its own role with `SELECT` on that schema only, and keeps its own cursor. `LISTEN/NOTIFY` may be added as a wake-up hint, never as the delivery. A breaking change creates a new major schema next to the old one. The contract lives in `docs/contracts/` and its version in `docs/api-versions.md`.
 
 ### AD-13 — Operational alerts on state change `[ADOPTED]`
 
