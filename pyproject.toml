@@ -4,21 +4,28 @@ version = "0.1.0"
 description = "Import pipeline for retail grocery receipts into PostgreSQL over LAN"
 readme = "README.md"
 requires-python = ">=3.14"
-dependencies = []
+dependencies = [
+    "google-genai==2.32.0",
+    "httpx==0.28.1",
+    "pillow==13.0.0",
+    "psycopg[binary]==3.3.6",
+    "pydantic==2.14.1",
+    "pydantic-settings==2.16.1",
+]
 
 [dependency-groups]
 dev = [
-    "mypy==1.15.0",
-    "pytest==8.3.5",
-    "ruff==0.9.9",
+    "mypy==2.4.0",
+    "pytest==9.1.1",
+    "ruff==0.17.1",
 ]
 
 [build-system]
-requires = ["hatchling"]
+requires = ["hatchling==1.32.4"]
 build-backend = "hatchling.build"
 
 [tool.ruff]
-target-version = "py313"
+target-version = "py314"
 line-length = 100
 extend-exclude = [
     "docs",
@@ -52,8 +59,11 @@ exclude = [
 ]
 
 [tool.pytest.ini_options]
-minversion = "8.0"
+minversion = "9.1"
 testpaths = ["tests"]
+# A plain run stays offline; a later -m on the command line replaces this one.
+addopts = ["-m", "not integration and not live"]
 markers = [
     "live: marks tests calling real external services (run only on request)",
+    "integration: marks tests needing a PostgreSQL test database (run with -m integration)",
 ]
