@@ -1,0 +1,139 @@
+<title>Архитектура импорта чеков</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&family=Fraunces:opsz,wght@9..144,600&display=swap">
+<style>
+/* Layout: one reading column like a long receipt, with a ledger table for scenarios */
+:root {
+  --bg: #f6f7f4;
+  --paper: #ffffff;
+  --fg: #1d2421;
+  --muted: #5b6660;
+  --rule: #d9ddd7;
+  --accent: #2f6f5e;
+  --accent-soft: #e3efe9;
+  --warn: #9a5b12;
+  --display: "Fraunces", Georgia, serif;
+  --body: "IBM Plex Sans", system-ui, sans-serif;
+  --mono: "IBM Plex Mono", ui-monospace, monospace;
+}
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) {
+  --bg: #141816; --paper: #1b201d; --fg: #e5ebe7; --muted: #9aa69f; --rule: #2e3531;
+  --accent: #7cc3ac; --accent-soft: #22322c; --warn: #e0a65c; color-scheme: dark } }
+:root[data-theme="dark"] {
+  --bg: #141816; --paper: #1b201d; --fg: #e5ebe7; --muted: #9aa69f; --rule: #2e3531;
+  --accent: #7cc3ac; --accent-soft: #22322c; --warn: #e0a65c; color-scheme: dark }
+body { background: var(--bg); color: var(--fg); font: 16px/1.6 var(--body); }
+.wrap { max-width: 780px; margin: 0 auto; padding-block: 40px 64px;
+  padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px));
+  display: grid; gap: 40px; }
+h1 { font: 600 clamp(28px, 5vw, 40px)/1.15 var(--display); margin: 0; text-wrap: balance; }
+h2 { font: 600 22px/1.25 var(--display); margin: 0 0 12px; text-wrap: balance; }
+p { margin: 0 0 12px; max-width: 65ch; }
+.lede { color: var(--muted); font-size: 18px; }
+.meta { font: 13px var(--mono); color: var(--muted); letter-spacing: .02em; }
+section { display: grid; gap: 8px; }
+ul { margin: 0; padding-left: 20px; display: grid; gap: 6px; max-width: 65ch; }
+code { font: 14px var(--mono); background: var(--accent-soft); padding: 1px 5px; border-radius: 3px; }
+.diagram { background: var(--paper); border: 1px solid var(--rule); border-radius: 6px; padding: 16px; overflow-x: auto; }
+.table-wrap { overflow-x: auto; border: 1px solid var(--rule); border-radius: 6px; background: var(--paper); }
+table { border-collapse: collapse; width: 100%; font-size: 15px; }
+th, td { text-align: left; padding: 10px 12px; border-bottom: 1px solid var(--rule); vertical-align: top; }
+th { font: 500 12px var(--mono); text-transform: uppercase; letter-spacing: .06em; color: var(--muted); }
+tr:last-child td { border-bottom: 0; }
+.decisions { display: grid; gap: 0; border-top: 1px solid var(--rule); }
+.decision { display: grid; grid-template-columns: 120px 1fr; gap: 16px; padding: 14px 0; border-bottom: 1px solid var(--rule); }
+.decision .who { font: 12px var(--mono); color: var(--accent); text-transform: uppercase; letter-spacing: .06em; padding-top: 3px; }
+.decision .who.tech { color: var(--muted); }
+.decision b { display: block; }
+.decision span { color: var(--muted); }
+.note { border-left: 3px solid var(--warn); padding: 4px 0 4px 14px; color: var(--fg); }
+@media (max-width: 520px) { .decision { grid-template-columns: 1fr; gap: 4px; } }
+</style>
+
+<div class="wrap">
+  <header>
+    <p class="meta">receipts-import · архитектура · 21.10.2026</p>
+    <h1>Как сервис превращает фото чека в строку в PostgreSQL</h1>
+    <p class="lede">Обзор для владельца. Нормативный документ для сборки — <code>architecture-receipts-import.md</code> (17 решений AD-1…AD-17); здесь то же самое простыми словами.</p>
+  </header>
+
+  <section>
+    <h2>Форма сервиса</h2>
+    <p>Один контейнер на домашнем сервере, один поток. Цикл: забрать новые сообщения из Telegram → записать принятые чеки в локальную очередь → по одному обработать всё, чему пришло время → снова за сообщениями. При двух чеках в день параллельность не нужна, и без неё исчезают гонки.</p>
+    <div class="diagram"><pre class="mermaid">
+flowchart LR
+  FAM[Семья] -->|фото, PDF| TG[Telegram]
+  SVC[Сервис импорта] -->|опрос, реакции, сообщения| TG
+  SVC --- Q[(Очередь SQLite<br/>и файлы на томе)]
+  SVC -->|изображение| GEM[Gemini Flash]
+  SVC -->|роль writer| PG[(PostgreSQL в LAN)]
+  RES[Resolver] -->|только чтение, resolver_v1| PG
+</pre></div>
+  </section>
+
+  <section>
+    <h2>Путь одного чека</h2>
+    <p>Каждый чек — задача с сохранённым состоянием. После перезапуска задача продолжает с того шага, на котором остановилась.</p>
+    <div class="diagram"><pre class="mermaid">
+flowchart TD
+  A[Сообщение принято,<br/>offset подтверждён вместе с задачей] --> B[Скачать файл]
+  B --> C[Проход 1: какая сеть?]
+  C -->|не из списка| U[Неподдерживаемая сеть]
+  C -->|Kaufland, Lidl, DM, Müller, Spar| D[Проход 2: промпт этой сети]
+  D --> E[Код сети считает цены<br/>и сверяет суммы ±0.01]
+  E -->|не сошлось, попытка < 3| D
+  E --> F[Готов к записи]
+  F --> G[(Одна транзакция:<br/>чек, строки, оплата, лента)]
+  G --> S[Сохранён]
+  G -->|та же сеть и секунда| DUP[Дубликат]
+  C -->|3 неудачи| X[Отказ]
+  E -->|3 неудачи| X
+</pre></div>
+  </section>
+
+  <section>
+    <h2>Что решили вы</h2>
+    <div class="decisions">
+      <div class="decision"><div class="who">Владелец</div><div><b>Очередь — локальный SQLite на томе.</b><span>Пока PostgreSQL недоступен, приём продолжается. Случай «упал между записью в БД и отметкой в очереди» распознаётся по ссылке на исходное сообщение: вы не увидите «дубликат» на свой же первый чек.</span></div></div>
+      <div class="decision"><div class="who">Владелец</div><div><b>Распознавание в два прохода.</b><span>Сначала только сеть, потом промпт конкретной сети. Каждая сеть — отдельный плагин: промпт, схема, правила, фикстуры. Добавление сети не трогает остальной код, и это готовит рост до 10 сетей.</span></div></div>
+      <div class="decision"><div class="who">Владелец</div><div><b>3 попытки, расхождение сумм тоже тратит попытку.</b><span>Недоступность Gemini попыток не тратит: чек ждёт без срока, вы видите реакцию «в процессе».</span></div></div>
+      <div class="decision"><div class="who">Владелец</div><div><b>Telegram — свой клиент на основе telegram_core.</b><span>Код эталонного пакета копируется в проект и становится нашим. Ограничение в спеке поправлено.</span></div></div>
+      <div class="decision"><div class="who">Владелец</div><div><b>Resolver читает ленту в PostgreSQL.</b><span>Строка «чек сохранён» пишется в той же транзакции, что и сам чек. Resolver читает версионированные view под своей ролью и помнит свой курсор, поэтому ничего не теряет, даже если неделю был выключен.</span></div></div>
+      <div class="decision"><div class="who">Владелец</div><div><b>Алерты — только при смене состояния.</b><span>Одно сообщение «сломалось» и одно «восстановилось» на каждый вид ошибки.</span></div></div>
+      <div class="decision"><div class="who">Владелец</div><div><b>Модель по умолчанию — gemini-3.8-flash.</b><span>Задаётся в env; сервис логирует фактическую версию из каждого ответа.</span></div></div>
+      <div class="decision"><div class="who tech">Технически</div><div><b>Модель только переписывает напечатанное.</b><span>Цены до и после скидки, ловушки сетей и сверку считает код, проверенный тестами на фикстурах.</span></div></div>
+      <div class="decision"><div class="who tech">Технически</div><div><b>Ключ дубликата — сеть + время покупки до секунды.</b><span>Это уникальный индекс в БД, урок legacy. Номер чека и хеш файла в ключ не входят.</span></div></div>
+      <div class="decision"><div class="who tech">Технически</div><div><b>Одна сломанная задача не останавливает приём.</b><span>Неожиданная ошибка оставляет задачу на месте с паузой, вам приходит алерт, цикл идёт дальше.</span></div></div>
+    </div>
+  </section>
+
+  <section>
+    <h2>Сценарии сбоев</h2>
+    <div class="table-wrap"><table>
+      <thead><tr><th>Что случилось</th><th>Что происходит</th><th>Что видите</th></tr></thead>
+      <tbody>
+        <tr><td>Gemini лежит или 429</td><td>Чек ждёт столько, сколько скажет Gemini, попытки не тратятся</td><td>Реакция «в процессе», потом обычный итог</td></tr>
+        <tr><td>Неверный ключ или биллинг Gemini</td><td>Чеки ждут, попытки не тратятся</td><td>Админ: алерт gemini_config</td></tr>
+        <tr><td>PostgreSQL недоступен</td><td>Приём продолжается; распознанный чек ждёт записи без повторного вызова Gemini</td><td>Админ: алерт и «восстановилось»</td></tr>
+        <tr><td>Перезапуск сервиса</td><td>Задачи продолжаются с сохранённого шага; уведомления, не ушедшие до падения, не повторяются</td><td>Итог приходит после старта</td></tr>
+        <tr><td>Telegram лежит</td><td>Приём на паузе, Telegram хранит сообщения около 24 часов</td><td>Отправки повторяются по правилам Telegram, потом только лог</td></tr>
+        <tr><td>Файл больше 20 МБ или не фото/PDF</td><td>Задача не создаётся</td><td>Реакция «не принято»</td></tr>
+      </tbody>
+    </table></div>
+  </section>
+
+  <section>
+    <h2>Развёртывание</h2>
+    <ul>
+      <li><code>git clone</code> со sparse-checkout и <code>compose build</code>; один сервис и один том. PostgreSQL — существующий в LAN, в compose его нет.</li>
+      <li>Три роли БД: владелец схемы (только для <code>compose run --rm … migrate</code>), writer для сервиса, read-only для Resolver.</li>
+      <li>Отдельные бот, база и том для разработки; сервис не стартует при несовпадении окружения.</li>
+      <li>CI на каждый push: ruff, mypy strict, pytest, а также интеграционные тесты на PostgreSQL в контейнере, никогда не на проде.</li>
+    </ul>
+  </section>
+
+  <section>
+    <h2>Отложено</h2>
+    <p class="note">Колонки таблиц PostgreSQL, точный список полей контракта <code>resolver_v1</code>, нарезка длинных чеков, формулировки промптов, версия PostgreSQL на сервере. Решения откладываются до соответствующих историй; ни одно из них не может развести независимые части.</p>
+  </section>
+</div>
