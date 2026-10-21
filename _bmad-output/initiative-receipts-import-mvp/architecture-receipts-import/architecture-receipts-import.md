@@ -89,13 +89,15 @@ stateDiagram-v2
   received --> received: Telegram unavailable, wait
   received --> chain_pending: file downloaded and saved
   received --> failed: oversize after getFile
-  chain_pending --> chain_pending: unavailable, wait
-  chain_pending --> extract_pending: supported chain
-  chain_pending --> unsupported_chain: other chain
-  chain_pending --> failed: 3rd invalid attempt
-  extract_pending --> extract_pending: unavailable, wait / invalid, attempt below 3
+  chain_pending --> chain_pending: unavailable, wait / invalid or first unsupported, attempts left
+  chain_pending --> extract_pending: supported chain, pre-check clear or skipped
+  chain_pending --> duplicate: pre-check hit by another source
+  chain_pending --> unsupported_chain: second unsupported in a row
+  chain_pending --> failed: attempt limit reached
+  extract_pending --> extract_pending: unavailable, wait
+  extract_pending --> chain_pending: invalid, attempts left
   extract_pending --> write_pending: valid and consistent
-  extract_pending --> failed: 3rd invalid attempt
+  extract_pending --> failed: attempt limit reached
   write_pending --> write_pending: PostgreSQL unreachable, wait
   write_pending --> stored: committed, or own earlier write
   write_pending --> duplicate: dedup key held by another source
@@ -109,7 +111,7 @@ stateDiagram-v2
 
 - **Binds:** CAP-2, CAP-9
 - **Prevents:** chain detection mixed into extraction, or pass 1 re-run after a restart.
-- **Rule:** Pass 1 asks Gemini only for the chain, with a small schema. Its result is persisted on the job. Pass 2 uses only that chain's prompt and schema. Every call is a stateless `client.models.generate_content` with a response schema; the Interactions API is not used. The following come from config: the model id (default `gemini-3.8-flash`), temperature (left at the model default), `thinking_level` (lowest the model allows) and an explicit request timeout. `thinking_budget` and the SDK's `retry_options` are never set. The model version reported in each response is logged.
+- **Rule:** Pass 1 asks Gemini, with a small schema, for the chain, the printed store name and the printed purchase date and time. Its prompt carries the known-chain vocabulary (AD-18) and short per-chain hints on where the purchase time is printed. Its result is persisted on the job. Pass 2 uses only that chain's prompt and schema. Every retry restarts from pass 1 (AD-7). Every call is a stateless `client.models.generate_content` with a response schema; the Interactions API is not used. The following come from config: the model id (default `gemini-3.8-flash`), temperature (left at the model default), `thinking_level` (lowest the model allows) and an explicit request timeout. `thinking_budget` and the SDK's `retry_options` are never set. The model version reported in each response is logged.
 
 ### AD-5 — The model transcribes; code computes
 
@@ -121,7 +123,7 @@ stateDiagram-v2
 
 - **Binds:** CAP-2, CAP-3
 - **Prevents:** chain-specific branches scattered through the pipeline as the 5 chains grow to 10.
-- **Rule:** Each supported chain is one unit under `domain/chains/<chain>/`: its pass-2 prompt, its response schema, its normalization rules and its fixtures. One registry lists them all, and that registry *is* the supported-chain list. The pass-1 vocabulary is the registry ids plus two sentinels defined in `domain`: `other` gives `unsupported_chain`, and `unreadable` is `invalid`. Pass 1 also returns the printed store name, for the admin message only. Chain ids are frozen once released, because they are part of the dedup key. Each plug-in fixes which printed field is the purchase time and has a fixture for paper and one for PDF where the chain issues both. A fixture of an unsupported chain must yield `other`. Adding a chain touches only its unit and one registry line. No code outside `domain/chains/` branches on a chain name.
+- **Rule:** Each chain plug-in is one unit under `domain/chains/<chain_id>/`, keyed by the reference `chain_id` (AD-18). It holds the pass-1 time hint, the pass-2 prompt, the response schema, the normalization rules and the fixtures. One registry lists the plug-ins. A **supported** chain is an active reference chain that has a plug-in; a known chain without a plug-in is unsupported. The pass-1 vocabulary is the active reference ids plus two sentinels defined in `domain`. `other` and a known chain without a plug-in both count as unsupported (AD-7). `unreadable` is `invalid`. The printed store name goes into the admin message. Each plug-in fixes which printed field is the purchase time and normalizes the pass-1 time with the same rule. It has a fixture for paper and one for PDF where the chain issues both. A fixture of an unknown chain must yield `other`. Adding a chain means a reference row (admin) plus its plug-in and one registry line. No code outside `domain/chains/` branches on a chain id.
 
 ### AD-7 — One classification of extraction results `[ADOPTED]`
 
@@ -130,16 +132,18 @@ stateDiagram-v2
 - **Rule:** A single function maps every Gemini call result to one of four classes:
   - `unavailable`: HTTP 429, 5xx, an httpx timeout or transport error. No attempt is consumed. The job waits with no deadline, and the sender gets the in-progress reaction once, on the first `unavailable`. The next try is at `RetryInfo.retryDelay` from the error details, else `Retry-After`, else capped exponential backoff.
   - `blocked`: a configuration fault, classified from the SDK error status and reason, not the HTTP code alone. Examples: auth or billing failure, disabled quota, a retired model, a request rejected for its configuration. The job waits as for `unavailable`, consumes no attempt, and raises the `gemini_config` alert (AD-13).
-  - `invalid`: a response that fails the schema or comes back empty or blocked for its content, a 4xx caused by this file, an `unreadable` chain or purchase date, or a consistency mismatch beyond ±0.01 EUR. One attempt is consumed, and the job re-runs the pass that produced it.
+  - `invalid`: a response that fails the schema or comes back empty or blocked for its content, a 4xx caused by this file, an `unreadable` chain, a pass-2 purchase date that cannot be read, or a consistency mismatch beyond ±0.01 EUR. One attempt is consumed, and the job restarts from pass 1.
   - `valid`.
 
-  The attempt limit is 3 per job, shared across both passes. After the 3rd `invalid`, the job goes to `failed` with the reason of the last attempt.
+  An unsupported pass-1 result consumes an attempt and repeats pass 1. Only the second unsupported result in a row makes the job `unsupported_chain`. An unsupported result that uses up the last attempt also ends as `unsupported_chain`, not `failed`. The attempt limit comes from config (default 3) and is shared across both passes. When it is reached, the job goes to `failed` with the reason of the last attempt. A pass-1 purchase time that cannot be read is not `invalid`; it only skips the pre-check (AD-8).
 
 ### AD-8 — Dedup is a database constraint
 
 - **Binds:** CAP-6
 - **Prevents:** units implementing "already stored?" differently, or racing on it.
 - **Rule:** The dedup key is (chain, purchase timestamp to the second). The printed Europe/Zagreb wall time is converted to `timestamptz` in one shared function. A PostgreSQL unique constraint enforces the key. The receipt number and file hashes are never part of it. A unique violation maps to `duplicate`, except under AD-9.
+
+  A **pre-check** after pass 1 saves pass 2 for a resent receipt. The plug-in normalizes the pass-1 time with the same shared function. A stored row with that key and a different source reference makes the job `duplicate` at once. The pre-check is advisory. An unreadable pass-1 time, or PostgreSQL being unreachable, skips it with no wait, no attempt and no alert. The unique constraint at write time stays the only authority.
 
 ### AD-9 — A job recognizes its own earlier write
 
@@ -175,7 +179,7 @@ stateDiagram-v2
 
 - **Binds:** CAP-10
 - **Prevents:** alert spam and Telegram 429s during a long outage.
-- **Rule:** The service alerts the admin once when an error kind starts, with the reason. The kinds form a closed set: `postgres_unreachable`, `gemini_config`, `telegram_unreachable` and `internal:<state>`. A failed alert send is only logged and never raises a new alert. It alerts once more when that kind recovers. Alert state is kept in memory, so a restart may re-alert once. Receipt outcomes are not alerts; they follow the outcome matrix.
+- **Rule:** The service alerts the admin once when an error kind starts, with the reason. The kinds form a closed set: `postgres_unreachable`, `gemini_config`, `telegram_unreachable`, `chain_reference` and `internal:<state>`. A failed alert send is only logged and never raises a new alert. It alerts once more when that kind recovers. Alert state is kept in memory, so a restart may re-alert once. Receipt outcomes are not alerts; they follow the outcome matrix.
 
 ### AD-14 — One loop, one thread `[ADOPTED]`
 
@@ -211,6 +215,17 @@ stateDiagram-v2
   - `receipt_id` is assigned when the job enters `write_pending`.
 
   This model is built before any chain plug-in.
+
+### AD-18 — Known chains come from an admin-owned reference
+
+- **Binds:** CAP-2, CAP-6
+- **Prevents:** a hard-coded chain list drifting from the admin's list, chain ids changing under the dedup key, and coupling of migrations between owners.
+- **Rule:** The admin (a person) owns the chain reference in PostgreSQL; this project neither creates nor writes it. This project publishes the required shape as its own consumer contract in `docs/contracts/`, semver from 1.0.0:
+  - a table read through a versioned view (`chains_v1`), never a PostgreSQL enum;
+  - columns: `chain_id` (stable ASCII slug, never changed or reused), display name, printed aliases, an `active` flag;
+  - `SELECT` for the service's role.
+
+  The service reads the reference at startup and before each pass 1. While it is unreachable, the job waits as for PostgreSQL (AD-16). Receipt tables store `chain_id` without a foreign key to the reference. A plug-in whose `chain_id` is missing or inactive in the reference is not used and raises one `chain_reference` alert; startup is never blocked by it.
 
 ## Consistency Conventions
 
@@ -287,6 +302,7 @@ erDiagram
   receipts ||--|{ receipt_lines : has
   receipts ||--|{ receipt_settlements : "settled by"
   receipts ||--|| receipt_feed : "announced by"
+  chains_v1 ||--o{ receipts : "chain_id, no FK, admin-owned"
 ```
 
 Deployment: `git clone` with sparse-checkout and `compose build` on the home server. There is one compose service and one named volume. PostgreSQL is the existing LAN instance and is not in compose. Three PostgreSQL roles are used:
@@ -302,11 +318,11 @@ The writer gets the grants the addendum's trigger lesson lists. Migrations run o
 | Capability / Area | Lives in | Governed by |
 | --- | --- | --- |
 | CAP-1 intake | `adapters/telegram`, `adapters/queue`, `app/loop` | AD-1, AD-2, AD-15 |
-| CAP-2 extraction | `adapters/gemini`, `domain/chains` | AD-4, AD-5, AD-6, AD-17 |
+| CAP-2 extraction | `adapters/gemini`, `domain/chains`, chain reference | AD-4, AD-5, AD-6, AD-17, AD-18 |
 | CAP-3 line pricing | `domain/chains`, `domain` pricing | AD-5, AD-6 |
 | CAP-4 settlement | `domain` model, `adapters/postgres` | AD-5, AD-10 |
 | CAP-5 consistency | `domain` consistency | AD-5, AD-7 |
-| CAP-6 dedup | `adapters/postgres`, `app/jobs` | AD-8, AD-9 |
+| CAP-6 dedup | `adapters/postgres`, `app/jobs` | AD-8 (constraint and pre-check), AD-9 |
 | CAP-7 atomic storage | `adapters/postgres` | AD-10, AD-11 |
 | CAP-8 outcome feedback | `app/notify`, `domain` outcomes, texts file | AD-3, AD-11, Config convention |
 | CAP-9 durable waiting | `app/jobs`, `adapters/queue` | AD-1, AD-3, AD-7, AD-14, AD-16 |
@@ -320,5 +336,6 @@ The writer gets the grants the addendum's trigger lesson lists. Migrations run o
 - **Long-receipt image slicing.** Wait until a fixture shows Gemini failing on a tall receipt.
 - **Contract field list for `resolver_v1`.** It is written with the CAP-11 story and released as 1.0.0. AD-12 fixes the shape.
 - **Prompt wording per chain.** It is owned by each chain plug-in.
+- **Chain reference contract text and its first rows.** The contract is written in its own story before the first chain plug-in; the admin then creates the table and adds the five chains. AD-18 fixes the shape.
 - **PostgreSQL server version.** Confirm it in the platform-baseline story. Nothing bound here depends on it.
 - **Backups of the SQLite volume.** Not needed: the queue is transient, and each original stays in Telegram.
