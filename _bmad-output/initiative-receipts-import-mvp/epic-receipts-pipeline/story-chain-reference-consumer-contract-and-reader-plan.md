@@ -3,7 +3,7 @@ title: 'Chain reference consumer contract and reader'
 type: 'feature'
 ticket: '3'
 created: '2026-10-22'
-status: 'built'
+status: done
 baseline_revision: '716183f245c85fd255356db01fe3d5f3fcf5ac49'
 route: 'full'
 route_source: 'auto'
