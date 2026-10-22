@@ -141,7 +141,7 @@ stateDiagram-v2
 
 - **Binds:** CAP-6
 - **Prevents:** units implementing "already stored?" differently, or racing on it.
-- **Rule:** The dedup key is (chain, purchase timestamp to the second). The printed Europe/Zagreb wall time is converted to `timestamptz` in one shared function. A PostgreSQL unique constraint enforces the key. The receipt number and file hashes are never part of it. A unique violation maps to `duplicate`, except under AD-9.
+- **Rule:** The dedup key is (chain, purchase timestamp to the minute), for every chain (owner decision 2026-10-22: Spar prints no seconds; two purchases of one chain in the same minute collide, and the owner accepts that). The printed Europe/Zagreb wall time is converted to `timestamptz`, truncated to the minute, in one shared function. A PostgreSQL unique constraint enforces the key. The receipt number and file hashes are never part of it. A unique violation maps to `duplicate`, except under AD-9.
 
   A **pre-check** after pass 1 saves pass 2 for a resent receipt. The plug-in normalizes the pass-1 time with the same shared function. A stored row with that key and a different source reference makes the job `duplicate` at once. The pre-check is advisory. An unreadable pass-1 time, or PostgreSQL being unreachable, skips it with no wait, no attempt and no alert. The unique constraint at write time stays the only authority.
 

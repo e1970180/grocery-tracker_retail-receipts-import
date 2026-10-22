@@ -1,4 +1,4 @@
-# Lanes after the tracer: A = 5 -> 6 -> 7 -> 12 -> 13 (app/jobs, app/notify, adapters/gemini, adapters/postgres); B = 8 -> 9 -> 10 -> 11 (domain/chains + registry); C = 14 (migrations, docs/contracts).
+# Entry 4 was split into 4a -> 4b (owner, 2026-10-22). Lanes: A = 4b -> 5 -> 6 -> 7 -> 12 -> 13 (app/jobs, app/notify, adapters/gemini, adapters/postgres); B = 4b -> 8 -> 9 -> 10 -> 11 (domain/chains + registry); C = 4a -> 14 (migrations, docs/contracts).
 
 [[entry]]
 id = 1
@@ -49,13 +49,38 @@ risk = "high"
 references = ["architecture-receipts-import/architecture-receipts-import.md#ad-14--one-loop-one-thread-adopted", "architecture-receipts-import/architecture-receipts-import.md#ad-15--telegram-transport-is-the-vendored-reference-pack", "architecture-receipts-import/architecture-receipts-import.md#ad-17--one-normalized-receipt-shape"]
 
 [[entry]]
+id = "4a"
+type = "story"
+title = "Receipt model and storage"
+description = "Adds NormalizedReceipt in domain with every discount and settlement kind, zagreb_to_utc truncating to the minute for every chain, and the ±0.01 consistency check; the receipt schema migration with the dedup and source-reference constraints and the feed table; and the one-transaction writer that looks up the source reference, then the dedup key, then inserts, reruns both lookups on a unique violation, and returns stored, own write or duplicate."
+verify = "Integration tests cover a 0.02 mismatch rejected, a 0.01 difference written, a dedup hit, an own write and rollback on an injected failure; in dev after migrate, a scratch script as rri_dev_writer writes a synthetic receipt, then gets own write for the same source and duplicate from another source; zagreb_to_utc runs in the built image."
+covers = ["CAP-3", "CAP-4", "CAP-5", "CAP-6", "CAP-7"]
+after = [2]
+hitl = true
+risk = "high"
+references = ["architecture-receipts-import/architecture-receipts-import.md#ad-17--one-normalized-receipt-shape", "architecture-receipts-import/architecture-receipts-import.md#ad-8--dedup-is-a-database-constraint", "architecture-receipts-import/architecture-receipts-import.md#ad-9--a-job-recognizes-its-own-earlier-write"]
+
+[[entry]]
+id = "4b"
+type = "story"
+title = "Spar receipt from PDF to dev"
+description = "Adds the chain plug-in protocol and registry, the Spar plug-in, the pass-1 schema and prompt built from entry 3's reader, the Gemini client and its settings, and app/pipeline.py taking a local file through pass 1, pass 2 and the 4a writer, with the four Spar samples recorded once as fixtures; the owner approves the one-time live recording and confirms the expected records."
+verify = "Offline tests cover the happy path, Joker discount, cash with change, mixed settlement, deposit info, not supported, unreadable and a Gemini error, and the four Spar fixtures equal their owner-confirmed records to the cent; a live run of sample …2600 stores a receipt in dev matching its record."
+covers = ["CAP-2", "CAP-3", "CAP-4", "CAP-5"]
+after = ["4a", 3]
+hitl = true
+risk = "high"
+references = ["architecture-receipts-import/architecture-receipts-import.md#ad-4--two-pass-extraction-adopted", "architecture-receipts-import/architecture-receipts-import.md#ad-17--one-normalized-receipt-shape"]
+notes = ["Fallback seam if over budget: pass 1 as its own story."]
+
+[[entry]]
 id = 5
 type = "story"
 title = "Gemini result classifier and retry timing"
 description = "Adds the single classifier mapping every Gemini result to unavailable, blocked, invalid or valid with the retry delay from RetryInfo, Retry-After or capped backoff, plus image preprocessing (EXIF, pixel cap); the job state machine in the next story consumes its classes."
 verify = "Unit tests on responses recorded once from the live API, including a 429 with RetryInfo, a timeout, an auth failure and a schema-invalid reply, return the expected class and delay; a photo, an image document and a PDF each reach the Gemini request in its accepted form."
 covers = ["CAP-1", "CAP-2", "CAP-9"]
-after = [4]
+after = ["4b"]
 hitl = true
 risk = "high"
 references = ["architecture-receipts-import/architecture-receipts-import.md#ad-7--one-classification-of-extraction-results-adopted","architecture-receipts-import/architecture-receipts-import.md#ad-4--two-pass-extraction-adopted"]
@@ -75,23 +100,23 @@ references = ["architecture-receipts-import/architecture-receipts-import.md#ad-3
 [[entry]]
 id = 7
 type = "story"
-title = "Deduplication: pre-check and own-write"
-description = "Adds the advisory pre-check after pass 1 using the plug-ins' pass-1 time normalization from the tracer, the duplicate final state on a dedup-key conflict from another source, and own-write recognition by source reference, on the constraints the tracer's migration created."
-verify = "Integration tests show a different photo of the same purchase ending as duplicate with one stored row, the pre-check skipping pass 2, a crash after commit resolving to stored, and a failure injected mid-write leaving no receipt, lines or settlement."
-covers = ["CAP-6", "CAP-7", "CAP-9"]
+title = "Deduplication pre-check"
+description = "Adds the advisory pre-check after pass 1, using the plug-ins' pass-1 time normalization from 4b and reusing the 4a writer's dedup-key lookup, and the job's duplicate final state from the writer's duplicate result."
+verify = "Integration tests show a different photo of the same purchase ending as duplicate with one stored row, the pre-check skipping pass 2, and the job mapping the writer's own-write result to stored after a crash between commit and the final mark."
+covers = ["CAP-6", "CAP-9"]
 after = [6]
 hitl = false
 risk = "high"
-references = ["architecture-receipts-import/architecture-receipts-import.md#ad-8--dedup-is-a-database-constraint", "architecture-receipts-import/architecture-receipts-import.md#ad-9--a-job-recognizes-its-own-earlier-write"]
+references = ["architecture-receipts-import/architecture-receipts-import.md#ad-8--dedup-is-a-database-constraint"]
 
 [[entry]]
 id = 8
 type = "story"
 title = "Lidl plug-in"
-description = "Adds the Lidl plug-in to the tracer's registry: separate POPUST and Lidl Plus discount lines, the ignored footer POPUST, the branch with leading zeros; the owner supplies Lidl samples and approves the live recording."
+description = "Adds the Lidl plug-in to 4b's registry: separate POPUST and Lidl Plus discount lines, the ignored footer POPUST, the branch with leading zeros; the owner supplies Lidl samples and approves the live recording."
 verify = "Fixture tests reproduce the hand-verified Lidl records, paper and PDF where issued, including a discounted line and the footer trap, to the cent."
 covers = ["CAP-2", "CAP-3", "CAP-4"]
-after = [4]
+after = ["4b"]
 hitl = true
 risk = "medium"
 
@@ -156,10 +181,10 @@ references = ["architecture-receipts-import/architecture-receipts-import.md#ad-1
 id = 14
 type = "story"
 title = "Resolver feed contract resolver_v1"
-description = "Adds the resolver_v1 views over the tracer's tables and feed with SELECT for the Resolver role by migration, and publishes the contract 1.0.0 in docs/contracts/ with its docs/api-versions.md entry; the admin creates the Resolver login role."
+description = "Adds the resolver_v1 views over 4a's tables and feed with SELECT for the Resolver role by migration, and publishes the contract 1.0.0 in docs/contracts/ with its docs/api-versions.md entry; the admin creates the Resolver login role."
 verify = "An integration test connecting as the Resolver role reads seq > cursor, sees a stored receipt with Z timestamps and decimal-string money, and is refused on the internal tables."
 covers = ["CAP-11"]
-after = [4]
+after = ["4a"]
 hitl = true
 risk = "high"
 references = ["architecture-receipts-import/architecture-receipts-import.md#ad-12--the-resolver-reads-a-feed-not-tables-adopted"]
