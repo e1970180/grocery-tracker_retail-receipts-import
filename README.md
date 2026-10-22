@@ -22,6 +22,15 @@ working directory. `.env.example` lists them. The service refuses to start on an
 User- and admin-facing texts and reaction emoji live in `texts/messages.toml`. Every key must be
 present and every reaction must be an emoji Telegram allows, or the service refuses to start.
 
+## Chain reference
+
+The service learns the known retail chains from an admin-owned reference, the view
+`public.chains_v1`, which the writer role must be able to `SELECT`. This project never creates
+or writes it; the admin sets it up from [`docs/contracts/chains_v1.sql`](docs/contracts/chains_v1.sql).
+The shape the service relies on is the consumer contract
+[`docs/contracts/chains_v1.md`](docs/contracts/chains_v1.md); versions are listed in
+[`docs/api-versions.md`](docs/api-versions.md).
+
 ## Commands
 
 ```bash

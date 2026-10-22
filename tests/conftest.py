@@ -76,6 +76,9 @@ def pg_conn() -> Iterator[psycopg.Connection[tuple[object, ...]]]:
     if not dsn:
         pytest.fail(f"{TEST_DSN_VAR} is not set; integration tests need a test PostgreSQL database")
     with psycopg.connect(dsn, connect_timeout=10) as conn:
+        # Tests seed and alter shared objects such as the chain reference; never a project database.
+        if "grocery-tracker" in conn.info.dbname:
+            pytest.fail(f"{TEST_DSN_VAR} points at {conn.info.dbname!r}, not a throwaway database")
         yield conn
         # Leaving the block would commit; a test's uncommitted writes must not outlive it.
         conn.rollback()
