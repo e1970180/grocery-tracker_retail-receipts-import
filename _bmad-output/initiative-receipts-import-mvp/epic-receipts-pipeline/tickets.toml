@@ -1,4 +1,4 @@
-# Entry 4 was split into 4a -> 4b (owner, 2026-10-22). Lanes: A = 4b -> 5 -> 6 -> 7 -> 12 -> 13 (app/jobs, app/notify, adapters/gemini, adapters/postgres); B = 4b -> 8 -> 9 -> 10 -> 11 (domain/chains + registry); C = 4a -> 14 (migrations, docs/contracts).
+# Entry 4 was split into 4a -> 4b (owner, 2026-10-22). Tracer bullet: 17. Lanes: A = 4b -> 17 -> 5 -> 6 -> 7 -> 12 -> 13 (app/jobs, app/notify, adapters/gemini, adapters/postgres); B = 4b -> 8 -> 9 -> 10 -> 11 (domain/chains + registry); C = 4a -> 14 (migrations, docs/contracts).
 
 [[entry]]
 id = 1
@@ -74,13 +74,25 @@ references = ["architecture-receipts-import/architecture-receipts-import.md#ad-4
 notes = ["Fallback seam if over budget: pass 1 as its own story."]
 
 [[entry]]
+id = 17
+type = "story"
+title = "Telegram receipt to dev end to end"
+description = "The tracer bullet: adds the vendored Telegram client with the gate for photos, image documents and PDFs from allowlisted users in private chats (allowed_user_ids parsed from a comma-separated string), the SQLite job queue with the offset committed with the jobs, the AD-3 job states that entry 6 extends, the download, the single loop calling 4b's pipeline, and the success reaction after the PostgreSQL commit and the SQLite final state (AD-11); a non-stored result ends the job without a notice, and an exception leaves the job in place, logged, while the loop moves on. The domain accepted-type list is built here."
+verify = "On the dev bot, the owner sends a Spar PDF other than sample …2600, sees the success reaction, and the stored receipt matches its owner-confirmed record from 4b; unit tests with fake ports show a non-allowlisted user and a group chat not processed and a restart re-fetching no acknowledged update."
+covers = ["CAP-1", "CAP-8", "CAP-9"]
+after = ["4b"]
+hitl = true
+risk = "high"
+references = ["architecture-receipts-import/architecture-receipts-import.md#ad-1--waiting-receipts-live-in-a-local-sqlite-queue-adopted", "architecture-receipts-import/architecture-receipts-import.md#ad-3--one-owner-of-job-state", "architecture-receipts-import/architecture-receipts-import.md#ad-2--the-telegram-offset-is-acknowledged-only-after-the-job-is-durable", "architecture-receipts-import/architecture-receipts-import.md#ad-14--one-loop-one-thread-adopted", "architecture-receipts-import/architecture-receipts-import.md#ad-15--telegram-transport-is-the-vendored-reference-pack-adopted"]
+
+[[entry]]
 id = 5
 type = "story"
 title = "Gemini result classifier and retry timing"
-description = "Adds the single classifier mapping every Gemini result to unavailable, blocked, invalid or valid with the retry delay from RetryInfo, Retry-After or capped backoff, plus image preprocessing (EXIF, pixel cap); the job state machine in the next story consumes its classes."
+description = "Adds the single classifier mapping every Gemini result to unavailable, blocked, invalid or valid with the retry delay from RetryInfo, Retry-After or capped backoff, plus image preprocessing (EXIF, pixel cap) over entry 17's accepted-type list; the job state machine in the next story consumes its classes."
 verify = "Unit tests on responses recorded once from the live API, including a 429 with RetryInfo, a timeout, an auth failure and a schema-invalid reply, return the expected class and delay; a photo, an image document and a PDF each reach the Gemini request in its accepted form."
 covers = ["CAP-1", "CAP-2", "CAP-9"]
-after = ["4b"]
+after = [17]
 hitl = true
 risk = "high"
 references = ["architecture-receipts-import/architecture-receipts-import.md#ad-7--one-classification-of-extraction-results-adopted","architecture-receipts-import/architecture-receipts-import.md#ad-4--two-pass-extraction-adopted"]
@@ -157,7 +169,7 @@ risk = "medium"
 id = 12
 type = "story"
 title = "Full outcome matrix and effect order"
-description = "Completes notify for every outcome-matrix row: duplicate (reaction and message), unsupported chain (sender message, admin message), inconsistency and no-valid-result (failure reaction, message, admin reason and file copy, none on oversize), in-progress once, and not-accepted for unsupported content or a declared or unconfirmed size over 20 MB; plus the AD-11 effect order, local file deletion and the startup sweep."
+description = "Extends entry 17's notify to every outcome-matrix row: duplicate (reaction and message), unsupported chain (sender message, admin message), inconsistency and no-valid-result (failure reaction, message, admin reason and file copy, none on oversize), in-progress once, and not-accepted for unsupported content or a declared or unconfirmed size over 20 MB; plus the AD-11 effect order, local file deletion and the startup sweep."
 verify = "Unit tests with fake ports produce each matrix row's reaction, message and admin notification from the texts file, and a failed send leaves the job state unchanged."
 covers = ["CAP-5", "CAP-6", "CAP-8", "CAP-9"]
 after = [7]
@@ -169,7 +181,7 @@ references = ["architecture-receipts-import/architecture-receipts-import.md#ad-1
 id = 13
 type = "story"
 title = "Operational alerts and per-job error boundary"
-description = "Adds the closed set of alert kinds sent once on start and once on recovery, including chain_reference for a plug-in missing or inactive in the reference, and the loop's per-job error boundary: PostgreSQL connection-class errors classified into entry 6's write_pending wait with postgres_unreachable, three unrecorded step starts from entry 6's counter treated as internal, and internal:<state>; using notify from entry 12."
+description = "Adds the closed set of alert kinds sent once on start and once on recovery, including chain_reference for a plug-in missing or inactive in the reference, and the per-job error boundary in entry 17's loop: PostgreSQL connection-class errors classified into entry 6's write_pending wait with postgres_unreachable, three unrecorded step starts from entry 6's counter treated as internal, and internal:<state>; using notify from entry 12."
 verify = "Unit tests show a PostgreSQL connection error alerting once, recovering once and keeping the job in write_pending, and an induced internal error alerting once while the loop moves on."
 covers = ["CAP-9", "CAP-10"]
 after = [12]
@@ -203,9 +215,9 @@ risk = "low"
 [[entry]]
 id = 16
 type = "story"
-title = "Production acceptance demo"
-description = "Redeploys the finished service to the home server and demonstrates on the production bot every outcome-matrix row, a receipt of each chain, a restart during an extraction outage, a PostgreSQL outage alert, and a stored receipt read through resolver_v1."
-verify = "The owner observes each listed case on production and signs off against the epic's Done when."
+title = "First production deployment and acceptance demo"
+description = "Makes the first production deployment: the owner creates the production database and roles, the admin creates the chains_v1 reference table, view and five rows and the Resolver login role in production, the service is deployed to the home server by sparse-checkout git clone + compose build, and migrate runs against production; then demonstrates on the shared bot against production every outcome-matrix row, a receipt of each chain, a restart during an extraction outage, a PostgreSQL outage alert, and a stored receipt read through resolver_v1."
+verify = "On the home server, git clone + compose build succeeds and migrate applies every migration to production; the owner observes each listed case on production and signs off against the epic's Done when."
 covers = ["CAP-1", "CAP-2", "CAP-6", "CAP-8", "CAP-9", "CAP-10", "CAP-11"]
 after = [15]
 hitl = true
