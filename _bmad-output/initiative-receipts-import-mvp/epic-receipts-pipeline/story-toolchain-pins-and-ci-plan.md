@@ -3,7 +3,7 @@ title: 'Toolchain pins and CI'
 type: 'chore'
 ticket: '1'
 created: '2026-10-21'
-status: 'built'
+status: done
 baseline_revision: '9b774b7433913a553bc7642cc64c81d36c88e5de'
 route: 'oneshot'
 route_source: 'auto'
