@@ -3,14 +3,14 @@ title: 'Chain reference consumer contract and reader'
 type: 'feature'
 ticket: '3'
 created: '2026-10-22'
-status: 'in-progress'
+status: 'built'
 baseline_revision: '716183f245c85fd255356db01fe3d5f3fcf5ac49'
 route: 'full'
 route_source: 'auto'
 risk: 'high'
-review: ''
-review_source: ''
-lenses_ran: []
+review: 'quick'
+review_source: 'pinned'
+lenses_ran: ['quick']
 review_loop_iteration: 0
 context: []
 ---
@@ -85,12 +85,23 @@ context: []
 - The contract table carries the rules as named constraints, so integration tests serve rule-breaking rows through a union view over an unconstrained table inside the test transaction.
 - Local verification (WSL, uv 0.13.4): ruff check, ruff format --check, mypy strict, pytest (34 passed) green; `pytest -m integration` against a throwaway `postgres:18.6` container on localhost:55432: 10 passed, including the 7 chain reader tests.
 - Dev setup NOT done. The pg18 MCP was confirmed to point at the dev cluster (PostgreSQL 18.6, `grocery-tracker-dev` and `rri_dev_*` roles present). WSL has no `psql`, so the setup was to run through a psycopg scratch script; writing the temporary-role pgpass file and the setup script was refused by the harness permission classifier, so no role was created and nothing was written to dev. Needs owner action or explicit permission.
+- 2026-10-22: the owner ran `chains_v1.sql` and `GRANT SELECT ON public.chains_v1 TO rri_dev_writer` in `grocery-tracker-dev` as `postgres` by hand, so no temporary role was ever created. `scratch/read_chains.py` in WSL as `rri_dev_writer` printed `dm`, `kaufland`, `lidl`, `mueller`, `spar` (spar aliases `['SPAR', 'Spar', 'INTERSPAR']`), inactive `[]`, rejected `[]`.
 
 ## Plan Change Log
 
 - 2026-10-22: Dev setup step 1 creates the temporary role through `DO ... EXECUTE format(...)`, since `VALID UNTIL` rejects an expression; added a stop-and-report rule if the role cannot log in.
 
 ## Review Triage Log
+
+| Finding | Verdict | Route | Evidence |
+| --- | --- | --- | --- |
+| `ORDER BY chain_id COLLATE "C"` fails the whole read with 42804 when the view retypes `chain_id` | low | patch | Failing test `test_non_text_chain_id_is_rejected_per_row` raised `DatatypeMismatch`; ORDER BY removed (Python already sorts), test passes. |
+| Reader leaves the caller's transaction open or aborted | false | reject | The connection and its transaction belong to the caller, as with `pg_conn`; no caller exists yet to mishandle it. |
+| `btrim` in the table CHECK strips only spaces; the reader's `strip()` strips all whitespace | low | reject | The reader is only stricter: a tab-only name is reported as rejected, which is the alert path; changing the SQL now would drift from the reference the owner already applied in dev. |
+| BAD_ROW and DUPLICATE_ID share one test | low | reject | Both matrix rows are asserted and passed in the integration run; layout only. |
+| AC5 evidence: no `pg_roles` check, USAGE not recorded, owner's manual setup not in the change log | false | reject | No temporary role was created, so none can remain; the writer's successful read of `public.chains_v1` requires USAGE on `public`. Fix would only edit this plan. |
+| Stale "Dev setup NOT done" note and commit 4fe5e87 message | low | reject | The later dated note supersedes it; fix edits only the plan or rewrites a commit. |
+| AC6 has no CI evidence | maybe-false | reject | CI runs only on push, which needs owner approval; local WSL suite and integration (11 passed) are green. |
 
 ## Design Notes
 

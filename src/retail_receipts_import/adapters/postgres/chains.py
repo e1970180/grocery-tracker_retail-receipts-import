@@ -10,11 +10,9 @@ import psycopg
 from retail_receipts_import.domain.chains import RESERVED_IDS, KnownChain, is_chain_id
 
 # No WHERE clause: filtering on `active` in SQL would hide a NULL `active` and a duplicate id
-# whose other copy is inactive, both of which must be reported.
-QUERY = (
-    "SELECT chain_id, display_name, aliases, active FROM public.chains_v1"
-    ' ORDER BY chain_id COLLATE "C"'
-)
+# whose other copy is inactive, both of which must be reported. No ORDER BY either: a retyped
+# `chain_id` would fail the whole query on a collation, instead of being rejected per row.
+QUERY = "SELECT chain_id, display_name, aliases, active FROM public.chains_v1"
 
 # The reference is missing or unreadable for this role: undefined table, schema or column, or
 # no privilege. Anything else, notably connection loss, is the caller's to handle as is.

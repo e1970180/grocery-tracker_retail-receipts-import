@@ -157,6 +157,18 @@ def test_text_aliases_column_is_rejected_not_split(chains_conn: Conn) -> None:
 
 
 @pytest.mark.integration
+def test_non_text_chain_id_is_rejected_per_row(chains_conn: Conn) -> None:
+    chains_conn.execute("DROP VIEW public.chains_v1")
+    chains_conn.execute(
+        "CREATE VIEW public.chains_v1 AS "
+        "SELECT length(chain_id) AS chain_id, display_name, aliases, active FROM public.chains"
+    )
+    reference = read_chain_reference(chains_conn)
+    assert reference.chains == ()
+    assert {row.reason for row in reference.rejected} == {RejectReason.INVALID_SLUG}
+
+
+@pytest.mark.integration
 def test_missing_view_raises(chains_conn: Conn) -> None:
     chains_conn.execute("DROP VIEW public.chains_v1")
     with pytest.raises(ChainReferenceError) as caught:
