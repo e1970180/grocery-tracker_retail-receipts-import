@@ -1,0 +1,12 @@
+services:
+  receipts:
+    build: .
+    image: retail-receipts-import
+    env_file: .env
+    volumes:
+      - data:/data
+    restart: unless-stopped
+
+volumes:
+  # Dev and production checkouts get separate volumes through their compose project names.
+  data:

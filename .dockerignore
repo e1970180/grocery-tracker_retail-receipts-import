@@ -1,8 +1,11 @@
-# An allow-list: the build context holds the source and the contract schemas only.
+# An allow-list: the build context holds the source, migrations, texts and contract schemas only.
 *
 !pyproject.toml
 !uv.lock
 !src/
 !docs/contracts/
+!README.md
+!migrations/
+!texts/
 **/__pycache__
 **/*.pyc
