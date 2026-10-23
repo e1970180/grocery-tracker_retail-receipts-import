@@ -39,6 +39,9 @@ def main(argv: Sequence[str] | None = None, stop: threading.Event | None = None)
             log.error("invalid config: %s: %s", field, error["msg"])
         return 2
     logging.getLogger().setLevel(settings.log_level)
+    # httpx logs every request URL at INFO, and a Telegram URL carries the bot token.
+    for noisy in ("httpx", "httpcore"):
+        logging.getLogger(noisy).setLevel(logging.WARNING)
 
     if args.command == "migrate":
         return _migrate(settings)

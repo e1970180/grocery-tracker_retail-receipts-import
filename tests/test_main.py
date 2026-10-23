@@ -1,3 +1,4 @@
+import logging
 import threading
 from pathlib import Path
 
@@ -26,6 +27,16 @@ def test_run_logs_readiness(rri_env: dict[str, str], caplog: pytest.LogCaptureFi
         caplog.text
     )
     _assert_no_secrets(caplog.text)
+
+
+@pytest.mark.parametrize("level", ["INFO", "DEBUG"])
+def test_http_request_logs_are_silenced(
+    rri_env: dict[str, str], monkeypatch: pytest.MonkeyPatch, level: str
+) -> None:
+    monkeypatch.setenv("RRI_LOG_LEVEL", level)
+    assert cli.main(["run"], stop=_stopped()) == 0
+    for name in ("httpx", "httpcore"):
+        assert not logging.getLogger(name).isEnabledFor(logging.INFO)
 
 
 def test_run_refuses_environment_mismatch_without_leaking_secrets(
