@@ -3,13 +3,13 @@ title: 'Gemini result classifier and retry timing'
 type: 'feature'
 ticket: '5'
 created: '2026-10-23'
-status: 'draft'
+status: 'ready-for-dev'
 baseline_revision: '23fbd1673df09a393777511995a7af963538eef2'
 route: 'full'
 route_source: 'auto'
 risk: 'high'
-review: ''
-review_source: ''
+review: 'thorough'
+review_source: 'risk'
 lenses_ran: []
 review_loop_iteration: 0
 context: []
@@ -93,3 +93,7 @@ A disabled quota is a 429 that Gemini marks only in the message text `limit: 0`,
 
 **Commands:**
 - `wsl -- bash -lc '... uv run ruff check && uv run ruff format --check && uv run mypy && uv run pytest'` -- expected: all green.
+
+## Implementation Notes
+
+- Owner, 2026-10-23: plan approved; code is written by Gemini 3.8 Flash in an external harness; the one-time live recording of the error fixtures is approved.
