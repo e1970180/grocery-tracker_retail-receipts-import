@@ -83,6 +83,7 @@ context: []
 - The PostgreSQL-failure row is covered at the adapter (`find_other_source` on a closed connection returns `None` and logs `OperationalError`); a `None` takes the same path as the tested miss.
 - Verification, in WSL: ruff check, ruff format --check and mypy clean; `pytest` passed 331; `pytest -m integration` passed 33 (5 in `tests/test_dedup.py`) against a throwaway `postgres:18.6` container on port 55432, stopped afterwards.
 - Dev-bot manual check pending the owner.
+- Dev-bot check, 2026-10-23, at `f731b1129fa8702d1fb421d735ff276723917df0`: the owner sent one Spar PDF as two messages. Job 3 ran pass 1 and pass 2 and was `stored` as `01a16a91-10f4-74a1-9679-df555e718a40`. Job 4 made one Gemini call (pass 1), logged `pre-check found receipt 01a16a91-…`, and ended `duplicate` with that id, 0 attempts and no pass-1 result kept. Dev holds 1 receipt and 1 feed row at the key (`scratch/verify_dedup.py`).
 - After the review patches (tests only): ruff, mypy clean; `pytest` 331 passed; `pytest -m integration` 33 passed on a throwaway `postgres:18.6`.
 
 ## Plan Change Log
