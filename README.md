@@ -12,6 +12,9 @@ working directory. `.env.example` lists them. The service refuses to start on an
 | `RRI_ENV` | `dev` or `prod`. `dev` needs a database name ending in `-dev`; `prod` needs one that does not. |
 | `RRI_TELEGRAM_BOT_TOKEN` | Telegram bot token. |
 | `RRI_GEMINI_API_KEY` | Gemini API key. |
+| `RRI_GEMINI_MODEL` | Gemini model id (default `gemini-3.8-flash`). |
+| `RRI_GEMINI_TIMEOUT_S` | Timeout of one Gemini request in seconds (default 120). |
+| `RRI_GEMINI_THINKING_LEVEL` | `minimal`, `low`, `medium` or `high` (default `low`; `gemini-3.8-flash` has no `minimal`). |
 | `RRI_DB_HOST`, `RRI_DB_PORT`, `RRI_DB_NAME` | PostgreSQL server and database. |
 | `RRI_DB_USER`, `RRI_DB_PASSWORD` | Writer role, used by the service. |
 | `RRI_DB_CONNECT_TIMEOUT_S` | Connect timeout in seconds (default 10). |

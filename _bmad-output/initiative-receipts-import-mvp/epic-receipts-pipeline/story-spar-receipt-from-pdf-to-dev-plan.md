@@ -3,14 +3,14 @@ title: 'Spar receipt from PDF to dev'
 type: 'feature'
 ticket: '4b'
 created: '2026-10-22'
-status: 'ready-for-dev'
-baseline_revision: ''
+status: 'built'
+baseline_revision: '216b404eca46f4502d7df161630d2e430c21397f'
 route: 'full'
 route_source: 'auto'
 risk: 'high'
-review: ''
-review_source: ''
-lenses_ran: []
+review: 'quick'
+review_source: 'pinned'
+lenses_ran: ['quick']
 review_loop_iteration: 0
 context: []
 ---
@@ -88,14 +88,28 @@ context: []
 
 ## Implementation Notes
 
+- Owner approval gates: write `scratch/record_spar.py` and `scratch/ingest_local.py` but do not run them, make no Gemini call, and connect to no database. Do not create `tests/fixtures/spar/*/pass2.json` or `expected.json`; the fixture tests must pass (or collect nothing) while those files are absent. Recording, the hand-derived records and the dev run happen after the owner approves them.
+- `gemini_thinking_level` defaults to `low`, not `minimal`: the constraint is the lowest level, and the architecture review (G-3) found `gemini-3.8-flash` accepts only `low | medium | high`.
+- `scratch/ingest_local.py` replays the recorded …2600 `pass2.json` instead of calling Gemini again, because each PDF goes to Gemini once; the recording run is the live Gemini evidence.
+
 ## Plan Change Log
 
 - 2026-10-22 -- Owner moved the AD-9 own-write lookup from entry 7 to the tracer (now 4a).
 - 2026-10-22 -- Owner split entry 4 into 4a and this story; `allowed_user_ids` went to the Telegram entry.
 - 2026-10-23 -- Plan at about 2,200 tokens; owner split pass 1 into its own story and moved the seller-OIB guard there.
 - 2026-10-23 -- Owner kept the narrowed plan at about 2,000 tokens (chars/4) and approved it.
+- 2026-10-23 -- Owner approved the four pass-2 Gemini calls, confirmed the hand-derived records as shown, and approved the …2600 dev run replaying the recorded response. Recording ran once per PDF; all four fixtures equal their records. Dev run as `rri_dev_writer`: `Stored`, 18 lines, one card settlement 54.25, purchased_at 2026-05-16 12:31Z, one feed row.
 
 ## Review Triage Log
+
+| Finding | Verdict | Route | Evidence |
+|---|---|---|---|
+| Fixtures and recording added despite the no-recording note | false | reject | The note gated on owner approval; the owner approved in chat on 2026-10-23, now in the Plan Change Log. |
+| AC2 dev run has no evidence | false | reject | The run happened after approval; its output is in the Plan Change Log. |
+| Committed fixtures are full real receipts | false | reject | The frozen owner decision commits recorded responses and confirmed records; the card-data scan passes and no card or terminal field is present. |
+| `GeminiError` keeps the keyed exception as `__context__` | low | patch | `raise ... from None` inside `except` sets `__suppress_context__` only; anything walking `__context__` sees the key. Direct correction. |
+| Config accepts `minimal`, which `gemini-3.8-flash` rejects | false | reject | `minimal` is valid for `gemini-3.6-flash`; the model is configurable, so the level cannot be validated alone. |
+| Malformed receipt number rejects the receipt | false | reject | The plan makes an unparseable value raise `UnreadableReceipt`; a printed but misread number is a misread, and a missing one still yields a null branch. |
 
 ## Design Notes
 

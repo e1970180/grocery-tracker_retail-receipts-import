@@ -1,0 +1,19 @@
+{
+  "payload_version": 1,
+  "chain_id": "spar",
+  "store_name": "INTERSPAR ARENA ZAGREB",
+  "branch_number": "8714",
+  "receipt_number": "31104/8714/153",
+  "store_address": "V.Vukova 6, 10000 Zagreb",
+  "purchased_at": "2026-05-18T08:15:00Z",
+  "total": "3.79",
+  "lines": [
+    {"printed_text": "Mali hrs.baguet.S-Bu.65g", "quantity": "1", "unit": null, "unit_price": "0.20", "printed_amount": "0.20"},
+    {"printed_text": "RAJČICA GRAPOLO RFS", "quantity": "0.166", "unit": "kg", "unit_price": "1.89", "printed_amount": "0.31"},
+    {"printed_text": "GRAH PODRAVKA CRV.400 g", "quantity": "1", "unit": null, "unit_price": "1.59", "printed_amount": "1.59"},
+    {"printed_text": "TUNA FJK KOM.ČILI 170 g", "quantity": "1", "unit": null, "unit_price": "1.99", "printed_amount": "1.99", "separate_discount": "0.30", "discount_text": "Joker 15%"}
+  ],
+  "settlements": [
+    {"kind": "card", "printed_text": "PLAĆANJE MASTERCARD", "amount": "3.79"}
+  ]
+}

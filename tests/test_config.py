@@ -55,6 +55,21 @@ def test_statement_timeout_reaches_conninfo(
     assert "statement_timeout=45000" in settings.conninfo("owner", settings.db_password)
 
 
+def test_gemini_defaults(rri_env: dict[str, str]) -> None:
+    settings = Settings()  # type: ignore[call-arg]
+    assert settings.gemini_model == "gemini-3.8-flash"
+    assert settings.gemini_timeout_s == 120
+    assert settings.gemini_thinking_level == "low"
+
+
+def test_gemini_timeout_must_be_positive(
+    rri_env: dict[str, str], monkeypatch: pytest.MonkeyPatch
+) -> None:
+    monkeypatch.setenv("RRI_GEMINI_TIMEOUT_S", "0")
+    with pytest.raises(ValidationError, match="gemini_timeout_s"):
+        Settings()  # type: ignore[call-arg]
+
+
 def test_statement_timeout_defaults_to_30_seconds(rri_env: dict[str, str]) -> None:
     settings = Settings()  # type: ignore[call-arg]
     assert "statement_timeout=30000" in settings.conninfo("owner", settings.db_password)

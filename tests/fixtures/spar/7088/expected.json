@@ -1,0 +1,19 @@
+{
+  "payload_version": 1,
+  "chain_id": "spar",
+  "store_name": "INTERSPAR ARENA ZAGREB",
+  "branch_number": "8714",
+  "receipt_number": "45984/8714/154",
+  "store_address": "V.Vukova 6, 10000 Zagreb",
+  "purchased_at": "2026-06-10T13:07:00Z",
+  "total": "6.02",
+  "lines": [
+    {"printed_text": "SIR GRIKIOS KOCKA 270 g", "quantity": "1", "unit": null, "unit_price": "2.49", "printed_amount": "2.49"},
+    {"printed_text": "SIR MEKI BIJELI SB 250 g", "quantity": "1", "unit": null, "unit_price": "2.29", "printed_amount": "2.29"},
+    {"printed_text": "Svinjska leđa bez kosti", "quantity": "0.430", "unit": "kg", "unit_price": "2.89", "printed_amount": "1.24"}
+  ],
+  "settlements": [
+    {"kind": "cash", "printed_text": "PLAĆANJE GOTOVINOM", "amount": "1.89"},
+    {"kind": "card", "printed_text": "PLAĆANJE MASTERCARD", "amount": "4.13"}
+  ]
+}

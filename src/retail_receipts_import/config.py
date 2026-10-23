@@ -16,6 +16,11 @@ class Settings(BaseSettings):
     env: Literal["dev", "prod"]
     telegram_bot_token: SecretStr
     gemini_api_key: SecretStr
+    gemini_model: str = "gemini-3.8-flash"
+    # The SDK sets no timeout of its own; a PDF read takes tens of seconds, so 120 s is ample.
+    gemini_timeout_s: int = Field(default=120, gt=0)
+    # The lowest level gemini-3.8-flash accepts: thinking costs money and the model only copies.
+    gemini_thinking_level: Literal["minimal", "low", "medium", "high"] = "low"
 
     db_host: str
     db_port: int = 5432

@@ -1,0 +1,142 @@
+{
+  "store_name": "INTERSPAR ARENA ZAGREB",
+  "store_address": "V.Vukova 6, 10000 Zagreb",
+  "receipt_number": "3169/8714/103",
+  "purchase_date": "16.05.2026",
+  "purchase_time": "14:31",
+  "total": "54,25",
+  "lines": [
+    {
+      "text": "JAMNICA GAZIRANA 1,5 L",
+      "quantity": "6",
+      "unit": null,
+      "unit_price": "0,99",
+      "amount": "5,94"
+    },
+    {
+      "text": "DESPAR VODA NEGAZ.0,5 L",
+      "quantity": "5",
+      "unit": null,
+      "unit_price": "0,39",
+      "amount": "1,95"
+    },
+    {
+      "text": "MLIJ.SVJEŽ.S BUDGET 1 L",
+      "quantity": "1",
+      "unit": null,
+      "unit_price": "0,99",
+      "amount": "0,99"
+    },
+    {
+      "text": "UMAK HEINZ WORCES.150 ml",
+      "quantity": "1",
+      "unit": null,
+      "unit_price": "3,09",
+      "amount": "3,09"
+    },
+    {
+      "text": "KEFIR ZBREGO.3,5%MM 1 kg",
+      "quantity": "1",
+      "unit": null,
+      "unit_price": "2,09",
+      "amount": "2,09"
+    },
+    {
+      "text": "KRASTAVAC SALATAR VH KOM",
+      "quantity": "3",
+      "unit": null,
+      "unit_price": "0,89",
+      "amount": "2,67"
+    },
+    {
+      "text": "SIR GOUDA OLDENBURGER",
+      "quantity": "0,326",
+      "unit": "kg(N)",
+      "unit_price": "4,99",
+      "amount": "1,63"
+    },
+    {
+      "text": "SIR GOUDA OLDENBURGER",
+      "quantity": "0,144",
+      "unit": "kg(N)",
+      "unit_price": "4,99",
+      "amount": "0,72"
+    },
+    {
+      "text": "SIR GOUDA OLDENBURGER",
+      "quantity": "0,188",
+      "unit": "kg(N)",
+      "unit_price": "4,99",
+      "amount": "0,94"
+    },
+    {
+      "text": "KRUMPIR MLADI S BUDG.RFS",
+      "quantity": "0,596",
+      "unit": "kg(N)",
+      "unit_price": "0,89",
+      "amount": "0,53"
+    },
+    {
+      "text": "AVOKADO kom",
+      "quantity": "2",
+      "unit": null,
+      "unit_price": "1,19",
+      "amount": "2,38"
+    },
+    {
+      "text": "VREĆICA VRLO LAGANA PVC",
+      "quantity": "3",
+      "unit": null,
+      "unit_price": "0,01",
+      "amount": "0,03"
+    },
+    {
+      "text": "Naranča Natalia rfs",
+      "quantity": "0,450",
+      "unit": "kg(N)",
+      "unit_price": "1,99",
+      "amount": "0,90"
+    },
+    {
+      "text": "SALATA ICEBERG kom",
+      "quantity": "1",
+      "unit": null,
+      "unit_price": "0,79",
+      "amount": "0,79"
+    },
+    {
+      "text": "NAM.SIRNI Z BREG.200 g",
+      "quantity": "1",
+      "unit": null,
+      "unit_price": "1,89",
+      "amount": "1,89"
+    },
+    {
+      "text": "SIRNI NAM.S-BUDGET 200 g",
+      "quantity": "1",
+      "unit": null,
+      "unit_price": "1,49",
+      "amount": "1,49"
+    },
+    {
+      "text": "Banana",
+      "quantity": "0,978",
+      "unit": "kg(N)",
+      "unit_price": "1,44",
+      "amount": "1,41"
+    },
+    {
+      "text": "LOSOS ODREZAK",
+      "quantity": "1,910",
+      "unit": "kg(N)",
+      "unit_price": "12,99",
+      "amount": "24,81"
+    }
+  ],
+  "payments": [
+    {
+      "text": "PLAĆANJE MASTERCARD",
+      "amount": "54,25"
+    }
+  ]
+}

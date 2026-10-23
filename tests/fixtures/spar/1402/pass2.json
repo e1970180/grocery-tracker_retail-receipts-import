@@ -1,0 +1,51 @@
+{
+  "store_name": "INTERSPAR ARENA ZAGREB",
+  "store_address": "V.Vukova 6, 10000 Zagreb",
+  "receipt_number": "31104/8714/153",
+  "purchase_date": "18.05.2026.",
+  "purchase_time": "10:15",
+  "total": "3,79",
+  "lines": [
+    {
+      "text": "Mali hrs.baguet.S-Bu.65g",
+      "quantity": "1",
+      "unit": null,
+      "unit_price": "0,20",
+      "amount": "0,20"
+    },
+    {
+      "text": "RAJČICA GRAPOLO RFS",
+      "quantity": "0,166",
+      "unit": "kg(N)",
+      "unit_price": "1,89",
+      "amount": "0,31"
+    },
+    {
+      "text": "GRAH PODRAVKA CRV.400 g",
+      "quantity": "1",
+      "unit": null,
+      "unit_price": "1,59",
+      "amount": "1,59"
+    },
+    {
+      "text": "TUNA FJK KOM.ČILI 170 g",
+      "quantity": "1",
+      "unit": null,
+      "unit_price": "1,99",
+      "amount": "1,99"
+    },
+    {
+      "text": "Joker 15%",
+      "quantity": null,
+      "unit": null,
+      "unit_price": null,
+      "amount": "-0,30"
+    }
+  ],
+  "payments": [
+    {
+      "text": "PLAĆANJE MASTERCARD",
+      "amount": "3,79"
+    }
+  ]
+}

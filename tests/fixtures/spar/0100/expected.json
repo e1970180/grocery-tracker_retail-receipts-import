@@ -1,0 +1,27 @@
+{
+  "payload_version": 1,
+  "chain_id": "spar",
+  "store_name": "SPAR SUPERMARKET ZG-BAKIĆEVA",
+  "branch_number": "87085",
+  "receipt_number": "56786/87085/102",
+  "store_address": "Vojina Bakića 1, 10000 Zagreb",
+  "purchased_at": "2026-03-22T11:47:00Z",
+  "total": "27.18",
+  "lines": [
+    {"printed_text": "AJVAR PODRAVKA BL.690 g", "quantity": "1", "unit": null, "unit_price": "2.99", "printed_amount": "2.99"},
+    {"printed_text": "SLA.KORNET MALINA 220 ml", "quantity": "1", "unit": null, "unit_price": "2.89", "printed_amount": "2.89"},
+    {"printed_text": "SLA.4 OKUSA SPAR 1650 ml", "quantity": "1", "unit": null, "unit_price": "4.99", "printed_amount": "4.99"},
+    {"printed_text": "KRASTAVAC SALATAR VH KOM", "quantity": "1", "unit": null, "unit_price": "1.39", "printed_amount": "1.39"},
+    {"printed_text": "MORTADELA S MASLIN.150 g", "quantity": "1", "unit": null, "unit_price": "3.09", "printed_amount": "3.09"},
+    {"printed_text": "ŽEMLJA S-BUDG.5/1 300 g", "quantity": "1", "unit": null, "unit_price": "1.49", "printed_amount": "1.49"},
+    {"printed_text": "KRUH CHIA 400 g", "quantity": "1", "unit": null, "unit_price": "1.99", "printed_amount": "1.99"},
+    {"printed_text": "AVOKADO kom", "quantity": "2", "unit": null, "unit_price": "0.89", "printed_amount": "1.78"},
+    {"printed_text": "JOG.VOĆ.MIX ZBREG.400 g", "quantity": "2", "unit": null, "unit_price": "1.39", "printed_amount": "2.78"},
+    {"printed_text": "SLAD.PLAZMA ŠTAPIĆ 90 ml", "quantity": "1", "unit": null, "unit_price": "1.99", "printed_amount": "1.99"},
+    {"printed_text": "Banana", "quantity": "1.090", "unit": "kg", "unit_price": "0.74", "printed_amount": "0.81"},
+    {"printed_text": "MLIJ.SVJEŽ.S BUDGET 1 L", "quantity": "1", "unit": null, "unit_price": "0.99", "printed_amount": "0.99"}
+  ],
+  "settlements": [
+    {"kind": "cash", "printed_text": "PLAĆANJE GOTOVINOM", "amount": "27.18"}
+  ]
+}

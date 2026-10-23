@@ -1,0 +1,104 @@
+{
+  "store_name": "SPAR SUPERMARKET ZG-BAKIĆEVA",
+  "store_address": "Vojina Bakića 1, 10000 Zagreb",
+  "receipt_number": "56786/87085/102",
+  "purchase_date": "22.03.2026",
+  "purchase_time": "12:47",
+  "total": "27,18",
+  "lines": [
+    {
+      "text": "AJVAR PODRAVKA BL.690 g",
+      "quantity": "1",
+      "unit": null,
+      "unit_price": "2,99",
+      "amount": "2,99"
+    },
+    {
+      "text": "SLA.KORNET MALINA 220 ml",
+      "quantity": "1",
+      "unit": null,
+      "unit_price": "2,89",
+      "amount": "2,89"
+    },
+    {
+      "text": "SLA.4 OKUSA SPAR 1650 ml",
+      "quantity": "1",
+      "unit": null,
+      "unit_price": "4,99",
+      "amount": "4,99"
+    },
+    {
+      "text": "KRASTAVAC SALATAR VH KOM",
+      "quantity": "1",
+      "unit": null,
+      "unit_price": "1,39",
+      "amount": "1,39"
+    },
+    {
+      "text": "MORTADELA S MASLIN.150 g",
+      "quantity": "1",
+      "unit": null,
+      "unit_price": "3,09",
+      "amount": "3,09"
+    },
+    {
+      "text": "ŽEMLJA S-BUDG.5/1 300 g",
+      "quantity": "1",
+      "unit": null,
+      "unit_price": "1,49",
+      "amount": "1,49"
+    },
+    {
+      "text": "KRUH CHIA 400 g",
+      "quantity": "1",
+      "unit": null,
+      "unit_price": "1,99",
+      "amount": "1,99"
+    },
+    {
+      "text": "AVOKADO kom",
+      "quantity": "2",
+      "unit": null,
+      "unit_price": "0,89",
+      "amount": "1,78"
+    },
+    {
+      "text": "JOG.VOĆ.MIX ZBREG.400 g",
+      "quantity": "2",
+      "unit": null,
+      "unit_price": "1,39",
+      "amount": "2,78"
+    },
+    {
+      "text": "SLAD.PLAZMA ŠTAPIĆ 90 ml",
+      "quantity": "1",
+      "unit": null,
+      "unit_price": "1,99",
+      "amount": "1,99"
+    },
+    {
+      "text": "Banana",
+      "quantity": "1,090",
+      "unit": "kg(N)",
+      "unit_price": "0,74",
+      "amount": "0,81"
+    },
+    {
+      "text": "MLIJ.SVJEŽ.S BUDGET 1 L",
+      "quantity": "1",
+      "unit": null,
+      "unit_price": "0,99",
+      "amount": "0,99"
+    }
+  ],
+  "payments": [
+    {
+      "text": "PLAĆANJE GOTOVINOM",
+      "amount": "50,00"
+    },
+    {
+      "text": "OSTATAK NOVCA",
+      "amount": "22,82"
+    }
+  ]
+}
