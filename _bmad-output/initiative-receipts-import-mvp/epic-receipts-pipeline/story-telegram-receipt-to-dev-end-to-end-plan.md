@@ -133,6 +133,7 @@ context: []
   - `getUpdates` returned 409: an n8n webhook (`n8n-hooks.sivqaro.ovh`, last error 404) held the bot. On owner approval, `scratch/delete_webhook.py` ran `deleteWebhook` with `drop_pending_updates=true`. Nothing was pending afterwards.
   - The first start wrote the bot token to the local `scratch/dev-service.log`: httpx logs request URLs at INFO. The service was stopped and the log deleted, so the token never left the host. Commit e5723c8 keeps the httpx and httpcore loggers at WARNING, with a test that fails on the old code (194 tests).
   - After restart (`scratch/run_dev_service.sh`, `RRI_DATA_DIR=$HOME/rri-dev-data`), the owner sent the PDF. The log shows one update and one job, then `chain_pending`, two Gemini answers, then `stored`. There was no reaction error and no token in the log. `scratch/verify_1402.py`: source `telegram 358177329:697`, buyer set, header, 4 lines and 1 settlement equal to `expected.json`, one feed row.
+  - The owner confirmed 👍 on the …1402 message in Telegram.
   - Restart check: SIGTERM stopped the service with `stopped` once the poll in progress ended. The queue held offset 293123989 and job 1 `stored`. After the restart, more than one 30 s long poll ran with no update fetched, no job and no Gemini call.
 
 ## Plan Change Log
