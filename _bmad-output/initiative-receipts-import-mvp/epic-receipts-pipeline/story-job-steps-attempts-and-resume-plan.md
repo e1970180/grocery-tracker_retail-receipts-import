@@ -81,7 +81,7 @@ context: []
 - [ ] `src/retail_receipts_import/app/pipeline.py` -- three step functions -- a wait in pass 2 must not rerun pass 1.
 - [ ] `src/retail_receipts_import/app/jobs.py` -- the matrix -- the only owner of job state.
 - [ ] `src/retail_receipts_import/app/loop.py`, `src/retail_receipts_import/app/service.py`, `src/retail_receipts_import/config.py` -- wiring and `job_max_attempts=3`, > 0.
-- [ ] `scratch/record_unknown_chain.py` -- one live pass-1 call for one Lidl sample with the vocabulary `spar` only, into `tests/fixtures/unknown_chain/pass1.json` -- AD-6.
+- [ ] `scratch/record_unknown_chain.py` -- one live pass-1 call for one Lidl sample with the vocabulary `spar` only, into `tests/fixtures/unknown_chain/pass1.json`; an answer other than `other` stops the work and is reported, with no prompt change -- AD-6.
 - [ ] `tests/` -- every matrix row with fake ports; a restart between each pair of steps; a v1 queue file with an offset and a `chain_pending` job, upgraded and resumed; the unknown-chain fixture giving `other` and `Unsupported`.
 
 **Acceptance Criteria:**
@@ -100,11 +100,9 @@ Pass 2 re-reads the reference rather than persisting OIBs, so an OIB the admin c
 - `wsl -- bash -lc '... uv run pytest -m integration'` with `RRI_TEST_DATABASE_URL` set -- expected: green.
 
 **Manual checks:**
-- Dev bot, with the owner: send a Spar receipt with `RRI_GEMINI_MODEL` set to a retired model, see the job wait in `chain_pending`, restart with the right model, see 👍 and one stored receipt.
+- Dev bot, with the owner: send a Spar receipt with `RRI_GEMINI_MODEL` set to a retired model, see the job wait in `chain_pending`, restart with the right model, see 👍 and one stored receipt. A blocked wait is persisted as 600 s, so the receipt is stored up to 10 minutes after the restart.
 
 ## Implementation Notes
-
-- Owner, 2026-10-23: plan split. Wait-count backoff, the `serve` port factory and its test, the shortened long poll and the permanent download failure moved to entry 19 (`deferred-work.md`). `hitl` is true for the dev-bot run and the live recording.
 
 ## Plan Change Log
 
