@@ -3,7 +3,7 @@ title: 'Spar receipt from PDF to dev'
 type: 'feature'
 ticket: '4b'
 created: '2026-10-22'
-status: 'built'
+status: done
 baseline_revision: '216b404eca46f4502d7df161630d2e430c21397f'
 route: 'full'
 route_source: 'auto'
