@@ -4,6 +4,7 @@ Each case is `tests/fixtures/spar/<last 4 digits>/` with the recorded `pass2.jso
 owner-confirmed `expected.json`. With no case recorded yet, the parametrized test is skipped.
 """
 
+import functools
 import re
 import uuid
 from datetime import UTC, datetime
@@ -13,12 +14,14 @@ from typing import Any
 import pytest
 from pydantic import BaseModel
 
+from retail_receipts_import.adapters.gemini import images
 from retail_receipts_import.adapters.postgres.chains import ChainReference
 from retail_receipts_import.adapters.postgres.receipts import WriteKind, WriteResult
 from retail_receipts_import.app.pipeline import Ports, Stored, process_file
 from retail_receipts_import.domain.chains import KnownChain
 from retail_receipts_import.domain.chains.registry import PLUGINS
 from retail_receipts_import.domain.chains.spar.schema import SparPass2
+from retail_receipts_import.domain.extraction import classify
 from retail_receipts_import.domain.receipt import (
     NormalizedReceipt,
     ReceiptSource,
@@ -89,6 +92,8 @@ def test_pipeline_stores_recorded_spar_samples(case: Path, tmp_path: Path) -> No
         generate=fake_generate,
         write=fake_write,
         read_chain_reference=lambda: reference,
+        prepare=functools.partial(images.prepare, max_pixels=16_000_000),
+        classify=functools.partial(classify, waits=0, initial_s=600, cap_s=1800),
     )
     result = process_file(
         pdf_path, "application/pdf", telegram_source(0, 1, buyer_name="tester"), ports

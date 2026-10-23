@@ -8,6 +8,7 @@ from pathlib import Path
 import psycopg
 
 from retail_receipts_import.adapters.files.store import FileStore
+from retail_receipts_import.adapters.gemini import images
 from retail_receipts_import.adapters.gemini.client import GeminiClient
 from retail_receipts_import.adapters.postgres.chains import read_chain_reference
 from retail_receipts_import.adapters.postgres.receipts import write_receipt
@@ -19,6 +20,7 @@ from retail_receipts_import.app.jobs import JobPorts
 from retail_receipts_import.app.pipeline import Ports, Result, process_file
 from retail_receipts_import.app.texts import Texts
 from retail_receipts_import.config import Settings
+from retail_receipts_import.domain.extraction import classify
 from retail_receipts_import.domain.intake import MAX_FILE_BYTES
 from retail_receipts_import.domain.outcomes import Outcome
 from retail_receipts_import.domain.receipt import ReceiptSource
@@ -28,6 +30,14 @@ def serve(settings: Settings, texts: Texts, stop: threading.Event) -> None:
     gemini = GeminiClient.from_settings(settings)
     queue = Queue(settings.data_dir / "queue.sqlite3")
     stored_emoji = texts.reactions[Outcome.STORED]
+    prepare_image = functools.partial(images.prepare, max_pixels=settings.image_max_pixels)
+    # No wait count is kept on the job yet, so every wait is the first one.
+    classify_failure = functools.partial(
+        classify,
+        waits=0,
+        initial_s=settings.gemini_backoff_initial_s,
+        cap_s=settings.gemini_backoff_cap_s,
+    )
 
     def process(path: Path, mime: str, source: ReceiptSource) -> Result:
         # A connection per job, so one dropped by the server never outlives the job it broke.
@@ -37,6 +47,8 @@ def serve(settings: Settings, texts: Texts, stop: threading.Event) -> None:
                 generate=gemini.generate,
                 write=functools.partial(write_receipt, conn),
                 read_chain_reference=functools.partial(read_chain_reference, conn),
+                prepare=prepare_image,
+                classify=classify_failure,
             )
             return process_file(path, mime, source, ports)
 

@@ -1,5 +1,6 @@
 from typing import Any
 
+import httpx
 import pytest
 from google import genai
 from google.genai import types
@@ -8,6 +9,7 @@ from pydantic import SecretStr
 from retail_receipts_import.adapters.gemini.client import GeminiClient, GeminiError
 from retail_receipts_import.config import Settings
 from retail_receipts_import.domain.chains.spar.schema import SparPass2
+from retail_receipts_import.domain.extraction import GeminiCallError
 from tests.conftest import GEMINI_KEY
 
 
@@ -86,15 +88,31 @@ def test_error_carrying_the_key_is_redacted(
     assert info.value.__cause__ is None
 
 
-def test_other_errors_propagate_unchanged(
+def test_transport_error_becomes_a_typed_error(
     sdk: genai.Client, monkeypatch: pytest.MonkeyPatch
 ) -> None:
     def fake(**_: Any) -> types.GenerateContentResponse:
-        raise TimeoutError("read timed out")
+        raise httpx.ReadTimeout("The read operation timed out")
 
     monkeypatch.setattr(sdk.models, "generate_content", fake)
-    with pytest.raises(TimeoutError, match="read timed out"):
+    with pytest.raises(GeminiCallError) as info:
         client(sdk).generate(b"%PDF", "application/pdf", "read it", SparPass2)
+    assert info.value.transport
+    assert info.value.detail == "ReadTimeout: The read operation timed out"
+
+
+def test_other_errors_propagate_unchanged(
+    sdk: genai.Client, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    error = ValueError("unexpected")
+
+    def fake(**_: Any) -> types.GenerateContentResponse:
+        raise error
+
+    monkeypatch.setattr(sdk.models, "generate_content", fake)
+    with pytest.raises(ValueError) as info:
+        client(sdk).generate(b"%PDF", "application/pdf", "read it", SparPass2)
+    assert info.value is error
 
 
 def test_from_settings_uses_the_config(rri_env: dict[str, str]) -> None:

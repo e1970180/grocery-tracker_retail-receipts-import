@@ -1,3 +1,4 @@
+import logging
 import threading
 import uuid
 from collections.abc import Sequence
@@ -13,7 +14,19 @@ from retail_receipts_import.adapters.queue.sqlite import Queue
 from retail_receipts_import.adapters.telegram.download import FileTooLarge
 from retail_receipts_import.app import loop
 from retail_receipts_import.app.jobs import JobPorts
-from retail_receipts_import.app.pipeline import Duplicate, Invalid, Result, Stored, Unsupported
+from retail_receipts_import.app.pipeline import (
+    Duplicate,
+    ExtractionWait,
+    Invalid,
+    Result,
+    Stored,
+    Unsupported,
+)
+from retail_receipts_import.domain.extraction import (
+    Classification,
+    ExtractionClass,
+    GeminiCallError,
+)
 from retail_receipts_import.domain.jobs import JobState
 from retail_receipts_import.domain.outcomes import FailureReason
 from retail_receipts_import.domain.receipt import ReceiptSource, telegram_source
@@ -220,6 +233,44 @@ def test_exception_keeps_the_job_and_retries_after_the_delay(
     assert fakes.state() is JobState.STORED
     # The file was saved before the failure, so the retry does not download it again.
     assert len(fakes.downloads) == 1
+
+
+@pytest.mark.parametrize(
+    ("kind", "level"),
+    [(ExtractionClass.UNAVAILABLE, logging.WARNING), (ExtractionClass.BLOCKED, logging.ERROR)],
+)
+def test_gemini_wait_postpones_by_its_own_delay(
+    fakes: Fakes, caplog: pytest.LogCaptureFixture, kind: ExtractionClass, level: int
+) -> None:
+    # Google's quota message: two link sentences, then the metric line that shows a zero quota.
+    detail = (
+        "You exceeded your current quota, please check your plan and billing details. For more "
+        "information on this error, head to: https://ai.google.dev/gemini-api/docs/rate-limits. "
+        "To monitor your current usage, head to: https://ai.dev/usage?tab=rate-limit. \n"
+        "* Quota exceeded for metric: generativelanguage.googleapis.com/"
+        "generate_content_free_tier_input_token_count, limit: 0, model: gemini-3.8-flash\n"
+        "Please retry in 36.4s."
+    )
+    error = GeminiCallError(code=429, status="RESOURCE_EXHAUSTED", detail=detail)
+    fakes.result = ExtractionWait(Classification(kind, timedelta(seconds=37)), error)
+    cycle(FakeTelegram([[pdf_update(100, 3)]]), fakes)
+    assert fakes.state() is JobState.CHAIN_PENDING
+    [record] = [r for r in caplog.records if r.name == loop.__name__]
+    assert record.levelno == level
+    assert record.exc_info is None
+    message = record.getMessage()
+    assert "status=RESOURCE_EXHAUSTED reason=None: You exceeded" in message
+    assert "limit: 0" in message
+    assert "\n" not in message
+
+    fakes.result = Stored(RECEIPT_ID)
+    fakes.now += timedelta(seconds=36)
+    loop.run_due(fakes.ports(), SETTINGS, threading.Event())
+    assert len(fakes.processed) == 1
+
+    fakes.now += timedelta(seconds=1)
+    loop.run_due(fakes.ports(), SETTINGS, threading.Event())
+    assert fakes.state() is JobState.STORED
 
 
 def test_download_exception_keeps_the_job_received(fakes: Fakes) -> None:

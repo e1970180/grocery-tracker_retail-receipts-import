@@ -60,6 +60,9 @@ def test_gemini_defaults(rri_env: dict[str, str]) -> None:
     assert settings.gemini_model == "gemini-3.8-flash"
     assert settings.gemini_timeout_s == 120
     assert settings.gemini_thinking_level == "low"
+    assert settings.gemini_backoff_initial_s == 600
+    assert settings.gemini_backoff_cap_s == 1800
+    assert settings.image_max_pixels == 16_000_000
 
 
 def test_gemini_timeout_must_be_positive(

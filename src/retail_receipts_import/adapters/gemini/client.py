@@ -1,12 +1,16 @@
 """One stateless Gemini call per file: the file, a prompt, and the JSON schema to answer in."""
 
 import logging
+import math
+import re
 
+import httpx
 from google import genai
-from google.genai import types
+from google.genai import errors, types
 from pydantic import BaseModel, SecretStr
 
 from retail_receipts_import.config import Settings
+from retail_receipts_import.domain.extraction import GeminiCallError
 
 log = logging.getLogger(__name__)
 
@@ -59,6 +63,8 @@ class GeminiClient:
             role="user",
             parts=[types.Part.from_bytes(data=data, mime_type=mime), types.Part(text=prompt)],
         )
+        key = self._api_key.get_secret_value()
+        failure: GeminiCallError | None = None
         redacted: str | None = None
         try:
             response = self._client.models.generate_content(
@@ -66,14 +72,71 @@ class GeminiClient:
                 contents=contents,
                 config=config,
             )
+        except errors.APIError as exc:
+            failure = _api_failure(exc, key)
+        except httpx.TransportError as exc:
+            detail = _redact(f"{type(exc).__name__}: {exc}", key)
+            failure = GeminiCallError(transport=True, detail=detail)
         except Exception as exc:
-            key = self._api_key.get_secret_value()
             if not key or key not in str(exc):
                 raise
-            redacted = f"{type(exc).__name__}: {str(exc).replace(key, '**********')}"
+            redacted = f"{type(exc).__name__}: {_redact(str(exc), key)}"
         # Raised outside the except block: inside it, even `from None` keeps the original,
         # key-carrying exception reachable as __context__.
+        if failure is not None:
+            raise failure
         if redacted is not None:
             raise GeminiError(redacted)
         log.info("gemini answered: model_version=%s", response.model_version)
         return response.text or ""
+
+
+def _api_failure(exc: errors.APIError, key: str) -> GeminiCallError:
+    # Only values are copied out: `exc.response` leads to the request and its key header.
+    body = exc.details
+    error = body.get("error", body) if isinstance(body, dict) else {}
+    details = error.get("details") if isinstance(error, dict) else None
+    reason: str | None = None
+    retry_delay: str | None = None
+    for item in details if isinstance(details, list) else []:
+        if not isinstance(item, dict):
+            continue
+        kind = str(item.get("@type", ""))
+        if kind.endswith("google.rpc.ErrorInfo"):
+            reason = _text(item.get("reason"))
+        elif kind.endswith("google.rpc.RetryInfo"):
+            retry_delay = _text(item.get("retryDelay"))
+    retry_after = exc.response.headers.get("retry-after") if exc.response is not None else None
+    status = _text(exc.status)
+    return GeminiCallError(
+        code=exc.code if isinstance(exc.code, int) else None,
+        status=status and _redact(status, key),
+        reason=reason and _redact(reason, key),
+        retry_delay_s=_duration_s(retry_delay),
+        retry_after_s=_seconds(retry_after),
+        detail=_redact(_text(exc.message) or "", key),
+    )
+
+
+def _text(value: object) -> str | None:
+    return value if isinstance(value, str) else None
+
+
+def _redact(text: str, key: str) -> str:
+    return text.replace(key, "**********") if key else text
+
+
+# At most nine digits of seconds, about 30 years: a longer number cannot be converted safely
+# and would raise inside the except block, next to the key-carrying SDK error.
+_DURATION = re.compile(r"([0-9]{1,9}(?:\.[0-9]{1,9})?)s")
+
+
+def _duration_s(value: str | None) -> int | None:
+    """Whole seconds of a protobuf Duration such as "37s" or "0.5s", rounded up."""
+    match = _DURATION.fullmatch(value) if value is not None else None
+    return math.ceil(float(match.group(1))) if match else None
+
+
+def _seconds(value: str | None) -> int | None:
+    # Retry-After may also be an HTTP date; only the delay-seconds form is used.
+    return int(value) if value is not None and re.fullmatch(r"[0-9]{1,9}", value) else None

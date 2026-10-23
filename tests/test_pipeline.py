@@ -1,16 +1,21 @@
+import functools
+import io
 import uuid
 from dataclasses import dataclass, field
-from datetime import UTC, datetime
+from datetime import UTC, datetime, timedelta
 from decimal import Decimal
 from pathlib import Path
 
 import pytest
+from PIL import ExifTags, Image
 from pydantic import BaseModel
 
+from retail_receipts_import.adapters.gemini import images
 from retail_receipts_import.adapters.postgres.chains import ChainReference
 from retail_receipts_import.adapters.postgres.receipts import WriteKind, WriteResult
 from retail_receipts_import.app.pipeline import (
     Duplicate,
+    ExtractionWait,
     Invalid,
     Ports,
     Result,
@@ -21,6 +26,7 @@ from retail_receipts_import.app.pipeline import (
 from retail_receipts_import.domain.chains import KnownChain
 from retail_receipts_import.domain.chains.spar.prompt import PASS2_PROMPT
 from retail_receipts_import.domain.chains.spar.schema import SparPass2
+from retail_receipts_import.domain.extraction import ExtractionClass, GeminiCallError, classify
 from retail_receipts_import.domain.outcomes import FailureReason
 from retail_receipts_import.domain.receipt import (
     NormalizedReceipt,
@@ -30,6 +36,7 @@ from retail_receipts_import.domain.receipt import (
 )
 from tests.spar_samples import CARD, CASH, discount, item, pass1_response, payment, response
 
+FIXTURES = Path(__file__).parent / "fixtures"
 SOURCE = telegram_source(0, 1, buyer_name="tester")
 STORED_ID = uuid.UUID(int=7)
 
@@ -52,14 +59,16 @@ class FakePorts:
     answers: list[str] = field(default_factory=list)
     answer: str = ""
     error: Exception | None = None
+    calls_before_error: int = 0
     reference: ChainReference = DEFAULT_REFERENCE
     write_kind: WriteKind = WriteKind.STORED
+    max_pixels: int = 16_000_000
     calls: list[tuple[bytes, str, str, type[BaseModel]]] = field(default_factory=list)
     written: list[NormalizedReceipt] = field(default_factory=list)
 
     def generate(self, data: bytes, mime: str, prompt: str, schema: type[BaseModel]) -> str:
         self.calls.append((data, mime, prompt, schema))
-        if self.error is not None:
+        if self.error is not None and len(self.calls) > self.calls_before_error:
             raise self.error
         if self.answers:
             return self.answers.pop(0)
@@ -79,6 +88,8 @@ class FakePorts:
             generate=self.generate,
             write=self.write,
             read_chain_reference=self.read_chain_reference,
+            prepare=functools.partial(images.prepare, max_pixels=self.max_pixels),
+            classify=functools.partial(classify, waits=0, initial_s=600, cap_s=1800),
         )
 
 
@@ -308,6 +319,16 @@ def test_unreadable_response_is_invalid_and_writes_nothing(pdf: Path, answer: st
     assert fake.written == []
 
 
+def test_recorded_answer_failing_the_schema_is_invalid(pdf: Path) -> None:
+    recorded = (FIXTURES / "spar" / "1402" / "pass2.json").read_text(encoding="utf-8")
+    # A recorded answer cut short, as when the model stops mid-way.
+    fake = FakePorts(answers=[pass1_response(), recorded[: len(recorded) // 2]])
+    result = run(pdf, fake)
+    assert isinstance(result, Invalid)
+    assert result.reason is FailureReason.NO_VALID_RESULT
+    assert fake.written == []
+
+
 def test_lines_not_matching_settlements_are_invalid(pdf: Path) -> None:
     fake = FakePorts(
         answers=[
@@ -339,8 +360,108 @@ def test_a_cent_of_rounding_is_tolerated(pdf: Path) -> None:
     assert isinstance(run(pdf, fake), Stored)
 
 
-def test_gemini_error_propagates_and_writes_nothing(pdf: Path) -> None:
-    fake = FakePorts(error=RuntimeError("upstream failed"))
-    with pytest.raises(RuntimeError, match="upstream failed"):
+def test_unknown_error_propagates_unchanged_and_writes_nothing(pdf: Path) -> None:
+    error = RuntimeError("upstream failed")
+    fake = FakePorts(error=error)
+    with pytest.raises(RuntimeError) as info:
         run(pdf, fake)
+    assert info.value is error
     assert fake.written == []
+
+
+def test_gemini_rejecting_the_file_is_invalid(pdf: Path) -> None:
+    fake = FakePorts(
+        error=GeminiCallError(code=400, status="INVALID_ARGUMENT", detail="Unable to process")
+    )
+    result = run(pdf, fake)
+    assert result == Invalid(
+        FailureReason.NO_VALID_RESULT, "gemini rejected the file: 400 INVALID_ARGUMENT None"
+    )
+    assert fake.written == []
+
+
+@pytest.mark.parametrize("calls_before_error", [0, 1], ids=["pass-1", "pass-2"])
+@pytest.mark.parametrize(
+    ("error", "kind", "delay"),
+    [
+        (
+            GeminiCallError(code=429, status="RESOURCE_EXHAUSTED", retry_delay_s=37),
+            ExtractionClass.UNAVAILABLE,
+            timedelta(seconds=37),
+        ),
+        (
+            GeminiCallError(code=400, status="INVALID_ARGUMENT", reason="API_KEY_INVALID"),
+            ExtractionClass.BLOCKED,
+            timedelta(seconds=600),
+        ),
+    ],
+)
+def test_gemini_wait_is_raised_with_its_delay(
+    pdf: Path,
+    error: GeminiCallError,
+    kind: ExtractionClass,
+    delay: timedelta,
+    calls_before_error: int,
+) -> None:
+    fake = FakePorts(answers=[pass1_response()], error=error, calls_before_error=calls_before_error)
+    with pytest.raises(ExtractionWait) as info:
+        run(pdf, fake)
+    assert (info.value.kind, info.value.delay, info.value.error) == (kind, delay, error)
+    assert info.value.__context__ is None
+    assert len(fake.calls) == calls_before_error + 1
+    assert fake.written == []
+
+
+def test_pdf_reaches_gemini_byte_identical(pdf: Path) -> None:
+    fake = FakePorts(answers=[pass1_response(), response()])
+    run(pdf, fake)
+    assert [(data, mime) for data, mime, _, _ in fake.calls] == [
+        (b"%PDF-synthetic", "application/pdf")
+    ] * 2
+
+
+def jpeg(size: tuple[int, int], orientation: int) -> bytes:
+    exif = Image.Exif()
+    exif[ExifTags.Base.Orientation] = orientation
+    out = io.BytesIO()
+    Image.new("RGB", size, "white").save(out, format="JPEG", exif=exif)
+    return out.getvalue()
+
+
+def test_rotated_photo_reaches_gemini_upright_and_capped(tmp_path: Path) -> None:
+    photo = tmp_path / "photo.jpg"
+    original = jpeg((400, 200), orientation=6)
+    photo.write_bytes(original)
+    fake = FakePorts(answers=[pass1_response(), response()], max_pixels=20_000)
+    process_file(photo, "image/jpeg", SOURCE, fake.ports())
+    assert len(fake.calls) == 2
+    first, second = (data for data, _, _, _ in fake.calls)
+    # Prepared once: both passes see the same bytes.
+    assert first == second
+    sent = Image.open(io.BytesIO(first))
+    assert sent.format == "JPEG"
+    assert sent.height > sent.width
+    assert sent.width * sent.height <= 20_000
+    assert {mime for _, mime, _, _ in fake.calls} == {"image/jpeg"}
+    assert photo.read_bytes() == original
+
+
+def test_upright_image_document_reaches_gemini_unchanged(tmp_path: Path) -> None:
+    document = tmp_path / "scan.png"
+    out = io.BytesIO()
+    Image.new("RGB", (40, 20), "white").save(out, format="PNG")
+    document.write_bytes(out.getvalue())
+    fake = FakePorts(answers=[pass1_response(), response()])
+    process_file(document, "image/png", SOURCE, fake.ports())
+    assert fake.calls[0][:2] == (out.getvalue(), "image/png")
+
+
+def test_corrupt_image_is_invalid_without_a_gemini_call(tmp_path: Path) -> None:
+    photo = tmp_path / "photo.jpg"
+    data = jpeg((200, 100), orientation=1)
+    photo.write_bytes(data[: len(data) // 2])
+    fake = FakePorts()
+    result = process_file(photo, "image/jpeg", SOURCE, fake.ports())
+    assert isinstance(result, Invalid)
+    assert result.reason is FailureReason.NO_VALID_RESULT
+    assert fake.calls == []

@@ -7,6 +7,7 @@ from pathlib import Path
 
 from pydantic import BaseModel, ValidationError
 
+from retail_receipts_import.adapters.gemini.images import UnreadableImage
 from retail_receipts_import.adapters.postgres.chains import ChainReference
 from retail_receipts_import.adapters.postgres.receipts import WriteKind, WriteResult
 from retail_receipts_import.domain.chains import UNREADABLE
@@ -17,6 +18,11 @@ from retail_receipts_import.domain.chains.pass1 import (
     is_supported_chain,
 )
 from retail_receipts_import.domain.chains.registry import PLUGINS
+from retail_receipts_import.domain.extraction import (
+    Classification,
+    ExtractionClass,
+    GeminiCallError,
+)
 from retail_receipts_import.domain.outcomes import FailureReason
 from retail_receipts_import.domain.receipt import (
     NormalizedReceipt,
@@ -28,6 +34,8 @@ from retail_receipts_import.domain.receipt import (
 Generate = Callable[[bytes, str, str, type[BaseModel]], str]
 Write = Callable[[uuid.UUID, NormalizedReceipt, ReceiptSource], WriteResult]
 ReadChainReference = Callable[[], ChainReference]
+Prepare = Callable[[bytes, str], bytes]
+Classify = Callable[[GeminiCallError], Classification]
 
 
 @dataclass(frozen=True)
@@ -35,6 +43,18 @@ class Ports:
     generate: Generate
     write: Write
     read_chain_reference: ReadChainReference
+    prepare: Prepare
+    classify: Classify
+
+
+class ExtractionWait(Exception):
+    """Gemini cannot answer now, or not until its configuration is fixed: the job waits."""
+
+    def __init__(self, found: Classification, error: GeminiCallError) -> None:
+        super().__init__(f"{found.kind}: {error}")
+        self.kind = found.kind
+        self.delay = found.delay
+        self.error = error
 
 
 @dataclass(frozen=True)
@@ -63,13 +83,34 @@ Result = Stored | Duplicate | Unsupported | Invalid
 
 
 def process_file(path: Path, mime: str, source: ReceiptSource, ports: Ports) -> Result:
-    """Detects the chain (pass 1), then normalizes, guards and stores the receipt (pass 2)."""
+    """Detects the chain (pass 1), then normalizes, guards and stores the receipt (pass 2).
+
+    A Gemini failure caused by the file is `Invalid`; any other one raises `ExtractionWait`.
+    """
+    try:
+        data = ports.prepare(path.read_bytes(), mime)
+    except UnreadableImage as exc:
+        return Invalid(FailureReason.NO_VALID_RESULT, str(exc))
+    try:
+        return _extract_and_store(data, mime, source, ports)
+    except GeminiCallError as exc:
+        failure = exc
+    found = ports.classify(failure)
+    if found.kind is ExtractionClass.INVALID:
+        return Invalid(
+            FailureReason.NO_VALID_RESULT,
+            f"gemini rejected the file: {failure.code} {failure.status} {failure.reason}",
+        )
+    # Outside the except block, so the wait does not drag the error in as its context.
+    raise ExtractionWait(found, failure)
+
+
+def _extract_and_store(data: bytes, mime: str, source: ReceiptSource, ports: Ports) -> Result:
     reference = ports.read_chain_reference()
     active_chains = {chain.chain_id: chain for chain in reference.chains}
     pass1_schema = create_pass1_schema(tuple(active_chains.keys()))
     pass1_prompt = build_pass1_prompt(reference.chains, PLUGINS)
 
-    data = path.read_bytes()
     pass1_text = ports.generate(data, mime, pass1_prompt, pass1_schema)
     try:
         pass1 = pass1_schema.model_validate_json(pass1_text)

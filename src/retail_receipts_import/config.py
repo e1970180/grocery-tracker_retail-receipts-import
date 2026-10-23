@@ -21,6 +21,13 @@ class Settings(BaseSettings):
     gemini_timeout_s: int = Field(default=120, gt=0)
     # The lowest level gemini-3.8-flash accepts: thinking costs money and the model only copies.
     gemini_thinking_level: Literal["minimal", "low", "medium", "high"] = "low"
+    # Wait after an unavailable or misconfigured Gemini that names no delay of its own. The first
+    # equals the generic job retry; the cap matters once a job's wait count is kept, as each
+    # further wait then doubles.
+    gemini_backoff_initial_s: int = Field(default=600, gt=0)
+    gemini_backoff_cap_s: int = Field(default=1800, gt=0)
+    # Larger images are scaled down before sending; above this, extra pixels add cost, not text.
+    image_max_pixels: int = Field(default=16_000_000, gt=0)
 
     db_host: str
     db_port: int = 5432
