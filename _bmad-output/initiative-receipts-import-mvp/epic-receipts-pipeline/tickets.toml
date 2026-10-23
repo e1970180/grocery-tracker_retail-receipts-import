@@ -74,13 +74,26 @@ references = ["architecture-receipts-import/architecture-receipts-import.md#ad-4
 notes = ["Fallback seam if over budget: pass 1 as its own story."]
 
 [[entry]]
+id = 18
+type = "story"
+title = "Chain detection (pass 1) and seller-OIB guard"
+description = "Adds pass 1: the schema and prompt built from the active chains_v1 chains with aliases, the sentinels other and unreadable, and per-plug-in time hints; the reference read before each pass 1; the supported-chain check; the plug-in protocol's pass-1 time hint and normalize_pass1_time; and the pipeline taking the chain from pass 1 instead of the caller, with `other` or a chain without a plug-in or inactive giving Unsupported and `unreadable` giving Invalid(no_valid_result). Also publishes chains_v1 1.1.0 with a non-empty seller-OIB column (text[], 11 digits each) and its docs/api-versions.md entry, extends the reader, and adds the protocol check and the Spar check that return invalid when the printed seller OIB is not among the chain's OIBs; the admin fills the OIBs in dev, and the owner approves the one-time live recording of the four Spar pass-1 responses."
+verify = "Offline tests cover pass 1 returning spar, other, unreadable and a chain without a plug-in, and a wrong or missing seller OIB rejected as invalid; the four Spar fixtures run pass 1 to a stored receipt from recorded responses; a live run of sample …2600 in dev stores a receipt with the chain taken from pass 1."
+covers = ["CAP-2", "CAP-5"]
+after = ["4b"]
+hitl = true
+risk = "high"
+references = ["architecture-receipts-import/architecture-receipts-import.md#ad-4--two-pass-extraction-adopted", "architecture-receipts-import/architecture-receipts-import.md#ad-18--known-chains-come-from-an-admin-owned-reference"]
+notes = ["Split from 4b along its named seam; see deferred-work.md (2026-10-23).", "High-risk check outside its own tests: the owner confirms the dev OIB values and the live run."]
+
+[[entry]]
 id = 17
 type = "story"
 title = "Telegram receipt to dev end to end"
 description = "The tracer bullet: adds the vendored Telegram client with the gate for photos, image documents and PDFs from allowlisted users in private chats (allowed_user_ids parsed from a comma-separated string), the SQLite job queue with the offset committed with the jobs, the AD-3 job states that entry 6 extends, the download, the single loop calling 4b's pipeline, and the success reaction after the PostgreSQL commit and the SQLite final state (AD-11); a non-stored result ends the job without a notice, and an exception leaves the job in place, logged, while the loop moves on. The domain accepted-type list is built here."
 verify = "On the dev bot, the owner sends a Spar PDF other than sample …2600, sees the success reaction, and the stored receipt matches its owner-confirmed record from 4b; unit tests with fake ports show a non-allowlisted user and a group chat not processed and a restart re-fetching no acknowledged update."
 covers = ["CAP-1", "CAP-8", "CAP-9"]
-after = ["4b"]
+after = [18]
 hitl = true
 risk = "high"
 references = ["architecture-receipts-import/architecture-receipts-import.md#ad-1--waiting-receipts-live-in-a-local-sqlite-queue-adopted", "architecture-receipts-import/architecture-receipts-import.md#ad-3--one-owner-of-job-state", "architecture-receipts-import/architecture-receipts-import.md#ad-2--the-telegram-offset-is-acknowledged-only-after-the-job-is-durable", "architecture-receipts-import/architecture-receipts-import.md#ad-14--one-loop-one-thread-adopted", "architecture-receipts-import/architecture-receipts-import.md#ad-15--telegram-transport-is-the-vendored-reference-pack-adopted"]
@@ -128,7 +141,7 @@ title = "Lidl plug-in"
 description = "Adds the Lidl plug-in to 4b's registry: separate POPUST and Lidl Plus discount lines, the ignored footer POPUST, the branch with leading zeros; the owner supplies Lidl samples and approves the live recording."
 verify = "Fixture tests reproduce the hand-verified Lidl records, paper and PDF where issued, including a discounted line and the footer trap, to the cent."
 covers = ["CAP-2", "CAP-3", "CAP-4"]
-after = ["4b"]
+after = [18]
 hitl = true
 risk = "medium"
 
