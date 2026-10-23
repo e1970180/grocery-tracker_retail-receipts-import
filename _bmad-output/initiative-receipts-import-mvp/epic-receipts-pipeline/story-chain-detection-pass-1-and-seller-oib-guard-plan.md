@@ -3,7 +3,7 @@ title: 'Chain detection (pass 1) and seller-OIB guard'
 type: 'feature'
 ticket: '18'
 created: '2026-10-23'
-status: 'built'
+status: done
 baseline_revision: '03d7c3a45b6d7f4ea98d2b2c8936419756e535a5'
 route: 'full'
 route_source: 'auto'
@@ -78,7 +78,10 @@ context: []
 - `SparPlugin.seller_oib` parses the JSON to extract the seller OIB safely without throwing on partial payloads.
 - The four Spar `pass2.json` fixtures received `"seller_oib": "46108893754"`. Offline tests in `test_spar_fixtures.py` verify end-to-end pipeline execution on all four samples with synthetic pass 1 (and will pick up `pass1.json` once live-recorded).
 - Real seller OIBs for the remaining chains were read from receipt samples in `doc-inbox/fixtures/` and added to `chains_v1.sql` and `chains_v1.md`: dm (`94124811986`), Kaufland (`47432874968`), Lidl (`66089976432`), and Müller (`84698789700`).
-- Live recording of the four Spar pass-1 responses requires owner approval and was not run, following repo hard rules. Dev DB recreation and live run of sample …2600 also remain for the owner verification step.
+- 2026-10-23, owner-approved live stage: `scratch/record_spar_pass1.py` recorded the four `pass1.json` (one call each; a first attempt got 500 INTERNAL and wrote nothing). Each names `spar` with the store, date and time of its `pass2.json`; the fixture test now replays both passes.
+- 2026-10-23: the owner recreated the dev reference with `scratch/recreate_chains_dev.sql` (psql from a `postgres:18` container, as `postgres`). `scratch/read_chains.py` as `rri_dev_writer` read five active chains, none rejected.
+- 2026-10-23: `scratch/ingest_local.py` ran …2600 against dev with the live reference and replayed `pass1.json`/`pass2.json`: `Stored(01a1694e-3b72-72b9-aa5c-47fe356cbe24)`, chain `spar`, 18 lines, one card settlement of 54.25, one feed row. The source (chat 0 message 3) is the one the earlier Spar run used, so the writer returned that row as its own write; no new row was inserted.
+- Integration tests (`pytest -m integration`) were not run: no throwaway `RRI_TEST_DATABASE_URL`.
 
 ## Plan Change Log
 
