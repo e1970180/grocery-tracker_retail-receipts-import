@@ -3,7 +3,7 @@ title: 'Deduplication pre-check'
 type: 'feature'
 ticket: '7'
 created: '2026-10-23'
-status: 'built'
+status: done
 baseline_revision: '53f980bcfc751f0e773fb36697ef2b5fed1a80e9'
 route: 'full'
 route_source: 'auto'
