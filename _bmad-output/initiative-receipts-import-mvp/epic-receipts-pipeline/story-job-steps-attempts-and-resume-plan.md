@@ -3,7 +3,7 @@ title: 'Job steps, attempts and resume'
 type: 'feature'
 ticket: '6'
 created: '2026-10-23'
-status: 'built'
+status: done
 baseline_revision: 'c17b8abe0cf3784c6535a87662ba784873d416f3'
 route: 'full'
 route_source: 'auto'
