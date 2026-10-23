@@ -3,7 +3,7 @@ title: 'Telegram receipt to dev end to end'
 type: 'feature'
 ticket: '17'
 created: '2026-10-23'
-status: 'built'
+status: 'done'
 baseline_revision: '25177efd73cc5d4baebf15cb57ece0c815cf1917'
 route: 'full'
 route_source: 'auto'
@@ -128,6 +128,12 @@ context: []
 - A heredoc was used once to append tests to `tests/test_config.py`, against AGENTS.md; later edits used the edit tool.
 - Correction: `select_message` was not kept. `accept` reads only `update["message"]`, because `allowed_updates=["message"]` and an edit would repeat a source already taken. Only `_authorized` came from the pack's `intake.py`.
 - Review patches: `run_due` runs after a failed poll, `FileStore.save` fsyncs the directory, and the client test asserts token redaction. Checks pass again: 192 tests.
+- 2026-10-23, owner-approved dev-bot run (sample …1402, two Gemini calls, quick review accepted as enough):
+  - `scratch/precheck_1402.py`: the spar dedup key 2026-05-18T08:15Z was free in dev.
+  - `getUpdates` returned 409: an n8n webhook (`n8n-hooks.sivqaro.ovh`, last error 404) held the bot. On owner approval, `scratch/delete_webhook.py` ran `deleteWebhook` with `drop_pending_updates=true`. Nothing was pending afterwards.
+  - The first start wrote the bot token to the local `scratch/dev-service.log`: httpx logs request URLs at INFO. The service was stopped and the log deleted, so the token never left the host. Commit e5723c8 keeps the httpx and httpcore loggers at WARNING, with a test that fails on the old code (194 tests).
+  - After restart (`scratch/run_dev_service.sh`, `RRI_DATA_DIR=$HOME/rri-dev-data`), the owner sent the PDF. The log shows one update and one job, then `chain_pending`, two Gemini answers, then `stored`. There was no reaction error and no token in the log. `scratch/verify_1402.py`: source `telegram 358177329:697`, buyer set, header, 4 lines and 1 settlement equal to `expected.json`, one feed row.
+  - Restart check: SIGTERM stopped the service with `stopped` once the poll in progress ended. The queue held offset 293123989 and job 1 `stored`. After the restart, more than one 30 s long poll ran with no update fetched, no job and no Gemini call.
 
 ## Plan Change Log
 
