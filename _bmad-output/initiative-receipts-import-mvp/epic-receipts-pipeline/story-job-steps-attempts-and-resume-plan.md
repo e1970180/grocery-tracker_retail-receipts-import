@@ -104,6 +104,8 @@ Pass 2 re-reads the reference rather than persisting OIBs, so an OIB the admin c
 
 ## Implementation Notes
 
+- Owner, 2026-10-23: the plan stays whole at about 2,100 tokens; code is written by Claude Opus 5.5 in a separate Claude Code CLI session, not a subagent.
+
 ## Plan Change Log
 
 ## Review Triage Log

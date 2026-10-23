@@ -134,7 +134,7 @@ after = [6]
 hitl = false
 risk = "medium"
 references = ["architecture-receipts-import/architecture-receipts-import.md#ad-7--one-classification-of-extraction-results-adopted", "architecture-receipts-import/architecture-receipts-import.md#ad-14--one-loop-one-thread-adopted"]
-notes = ["Decision: sender text 'Не удалось скачать файл из Telegram. Пришлите чек ещё раз.'; admin text 'Файл не скачивается из Telegram после всех попыток; копия не приложена.' (owner, 2026-10-23)."]
+notes = ["Decision: risk medium; a lost download affects one receipt, the sender is asked to resend, and no schema changes (owner, 2026-10-23).", "Decision: sender text 'Не удалось скачать файл из Telegram. Пришлите чек ещё раз.'; admin text 'Файл не скачивается из Telegram после всех попыток; копия не приложена.' (owner, 2026-10-23)."]
 
 [[entry]]
 id = 7
