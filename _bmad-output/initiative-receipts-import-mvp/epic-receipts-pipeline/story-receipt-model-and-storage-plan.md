@@ -3,7 +3,7 @@ title: 'Receipt model and storage'
 type: 'feature'
 ticket: '4a'
 created: '2026-10-22'
-status: 'built'
+status: 'done'
 baseline_revision: '568f2034cebc579ad4a47ecab4c2451bdb9bf051'
 route: 'full'
 route_source: 'auto'
@@ -120,6 +120,7 @@ context: []
 
 ## Plan Change Log
 
+- 2026-10-23 -- Dev live check passed on owner approval: `migrate` as `rri_dev_owner` applied `0002_receipts.sql` to `grocery-tracker-dev`; `scratch/write_synthetic.py` as `rri_dev_writer` gave stored, own_write, duplicate (receipt `01a16823-9222-775f-bd81-e0d6466cf3a0`), with one receipt and one feed row. Owner accepted the ticket; status done.
 - 2026-10-23 -- Owner confirmed `branch_number` stays nullable, like the other reference fields: a photo may not show it.
 
 - 2026-10-23 -- Owner accepted the plan size over the guideline and the reworded `items_settlement_mismatch` texts, kept in the texts file so wording changes need no code change.

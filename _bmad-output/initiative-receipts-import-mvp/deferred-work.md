@@ -18,6 +18,7 @@
 - source_plan: `_bmad-output/initiative-receipts-import-mvp/epic-receipts-pipeline/story-receipt-model-and-storage-plan.md`
   summary: Dev live check of the receipt writer: run `migrate` on `grocery-tracker-dev` as `rri_dev_owner` to apply `0002`, then `scratch/write_synthetic.py` as `rri_dev_writer` writes a synthetic `spar` receipt dated 2001-01-01 12:00 Zagreb from chat 0 message 1, reruns it, then writes it from chat 0 message 2; expected output stored, own write, duplicate, with one receipt and one feed row. The receipt stays in dev and `resolver_v1` will see it; a privilege error is reported, never patched in a migration.
   evidence: The plan was about 2,400 tokens against the 1,600 limit; the owner chose to split and run this check right after the 4a build (2026-10-23). CI runs as superuser, so this is the only proof of the writer role privileges, and live-run evidence for the high-risk 4a.
+  resolution: done on owner approval, 2026-10-23: `0002` applied; stored, own_write, duplicate as expected, one receipt and one feed row, no privilege error.
 
 - source_plan: `_bmad-output/initiative-receipts-import-mvp/epic-receipts-pipeline/story-receipt-model-and-storage-plan.md`
   summary: Admin command to delete a wrongly stored receipt so it can be resent: in one transaction it deletes the receipt (lines and settlements cascade) and inserts a `deleted` feed event, which `resolver_v1` exposes.
