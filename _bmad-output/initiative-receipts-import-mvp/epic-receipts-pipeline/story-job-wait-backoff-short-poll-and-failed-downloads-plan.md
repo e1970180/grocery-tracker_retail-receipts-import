@@ -3,7 +3,7 @@ title: 'Job wait backoff, short poll and failed downloads'
 type: 'feature'
 ticket: '19'
 created: '2026-10-23'
-status: 'built'
+status: done
 baseline_revision: 'c621b0041d9f91832be44030e5d5192a2ddde9f2'
 route: 'full'
 route_source: 'auto'
