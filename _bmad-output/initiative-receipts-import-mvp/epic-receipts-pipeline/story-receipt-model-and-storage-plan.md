@@ -120,6 +120,8 @@ context: []
 
 ## Plan Change Log
 
+- 2026-10-23 -- Owner confirmed `branch_number` stays nullable, like the other reference fields: a photo may not show it.
+
 - 2026-10-23 -- Owner accepted the plan size over the guideline and the reworded `items_settlement_mismatch` texts, kept in the texts file so wording changes need no code change.
 - 2026-10-23 -- Owner chose to guard `chain_id` against OCR text and code mistakes: a slug and reserved-id validator in the model plus the same CHECK in `receipts`; the wrong-chain cross-check by seller OIB goes to the plug-ins through `chains_v1` 1.1.0 (`deferred-work.md`).
 - 2026-10-23 -- Owner approved three renames from a naming review: `branch` to `branch_number`, `loyalty_card` to `loyalty_card_number`, `entry_no` to `settlement_no`; the feed table, `seq`, `kind` and `event` keep their names.
