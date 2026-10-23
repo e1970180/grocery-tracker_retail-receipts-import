@@ -1,3 +1,4 @@
+import dataclasses
 import functools
 import io
 import uuid
@@ -14,16 +15,22 @@ from retail_receipts_import.adapters.gemini import images
 from retail_receipts_import.adapters.postgres.chains import ChainReference
 from retail_receipts_import.adapters.postgres.receipts import WriteKind, WriteResult
 from retail_receipts_import.app.pipeline import (
+    ChainWithdrawn,
     Duplicate,
+    Extracted,
     ExtractionWait,
     Invalid,
+    Pass1Result,
+    Pass2Result,
     Ports,
-    Result,
     Stored,
     Unsupported,
-    process_file,
+    WriteOutcome,
+    detect_chain,
+    extract,
 )
 from retail_receipts_import.domain.chains import KnownChain
+from retail_receipts_import.domain.chains.pass1 import Pass1Response
 from retail_receipts_import.domain.chains.spar.prompt import PASS2_PROMPT
 from retail_receipts_import.domain.chains.spar.schema import SparPass2
 from retail_receipts_import.domain.extraction import ExtractionClass, GeminiCallError, classify
@@ -35,6 +42,7 @@ from retail_receipts_import.domain.receipt import (
     telegram_source,
 )
 from tests.spar_samples import CARD, CASH, discount, item, pass1_response, payment, response
+from tests.steps import NEW_RECEIPT_ID, run_steps
 
 FIXTURES = Path(__file__).parent / "fixtures"
 SOURCE = telegram_source(0, 1, buyer_name="tester")
@@ -65,6 +73,7 @@ class FakePorts:
     max_pixels: int = 16_000_000
     calls: list[tuple[bytes, str, str, type[BaseModel]]] = field(default_factory=list)
     written: list[NormalizedReceipt] = field(default_factory=list)
+    written_ids: list[uuid.UUID] = field(default_factory=list)
 
     def generate(self, data: bytes, mime: str, prompt: str, schema: type[BaseModel]) -> str:
         self.calls.append((data, mime, prompt, schema))
@@ -78,6 +87,7 @@ class FakePorts:
         self, receipt_id: uuid.UUID, receipt: NormalizedReceipt, source: ReceiptSource
     ) -> WriteResult:
         self.written.append(receipt)
+        self.written_ids.append(receipt_id)
         return WriteResult(self.write_kind, STORED_ID)
 
     def read_chain_reference(self) -> ChainReference:
@@ -100,13 +110,22 @@ def pdf(tmp_path: Path) -> Path:
     return path
 
 
+Result = Pass1Result | Pass2Result | WriteOutcome
+
+
 def run(pdf: Path, fake: FakePorts) -> Result:
-    return process_file(pdf, "application/pdf", SOURCE, fake.ports())
+    return run_steps(pdf, "application/pdf", SOURCE, fake.ports())
+
+
+def run_file(path: Path, mime: str, fake: FakePorts) -> Result:
+    return run_steps(path, mime, SOURCE, fake.ports())
 
 
 def test_happy_path_stores_the_receipt(pdf: Path) -> None:
     fake = FakePorts(answers=[pass1_response(), response()])
     assert run(pdf, fake) == Stored(STORED_ID)
+    # The id the job assigned on entering `write_pending`, not one made at write time.
+    assert fake.written_ids == [NEW_RECEIPT_ID]
     assert len(fake.calls) == 2
     assert fake.calls[1][2] == PASS2_PROMPT
     assert fake.calls[1][3] is SparPass2
@@ -250,6 +269,42 @@ def test_inactive_chain_named_anyway_is_invalid_without_pass2(pdf: Path) -> None
     assert result.reason is FailureReason.NO_VALID_RESULT
     assert len(fake.calls) == 1
     assert fake.written == []
+
+
+def test_recorded_unknown_chain_is_other(tmp_path: Path) -> None:
+    # A live Lidl photo answer, recorded against a reference that knows only Spar.
+    recorded = (FIXTURES / "unknown_chain" / "pass1.json").read_text(encoding="utf-8")
+    spar_only = ChainReference(
+        chains=tuple(chain for chain in DEFAULT_CHAINS if chain.chain_id == "spar"),
+        inactive_ids=(),
+        rejected=(),
+    )
+    photo = tmp_path / "photo.png"
+    photo.write_bytes(b"png")
+    fake = FakePorts(answers=[recorded], reference=spar_only)
+    ports = dataclasses.replace(fake.ports(), prepare=lambda data, mime: data)
+    result = detect_chain(photo, "image/png", ports)
+    assert isinstance(result, Unsupported)
+    assert result.chain_id == "other"
+
+
+SPAR_PASS1 = Pass1Response.model_validate_json(pass1_response())
+
+
+def test_chain_withdrawn_before_pass2_calls_no_gemini(pdf: Path) -> None:
+    fake = FakePorts(answers=[response()], reference=SPAR_WITHDRAWN)
+    assert extract(pdf, "application/pdf", SPAR_PASS1, fake.ports()) == ChainWithdrawn("spar")
+    assert fake.calls == []
+
+
+def test_pass2_checks_the_oib_against_the_reference_read_now(pdf: Path) -> None:
+    corrected = ChainReference(
+        chains=(KnownChain("spar", "Spar", ("SPAR",), ("12345678903",)),),
+        inactive_ids=(),
+        rejected=(),
+    )
+    fake = FakePorts(answers=[response(seller_oib="12345678903")], reference=corrected)
+    assert isinstance(extract(pdf, "application/pdf", SPAR_PASS1, fake.ports()), Extracted)
 
 
 def test_blank_store_name_is_none(pdf: Path) -> None:
@@ -433,10 +488,10 @@ def test_rotated_photo_reaches_gemini_upright_and_capped(tmp_path: Path) -> None
     original = jpeg((400, 200), orientation=6)
     photo.write_bytes(original)
     fake = FakePorts(answers=[pass1_response(), response()], max_pixels=20_000)
-    process_file(photo, "image/jpeg", SOURCE, fake.ports())
+    run_file(photo, "image/jpeg", fake)
     assert len(fake.calls) == 2
     first, second = (data for data, _, _, _ in fake.calls)
-    # Prepared once: both passes see the same bytes.
+    # Prepared for each pass, the same way: both passes see the same bytes.
     assert first == second
     sent = Image.open(io.BytesIO(first))
     assert sent.format == "JPEG"
@@ -452,7 +507,7 @@ def test_upright_image_document_reaches_gemini_unchanged(tmp_path: Path) -> None
     Image.new("RGB", (40, 20), "white").save(out, format="PNG")
     document.write_bytes(out.getvalue())
     fake = FakePorts(answers=[pass1_response(), response()])
-    process_file(document, "image/png", SOURCE, fake.ports())
+    run_file(document, "image/png", fake)
     assert fake.calls[0][:2] == (out.getvalue(), "image/png")
 
 
@@ -461,7 +516,7 @@ def test_corrupt_image_is_invalid_without_a_gemini_call(tmp_path: Path) -> None:
     data = jpeg((200, 100), orientation=1)
     photo.write_bytes(data[: len(data) // 2])
     fake = FakePorts()
-    result = process_file(photo, "image/jpeg", SOURCE, fake.ports())
+    result = run_file(photo, "image/jpeg", fake)
     assert isinstance(result, Invalid)
     assert result.reason is FailureReason.NO_VALID_RESULT
     assert fake.calls == []

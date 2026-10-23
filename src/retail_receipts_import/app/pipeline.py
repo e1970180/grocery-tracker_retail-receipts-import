@@ -1,4 +1,7 @@
-"""One receipt file, from chain detection to a stored receipt."""
+"""The steps of one receipt file: chain detection, extraction and checks, then the write.
+
+Each step is separate, so the job can persist its result and a restart resumes at the next one.
+"""
 
 import uuid
 from collections.abc import Callable
@@ -13,6 +16,7 @@ from retail_receipts_import.adapters.postgres.receipts import WriteKind, WriteRe
 from retail_receipts_import.domain.chains import UNREADABLE
 from retail_receipts_import.domain.chains.errors import UnreadableReceipt
 from retail_receipts_import.domain.chains.pass1 import (
+    Pass1Response,
     build_pass1_prompt,
     create_pass1_schema,
     is_supported_chain,
@@ -58,6 +62,23 @@ class ExtractionWait(Exception):
 
 
 @dataclass(frozen=True)
+class ChainFound:
+    pass1: Pass1Response
+
+
+@dataclass(frozen=True)
+class Extracted:
+    receipt: NormalizedReceipt
+
+
+@dataclass(frozen=True)
+class ChainWithdrawn:
+    """The reference no longer supports the chain pass 1 found; the file is not at fault."""
+
+    chain_id: str
+
+
+@dataclass(frozen=True)
 class Stored:
     receipt_id: uuid.UUID
 
@@ -79,20 +100,35 @@ class Invalid:
     detail: str
 
 
-Result = Stored | Duplicate | Unsupported | Invalid
+Pass1Result = ChainFound | Unsupported | Invalid
+Pass2Result = Extracted | ChainWithdrawn | Invalid
+WriteOutcome = Stored | Duplicate
 
 
-def process_file(path: Path, mime: str, source: ReceiptSource, ports: Ports) -> Result:
-    """Detects the chain (pass 1), then normalizes, guards and stores the receipt (pass 2).
+def detect_chain(path: Path, mime: str, ports: Ports) -> Pass1Result:
+    """Pass 1: which chain printed the receipt, with the reference as its vocabulary."""
+    return _with_gemini(lambda: _detect_chain(path, mime, ports), ports)
 
-    A Gemini failure caused by the file is `Invalid`; any other one raises `ExtractionWait`.
-    """
+
+def extract(path: Path, mime: str, pass1: Pass1Response, ports: Ports) -> Pass2Result:
+    """Pass 2 for the chain pass 1 found, then the OIB and consistency checks."""
+    return _with_gemini(lambda: _extract(path, mime, pass1, ports), ports)
+
+
+def store(
+    receipt_id: uuid.UUID, receipt: NormalizedReceipt, source: ReceiptSource, ports: Ports
+) -> WriteOutcome:
+    written = ports.write(receipt_id, receipt, source)
+    if written.kind is WriteKind.DUPLICATE:
+        return Duplicate(written.receipt_id)
+    # Our own earlier write of this source is this receipt, stored.
+    return Stored(written.receipt_id)
+
+
+def _with_gemini[R](step: Callable[[], R], ports: Ports) -> R | Invalid:
+    """A Gemini failure caused by the file is `Invalid`; any other one raises `ExtractionWait`."""
     try:
-        data = ports.prepare(path.read_bytes(), mime)
-    except UnreadableImage as exc:
-        return Invalid(FailureReason.NO_VALID_RESULT, str(exc))
-    try:
-        return _extract_and_store(data, mime, source, ports)
+        return step()
     except GeminiCallError as exc:
         failure = exc
     found = ports.classify(failure)
@@ -105,10 +141,20 @@ def process_file(path: Path, mime: str, source: ReceiptSource, ports: Ports) -> 
     raise ExtractionWait(found, failure)
 
 
-def _extract_and_store(data: bytes, mime: str, source: ReceiptSource, ports: Ports) -> Result:
+def _prepared(path: Path, mime: str, ports: Ports) -> bytes | Invalid:
+    try:
+        return ports.prepare(path.read_bytes(), mime)
+    except UnreadableImage as exc:
+        return Invalid(FailureReason.NO_VALID_RESULT, str(exc))
+
+
+def _detect_chain(path: Path, mime: str, ports: Ports) -> Pass1Result:
+    data = _prepared(path, mime, ports)
+    if isinstance(data, Invalid):
+        return data
     reference = ports.read_chain_reference()
-    active_chains = {chain.chain_id: chain for chain in reference.chains}
-    pass1_schema = create_pass1_schema(tuple(active_chains.keys()))
+    active_ids = tuple(chain.chain_id for chain in reference.chains)
+    pass1_schema = create_pass1_schema(active_ids)
     pass1_prompt = build_pass1_prompt(reference.chains, PLUGINS)
 
     pass1_text = ports.generate(data, mime, pass1_prompt, pass1_schema)
@@ -121,13 +167,24 @@ def _extract_and_store(data: bytes, mime: str, source: ReceiptSource, ports: Por
         )
 
     chosen = pass1.chain
-    store_name = (pass1.store_name or "").strip() or None
-
     if chosen == UNREADABLE:
         return Invalid(FailureReason.NO_VALID_RESULT, "receipt is unreadable")
-
-    if not is_supported_chain(chosen, set(active_chains.keys()), PLUGINS):
+    if not is_supported_chain(chosen, set(active_ids), PLUGINS):
+        store_name = (pass1.store_name or "").strip() or None
         return Unsupported(chain_id=chosen, store_name=store_name)
+    return ChainFound(pass1)
+
+
+def _extract(path: Path, mime: str, pass1: Pass1Response, ports: Ports) -> Pass2Result:
+    # Read again rather than kept from pass 1, so an OIB the admin corrects applies at once.
+    reference = ports.read_chain_reference()
+    active_chains = {chain.chain_id: chain for chain in reference.chains}
+    chosen = pass1.chain
+    if not is_supported_chain(chosen, set(active_chains.keys()), PLUGINS):
+        return ChainWithdrawn(chosen)
+    data = _prepared(path, mime, ports)
+    if isinstance(data, Invalid):
+        return data
 
     plugin = PLUGINS[chosen]
     known_chain = active_chains[chosen]
@@ -152,9 +209,4 @@ def _extract_and_store(data: bytes, mime: str, source: ReceiptSource, ports: Por
         return Invalid(
             FailureReason.TOTAL_SETTLEMENT_MISMATCH, f"total minus card and cash is {difference}"
         )
-
-    written = ports.write(uuid.uuid7(), receipt, source)
-    if written.kind is WriteKind.DUPLICATE:
-        return Duplicate(written.receipt_id)
-    # Our own earlier write of this source is this receipt, stored.
-    return Stored(written.receipt_id)
+    return Extracted(receipt)

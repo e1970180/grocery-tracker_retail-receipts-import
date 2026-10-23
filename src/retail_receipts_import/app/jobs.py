@@ -1,28 +1,53 @@
 """Moves one job through its states; the only code that changes job state.
 
-`received` downloads the file. `chain_pending` runs the whole pipeline, from pass 1 to the
-PostgreSQL write, and ends the job. The success reaction follows the PostgreSQL commit and
-the final state, and its failure is only logged.
+Each state is one step whose result is persisted before the next step starts, so a restart
+resumes where the job stopped: `received` downloads the file, `chain_pending` runs pass 1,
+`extract_pending` runs pass 2 and its checks, and `write_pending` stores the kept receipt
+without calling Gemini again. The success reaction follows the PostgreSQL commit and the final
+state, and its failure is only logged.
 """
 
 import logging
+import uuid
 from collections.abc import Callable
+from contextlib import AbstractContextManager
 from dataclasses import dataclass
 from datetime import datetime
 from pathlib import Path
 
+from pydantic import ValidationError
+
 from retail_receipts_import.adapters.files.store import FileStore
 from retail_receipts_import.adapters.queue.sqlite import Queue
 from retail_receipts_import.adapters.telegram.download import FileTooLarge
-from retail_receipts_import.app.pipeline import Duplicate, Invalid, Result, Stored, Unsupported
-from retail_receipts_import.domain.jobs import Job, JobState
+from retail_receipts_import.app import pipeline
+from retail_receipts_import.app.pipeline import (
+    ChainFound,
+    ChainWithdrawn,
+    Duplicate,
+    Extracted,
+    ExtractionWait,
+    Invalid,
+    Ports,
+    Stored,
+    Unsupported,
+)
+from retail_receipts_import.domain.chains.pass1 import Pass1Response
+from retail_receipts_import.domain.extraction import ExtractionClass
+from retail_receipts_import.domain.jobs import FINAL_STATES, Job, JobState
 from retail_receipts_import.domain.outcomes import FailureReason
-from retail_receipts_import.domain.receipt import ReceiptSource, telegram_source
+from retail_receipts_import.domain.receipt import (
+    PAYLOAD_VERSION,
+    NormalizedReceipt,
+    ReceiptSource,
+    telegram_source,
+)
 
 log = logging.getLogger(__name__)
 
 Download = Callable[[str, int], bytes]
-Process = Callable[[Path, str, ReceiptSource], Result]
+# Opened once per job and shared by its steps, e.g. around one PostgreSQL connection.
+OpenPipeline = Callable[[], AbstractContextManager[Ports]]
 React = Callable[[int, int], None]
 
 
@@ -31,62 +56,188 @@ class JobPorts:
     queue: Queue
     files: FileStore
     download: Download
-    process: Process
+    open_pipeline: OpenPipeline
     react_stored: React
     clock: Callable[[], datetime]
 
 
-def advance(job: Job, ports: JobPorts) -> None:
-    """Runs the job's remaining steps; an exception leaves it in the last recorded state."""
-    state = job.state
-    if state is JobState.RECEIVED:
-        state = _download(job, ports)
-    if state is JobState.CHAIN_PENDING:
-        _process(job, ports)
+def advance(job: Job, ports: JobPorts, max_attempts: int) -> None:
+    """Runs the job's steps until it ends or waits; an exception leaves the last recorded state."""
+    if job.state is JobState.RECEIVED:
+        _start_step(job, ports)
+        _download(job, ports)
+        job = ports.queue.job(job.job_id)
+    if job.state in FINAL_STATES:
+        return
+    # Opened after the download, so a PostgreSQL outage does not hold back Telegram downloads.
+    with ports.open_pipeline() as steps:
+        while job.state not in FINAL_STATES:
+            _start_step(job, ports)
+            try:
+                _STEPS[job.state](job, ports, steps, max_attempts)
+            except ExtractionWait as wait:
+                _wait(job, ports, wait)
+                return
+            # Read back, so the next step runs on exactly what a restart would see.
+            job = ports.queue.job(job.job_id)
 
 
-def _download(job: Job, ports: JobPorts) -> JobState:
+def _start_step(job: Job, ports: JobPorts) -> None:
+    ports.queue.start_step(job.job_id, ports.clock())
+
+
+def _download(job: Job, ports: JobPorts) -> None:
     item = job.accepted
     try:
         data = ports.download(item.file_id, item.declared_size)
     except FileTooLarge as exc:
         log.info("job %s: %s", job.job_id, exc)
-        return _set(job, ports, JobState.FAILED, failure_reason=FailureReason.FILE_TOO_LARGE)
-    ports.files.save(ports.files.path_for(item.chat_id, item.message_id, item.mime), data)
-    return _set(job, ports, JobState.CHAIN_PENDING)
+        _finish(job, ports, JobState.FAILED, failure_reason=FailureReason.FILE_TOO_LARGE)
+        return
+    ports.files.save(_path(job, ports), data)
+    ports.queue.to_chain_pending(job.job_id, ports.clock(), attempts=0, unsupported=False)
+    log.info("job %s: %s", job.job_id, JobState.CHAIN_PENDING)
 
 
-def _process(job: Job, ports: JobPorts) -> None:
-    item = job.accepted
-    path = ports.files.path_for(item.chat_id, item.message_id, item.mime)
-    source = telegram_source(item.chat_id, item.message_id, buyer_name=item.buyer_name)
-    match ports.process(path, item.mime, source):
+def _detect_chain(job: Job, ports: JobPorts, steps: Ports, max_attempts: int) -> None:
+    match pipeline.detect_chain(_path(job, ports), job.accepted.mime, steps):
+        case ChainFound(pass1):
+            ports.queue.to_extract_pending(
+                job.job_id, ports.clock(), pass1_json=pass1.model_dump_json()
+            )
+            log.info("job %s: %s (%s)", job.job_id, JobState.EXTRACT_PENDING, pass1.chain)
+        case Unsupported(chain_id):
+            _unsupported(job, ports, chain_id, max_attempts)
+        case Invalid() as invalid:
+            _invalid(job, ports, invalid, max_attempts)
+
+
+def _extract(job: Job, ports: JobPorts, steps: Ports, max_attempts: int) -> None:
+    pass1 = Pass1Response.model_validate_json(_pass1_json(job))
+    match pipeline.extract(_path(job, ports), job.accepted.mime, pass1, steps):
+        case Extracted(receipt):
+            ports.queue.to_write_pending(
+                job.job_id,
+                ports.clock(),
+                receipt_json=receipt.model_dump_json(),
+                payload_version=PAYLOAD_VERSION,
+                receipt_id=str(uuid.uuid7()),
+            )
+            log.info("job %s: %s", job.job_id, JobState.WRITE_PENDING)
+        case ChainWithdrawn(chain_id):
+            # The reference changed, not the file, so no attempt is consumed.
+            log.info("job %s: chain %s is no longer supported, pass 1 again", job.job_id, chain_id)
+            ports.queue.to_chain_pending(
+                job.job_id, ports.clock(), attempts=job.attempts, unsupported=False
+            )
+        case Invalid() as invalid:
+            _invalid(job, ports, invalid, max_attempts)
+
+
+def _write(job: Job, ports: JobPorts, steps: Ports, max_attempts: int) -> None:
+    receipt = _kept_receipt(job)
+    if receipt is None or job.receipt_id is None:
+        # Kept by another version of this code; pass 2 is redone, not the whole job.
+        log.info(
+            "job %s: kept receipt is not version %s, pass 2 again", job.job_id, PAYLOAD_VERSION
+        )
+        ports.queue.to_extract_pending(job.job_id, ports.clock(), pass1_json=_pass1_json(job))
+        return
+    source = _source(job)
+    match pipeline.store(uuid.UUID(job.receipt_id), receipt, source, steps):
         case Stored(receipt_id):
-            _set(job, ports, JobState.STORED, receipt_id=str(receipt_id))
+            _finish(job, ports, JobState.STORED, receipt_id=str(receipt_id))
             _react(job, ports)
         case Duplicate(receipt_id):
-            _set(job, ports, JobState.DUPLICATE, receipt_id=str(receipt_id))
-        case Unsupported(chain_id):
-            log.info("job %s: chain %s is not supported", job.job_id, chain_id)
-            _set(job, ports, JobState.UNSUPPORTED_CHAIN)
-        case Invalid(reason, detail):
-            log.info("job %s: %s: %s", job.job_id, reason, detail)
-            _set(job, ports, JobState.FAILED, failure_reason=reason)
+            _finish(job, ports, JobState.DUPLICATE, receipt_id=str(receipt_id))
 
 
-def _set(
+_STEPS = {
+    JobState.CHAIN_PENDING: _detect_chain,
+    JobState.EXTRACT_PENDING: _extract,
+    JobState.WRITE_PENDING: _write,
+}
+
+
+def _unsupported(job: Job, ports: JobPorts, chain_id: str, max_attempts: int) -> None:
+    attempts = job.attempts + 1
+    log.info("job %s: chain %s is not supported (attempt %d)", job.job_id, chain_id, attempts)
+    # Only a second unsupported result in a row is believed; one on the last attempt ends too.
+    if job.unsupported or attempts >= max_attempts:
+        _finish(job, ports, JobState.UNSUPPORTED_CHAIN)
+        return
+    ports.queue.to_chain_pending(job.job_id, ports.clock(), attempts=attempts, unsupported=True)
+    log.info("job %s: %s", job.job_id, JobState.CHAIN_PENDING)
+
+
+def _invalid(job: Job, ports: JobPorts, invalid: Invalid, max_attempts: int) -> None:
+    attempts = job.attempts + 1
+    log.info("job %s: %s: %s (attempt %d)", job.job_id, invalid.reason, invalid.detail, attempts)
+    if attempts >= max_attempts:
+        _finish(job, ports, JobState.FAILED, failure_reason=invalid.reason)
+        return
+    ports.queue.to_chain_pending(job.job_id, ports.clock(), attempts=attempts, unsupported=False)
+    log.info("job %s: %s", job.job_id, JobState.CHAIN_PENDING)
+
+
+def _wait(job: Job, ports: JobPorts, wait: ExtractionWait) -> None:
+    # An expected state of the outside world, so one line and no traceback.
+    level = logging.WARNING if wait.kind is ExtractionClass.UNAVAILABLE else logging.ERROR
+    error = wait.error
+    log.log(
+        level,
+        # The message is the only place a zero quota shows, after two link sentences.
+        # Flattened to keep one line, and cut, as a proxy may send a whole page.
+        "job %s: gemini %s (code=%s status=%s reason=%s: %.500s); retrying in %ds",
+        job.job_id,
+        wait.kind,
+        error.code,
+        error.status,
+        error.reason,
+        " ".join(error.detail.split()),
+        wait.delay.total_seconds(),
+    )
+    now = ports.clock()
+    ports.queue.wait(job.job_id, now + wait.delay, now)
+
+
+def _kept_receipt(job: Job) -> NormalizedReceipt | None:
+    if job.payload_version != PAYLOAD_VERSION or job.receipt_json is None:
+        return None
+    try:
+        return NormalizedReceipt.model_validate_json(job.receipt_json)
+    except ValidationError:
+        return None
+
+
+def _pass1_json(job: Job) -> str:
+    if job.pass1_json is None:
+        raise RuntimeError(f"job {job.job_id} is in {job.state} without its pass-1 result")
+    return job.pass1_json
+
+
+def _path(job: Job, ports: JobPorts) -> Path:
+    item = job.accepted
+    return ports.files.path_for(item.chat_id, item.message_id, item.mime)
+
+
+def _source(job: Job) -> ReceiptSource:
+    item = job.accepted
+    return telegram_source(item.chat_id, item.message_id, buyer_name=item.buyer_name)
+
+
+def _finish(
     job: Job,
     ports: JobPorts,
     state: JobState,
     *,
     failure_reason: FailureReason | None = None,
     receipt_id: str | None = None,
-) -> JobState:
-    ports.queue.set_state(
+) -> None:
+    ports.queue.finish(
         job.job_id, state, ports.clock(), failure_reason=failure_reason, receipt_id=receipt_id
     )
     log.info("job %s: %s", job.job_id, state)
-    return state
 
 
 def _react(job: Job, ports: JobPorts) -> None:

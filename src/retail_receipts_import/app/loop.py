@@ -8,8 +8,6 @@ from datetime import timedelta
 from typing import Any, Protocol
 
 from retail_receipts_import.app.jobs import JobPorts, advance
-from retail_receipts_import.app.pipeline import ExtractionWait
-from retail_receipts_import.domain.extraction import ExtractionClass
 from retail_receipts_import.domain.intake import accept
 
 log = logging.getLogger(__name__)
@@ -30,8 +28,9 @@ class Updates(Protocol):
 class LoopSettings:
     allowed_user_ids: Collection[int]
     poll_timeout_s: int
-    # Until attempts exist, a step failing for any reason but Gemini waits this long and runs again.
+    # A step that raised waits this long and runs again; it consumes no attempt.
     retry_delay: timedelta
+    max_attempts: int
 
 
 def run(telegram: Updates, ports: JobPorts, settings: LoopSettings, stop: threading.Event) -> None:
@@ -66,26 +65,7 @@ def run_due(ports: JobPorts, settings: LoopSettings, stop: threading.Event) -> N
         if stop.is_set():
             return
         try:
-            advance(job, ports)
-        except ExtractionWait as wait:
-            # An expected state of the outside world, so one line and no traceback.
-            level = logging.WARNING if wait.kind is ExtractionClass.UNAVAILABLE else logging.ERROR
-            error = wait.error
-            log.log(
-                level,
-                # The message is the only place a zero quota shows, after two link sentences.
-                # Flattened to keep one line, and cut, as a proxy may send a whole page.
-                "job %s: gemini %s (code=%s status=%s reason=%s: %.500s); retrying in %ds",
-                job.job_id,
-                wait.kind,
-                error.code,
-                error.status,
-                error.reason,
-                " ".join(error.detail.split()),
-                wait.delay.total_seconds(),
-            )
-            now = ports.clock()
-            ports.queue.postpone(job.job_id, now + wait.delay, now)
+            advance(job, ports, settings.max_attempts)
         except Exception:
             # Adapters redact their secrets, so the traceback is safe to log.
             log.exception("job %s failed in its step; retrying later", job.job_id)

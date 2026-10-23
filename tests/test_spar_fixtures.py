@@ -17,7 +17,7 @@ from pydantic import BaseModel
 from retail_receipts_import.adapters.gemini import images
 from retail_receipts_import.adapters.postgres.chains import ChainReference
 from retail_receipts_import.adapters.postgres.receipts import WriteKind, WriteResult
-from retail_receipts_import.app.pipeline import Ports, Stored, process_file
+from retail_receipts_import.app.pipeline import Ports, Stored
 from retail_receipts_import.domain.chains import KnownChain
 from retail_receipts_import.domain.chains.registry import PLUGINS
 from retail_receipts_import.domain.chains.spar.schema import SparPass2
@@ -30,6 +30,7 @@ from retail_receipts_import.domain.receipt import (
     telegram_source,
 )
 from tests.spar_samples import pass1_response, response
+from tests.steps import run_steps
 
 FIXTURES = Path(__file__).parent / "fixtures"
 CASES = sorted(
@@ -95,7 +96,7 @@ def test_pipeline_stores_recorded_spar_samples(case: Path, tmp_path: Path) -> No
         prepare=functools.partial(images.prepare, max_pixels=16_000_000),
         classify=functools.partial(classify, waits=0, initial_s=600, cap_s=1800),
     )
-    result = process_file(
+    result = run_steps(
         pdf_path, "application/pdf", telegram_source(0, 1, buyer_name="tester"), ports
     )
     assert result == Stored(stored_id)

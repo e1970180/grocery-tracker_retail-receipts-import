@@ -56,3 +56,7 @@
 - source_plan: `_bmad-output/initiative-receipts-import-mvp/epic-receipts-pipeline/story-gemini-result-classifier-and-retry-timing-plan.md`
   summary: Dev-bot run of the image preparation and the Gemini error path: rebuild the dev service, send a rotated phone photo of a receipt and a Spar PDF, and confirm both are stored as before, with no `ExtractionWait` in the log.
   evidence: Entry 5 (risk high) was closed on the one-time error recording as its live evidence; EXIF transpose, the pixel cap and `prepare` before pass 1 have not run through the live service. The owner postponed the run (2026-10-23).
+
+- source_plan: `_bmad-output/initiative-receipts-import-mvp/epic-receipts-pipeline/story-job-steps-attempts-and-resume-plan.md`
+  summary: The build workflow runs only the quick review lens on risk-high plans, while AGENTS.md requires a thorough review for them.
+  evidence: The rendered bmad-build step 4 defines only the quick lens and no _bmad/custom override pins a thorough one; 1.6 (risk high) was reviewed quick.

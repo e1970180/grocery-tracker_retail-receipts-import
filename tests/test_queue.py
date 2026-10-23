@@ -58,7 +58,7 @@ def test_final_and_postponed_jobs_are_not_due(tmp_path: Path) -> None:
     queue = Queue(tmp_path / "q.sqlite3")
     queue.enqueue([accepted(1), accepted(2), accepted(3)], 101, NOW)
     first, second, _ = queue.due_jobs(NOW)
-    queue.set_state(first.job_id, JobState.FAILED, NOW, failure_reason=FailureReason.FILE_TOO_LARGE)
+    queue.finish(first.job_id, JobState.FAILED, NOW, failure_reason=FailureReason.FILE_TOO_LARGE)
     queue.postpone(second.job_id, NOW + timedelta(minutes=10), NOW)
     assert [j.accepted.message_id for j in queue.due_jobs(NOW)] == [3]
     later = NOW + timedelta(minutes=10)
@@ -70,11 +70,16 @@ def test_state_survives_reopening(tmp_path: Path) -> None:
     queue = Queue(path)
     queue.enqueue([accepted(1)], 101, NOW)
     [job] = queue.due_jobs(NOW)
-    queue.set_state(job.job_id, JobState.CHAIN_PENDING, NOW)
+    queue.to_chain_pending(job.job_id, NOW, attempts=1, unsupported=True)
     queue.close()
     reopened = Queue(path)
     assert reopened.read_offset() == 101
-    assert [j.state for j in reopened.due_jobs(NOW)] == [JobState.CHAIN_PENDING]
+    [resumed] = reopened.due_jobs(NOW)
+    assert (resumed.state, resumed.attempts, resumed.unsupported) == (
+        JobState.CHAIN_PENDING,
+        1,
+        True,
+    )
 
 
 def test_unknown_file_version_is_refused(tmp_path: Path) -> None:
@@ -85,3 +90,113 @@ def test_unknown_file_version_is_refused(tmp_path: Path) -> None:
     raw.close()
     with pytest.raises(QueueError, match="version 7"):
         Queue(path)
+
+
+# The first layout as it shipped, kept literal so the upgrade is tested against the real thing.
+V1_SCHEMA = """
+CREATE TABLE jobs (
+    job_id INTEGER PRIMARY KEY,
+    chat_id INTEGER NOT NULL,
+    message_id INTEGER NOT NULL,
+    buyer_name TEXT NOT NULL,
+    file_id TEXT NOT NULL,
+    kind TEXT NOT NULL,
+    mime TEXT NOT NULL,
+    declared_size INTEGER NOT NULL,
+    state TEXT NOT NULL,
+    failure_reason TEXT,
+    receipt_id TEXT,
+    due_at REAL NOT NULL,
+    updated_at REAL NOT NULL,
+    UNIQUE (chat_id, message_id)
+) STRICT;
+CREATE TABLE poll_offset (
+    id INTEGER PRIMARY KEY CHECK (id = 1),
+    next_offset INTEGER NOT NULL
+) STRICT;
+"""
+
+
+def write_v1_queue(path: Path, state: JobState) -> None:
+    raw = sqlite3.connect(path)
+    raw.executescript(V1_SCHEMA)
+    raw.execute(
+        "INSERT INTO jobs (chat_id, message_id, buyer_name, file_id, kind, mime, declared_size,"
+        " state, due_at, updated_at) VALUES (12345, 1, 'Ana', 'file1', 'photo', 'image/jpeg',"
+        " 10, ?, ?, ?)",
+        (state.value, NOW.timestamp(), NOW.timestamp()),
+    )
+    raw.execute("INSERT INTO poll_offset (id, next_offset) VALUES (1, 101)")
+    raw.execute("PRAGMA user_version = 1")
+    raw.commit()
+    raw.close()
+
+
+def test_version_1_file_is_upgraded_in_place(tmp_path: Path) -> None:
+    path = tmp_path / "q.sqlite3"
+    write_v1_queue(path, JobState.CHAIN_PENDING)
+    queue = Queue(path)
+    assert queue.read_offset() == 101
+    [job] = queue.due_jobs(NOW)
+    assert (job.accepted, job.state) == (accepted(1), JobState.CHAIN_PENDING)
+    assert (job.attempts, job.waits, job.step_starts, job.unsupported) == (0, 0, 0, False)
+    assert (job.pass1_json, job.receipt_json, job.payload_version) == (None, None, None)
+    assert queue._conn.execute("PRAGMA user_version").fetchone() == (2,)
+    queue.close()
+    # Opening the upgraded file again changes nothing.
+    assert Queue(path).read_offset() == 101
+
+
+def test_new_file_has_the_upgraded_layout(tmp_path: Path) -> None:
+    write_v1_queue(tmp_path / "old.sqlite3", JobState.RECEIVED)
+    upgraded, new = Queue(tmp_path / "old.sqlite3"), Queue(tmp_path / "new.sqlite3")
+    layout = "SELECT name, type, \"notnull\", dflt_value FROM pragma_table_info('jobs')"
+    assert upgraded._conn.execute(layout).fetchall() == new._conn.execute(layout).fetchall()
+
+
+def step_starts(queue: Queue, job_id: int) -> int:
+    return queue.job(job_id).step_starts
+
+
+def test_step_starts_survive_an_exception_and_reset_on_a_result(tmp_path: Path) -> None:
+    queue = Queue(tmp_path / "q.sqlite3")
+    queue.enqueue([accepted(1)], 101, NOW)
+    [job] = queue.due_jobs(NOW)
+    queue.start_step(job.job_id, NOW)
+    queue.postpone(job.job_id, NOW, NOW)
+    queue.start_step(job.job_id, NOW)
+    assert step_starts(queue, job.job_id) == 2
+    queue.to_chain_pending(job.job_id, NOW, attempts=0, unsupported=False)
+    assert step_starts(queue, job.job_id) == 0
+    queue.start_step(job.job_id, NOW)
+    queue.wait(job.job_id, NOW + timedelta(seconds=37), NOW)
+    assert step_starts(queue, job.job_id) == 0
+    assert queue.due_jobs(NOW) == []
+
+
+def test_each_transition_keeps_exactly_what_the_next_step_needs(tmp_path: Path) -> None:
+    queue = Queue(tmp_path / "q.sqlite3")
+    queue.enqueue([accepted(1)], 101, NOW)
+    [job] = queue.due_jobs(NOW)
+    queue.to_chain_pending(job.job_id, NOW, attempts=1, unsupported=True)
+    queue.to_extract_pending(job.job_id, NOW, pass1_json='{"chain": "spar"}')
+    extracting = queue.job(job.job_id)
+    assert (extracting.attempts, extracting.unsupported) == (1, False)
+    queue.to_write_pending(job.job_id, NOW, receipt_json="{}", payload_version=1, receipt_id="r-1")
+    writing = queue.job(job.job_id)
+    assert (writing.pass1_json, writing.receipt_json, writing.payload_version) == (
+        '{"chain": "spar"}',
+        "{}",
+        1,
+    )
+    assert writing.receipt_id == "r-1"
+    queue.to_chain_pending(job.job_id, NOW, attempts=2, unsupported=False)
+    restarted = queue.job(job.job_id)
+    assert (restarted.pass1_json, restarted.receipt_json, restarted.receipt_id) == (None,) * 3
+
+
+def test_only_a_final_state_finishes_a_job(tmp_path: Path) -> None:
+    queue = Queue(tmp_path / "q.sqlite3")
+    queue.enqueue([accepted(1)], 101, NOW)
+    with pytest.raises(ValueError, match="not a final state"):
+        queue.finish(1, JobState.WRITE_PENDING, NOW)

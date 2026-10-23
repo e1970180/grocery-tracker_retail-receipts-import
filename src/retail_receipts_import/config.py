@@ -46,6 +46,8 @@ class Settings(BaseSettings):
     telegram_poll_timeout_s: int = Field(default=30, gt=0)
     # A job whose step raised waits this long before it runs again; each run may be a paid call.
     job_retry_delay_s: int = Field(default=600, gt=0)
+    # Results Gemini gets wrong for one file, across both passes, before the job fails.
+    job_max_attempts: int = Field(default=3, gt=0)
     # The compose volume: the SQLite queue and the downloaded receipt files.
     data_dir: Path = Path("/data")
 

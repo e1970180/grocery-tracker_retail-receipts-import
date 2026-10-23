@@ -1,9 +1,10 @@
 """Wires the adapters into the loop for the `run` command."""
 
+import contextlib
 import functools
 import threading
+from collections.abc import Iterator
 from datetime import UTC, datetime, timedelta
-from pathlib import Path
 
 import psycopg
 
@@ -17,13 +18,12 @@ from retail_receipts_import.adapters.telegram.client import TelegramClient
 from retail_receipts_import.adapters.telegram.download import download_file
 from retail_receipts_import.app import loop
 from retail_receipts_import.app.jobs import JobPorts
-from retail_receipts_import.app.pipeline import Ports, Result, process_file
+from retail_receipts_import.app.pipeline import Ports
 from retail_receipts_import.app.texts import Texts
 from retail_receipts_import.config import Settings
 from retail_receipts_import.domain.extraction import classify
 from retail_receipts_import.domain.intake import MAX_FILE_BYTES
 from retail_receipts_import.domain.outcomes import Outcome
-from retail_receipts_import.domain.receipt import ReceiptSource
 
 
 def serve(settings: Settings, texts: Texts, stop: threading.Event) -> None:
@@ -39,18 +39,18 @@ def serve(settings: Settings, texts: Texts, stop: threading.Event) -> None:
         cap_s=settings.gemini_backoff_cap_s,
     )
 
-    def process(path: Path, mime: str, source: ReceiptSource) -> Result:
+    @contextlib.contextmanager
+    def open_pipeline() -> Iterator[Ports]:
         # A connection per job, so one dropped by the server never outlives the job it broke.
         conninfo = settings.conninfo(settings.db_user, settings.db_password)
         with psycopg.connect(conninfo, autocommit=True) as conn:
-            ports = Ports(
+            yield Ports(
                 generate=gemini.generate,
                 write=functools.partial(write_receipt, conn),
                 read_chain_reference=functools.partial(read_chain_reference, conn),
                 prepare=prepare_image,
                 classify=classify_failure,
             )
-            return process_file(path, mime, source, ports)
 
     try:
         with TelegramClient(settings.telegram_bot_token) as telegram:
@@ -60,7 +60,7 @@ def serve(settings: Settings, texts: Texts, stop: threading.Event) -> None:
                 download=lambda file_id, size: download_file(
                     telegram, file_id, size, MAX_FILE_BYTES
                 ),
-                process=process,
+                open_pipeline=open_pipeline,
                 react_stored=lambda chat_id, message_id: telegram.set_message_reaction(
                     chat_id, message_id, stored_emoji
                 ),
@@ -70,6 +70,7 @@ def serve(settings: Settings, texts: Texts, stop: threading.Event) -> None:
                 allowed_user_ids=frozenset(settings.allowed_user_ids),
                 poll_timeout_s=settings.telegram_poll_timeout_s,
                 retry_delay=timedelta(seconds=settings.job_retry_delay_s),
+                max_attempts=settings.job_max_attempts,
             )
             loop.run(telegram, ports, loop_settings, stop)
     finally:

@@ -3,14 +3,14 @@ title: 'Job steps, attempts and resume'
 type: 'feature'
 ticket: '6'
 created: '2026-10-23'
-status: 'ready-for-dev'
-baseline_revision: ''
+status: 'built'
+baseline_revision: 'c17b8abe0cf3784c6535a87662ba784873d416f3'
 route: 'full'
 route_source: 'auto'
 risk: 'high'
-review: ''
-review_source: ''
-lenses_ran: []
+review: 'quick'
+review_source: 'pinned'
+lenses_ran: ['quick']
 review_loop_iteration: 0
 context: []
 ---
@@ -108,4 +108,16 @@ Pass 2 re-reads the reference rather than persisting OIBs, so an OIB the admin c
 
 ## Plan Change Log
 
+- 2026-10-23, implementation: entering `extract_pending` clears the unsupported flag, since a supported pass-1 result breaks "in a row"; the matrix did not state it.
+- 2026-10-23, implementation: a retry after an attempt or a withdrawn chain runs pass 1 at once in the same `advance`; only waits and exceptions defer the job.
+- 2026-10-23, implementation: the image is prepared for each pass rather than once, since pass 2 may run after a restart; preparation is deterministic, so both passes still see the same bytes.
+- 2026-10-23, implementation: `JobPorts.process` became `open_pipeline`, a context manager opened after the download, so a PostgreSQL outage does not block downloads.
+- 2026-10-23, live recording: the Lidl sample `20260621_183809362_iOS.png` against a Spar-only reference answered `other`; no prompt change. The committed fixture nulls the store name and purchase date and time, which are the owner's own purchase.
+
 ## Review Triage Log
+
+| Finding | Verdict | Route | Evidence |
+|---|---|---|---|
+| No dev-bot live-run evidence while the plan is `in-review` | false | rejected | `in-review` claims review, not done; the dev-bot run is the plan's owner-run manual check and is presented as pending in step 5. |
+| Quick review on a `risk: high` plan, while AGENTS.md asks for thorough | medium | defer | The rendered workflow defines only the quick lens; fixing it means a `_bmad/custom` override, an agent-context change. |
+| Unknown-chain fixture commits the owner's store location and purchase time | medium | patch | `tests/fixtures/unknown_chain/pass1.json` held real store name, date and time; the tests read only `chain`. Fixed by nulling the three fields; tests re-run green. |
