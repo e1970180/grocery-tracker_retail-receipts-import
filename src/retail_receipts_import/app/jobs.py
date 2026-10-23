@@ -120,6 +120,10 @@ def _file_unavailable(
 def _detect_chain(job: Job, ports: JobPorts, steps: Ports, max_attempts: int) -> None:
     match pipeline.detect_chain(_path(job, ports), job.accepted.mime, steps, waits=job.waits):
         case ChainFound(pass1):
+            if duplicate := pipeline.precheck(pass1, _source(job), steps):
+                log.info("job %s: pre-check found receipt %s", job.job_id, duplicate.receipt_id)
+                _finish(job, ports, JobState.DUPLICATE, receipt_id=str(duplicate.receipt_id))
+                return
             ports.queue.to_extract_pending(
                 job.job_id, ports.clock(), pass1_json=pass1.model_dump_json()
             )

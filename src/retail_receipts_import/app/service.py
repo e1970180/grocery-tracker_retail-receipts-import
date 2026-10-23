@@ -13,7 +13,7 @@ from retail_receipts_import.adapters.files.store import FileStore
 from retail_receipts_import.adapters.gemini import images
 from retail_receipts_import.adapters.gemini.client import GeminiClient
 from retail_receipts_import.adapters.postgres.chains import read_chain_reference
-from retail_receipts_import.adapters.postgres.receipts import write_receipt
+from retail_receipts_import.adapters.postgres.receipts import find_other_source, write_receipt
 from retail_receipts_import.adapters.queue.sqlite import Queue
 from retail_receipts_import.adapters.telegram.client import TelegramClient
 from retail_receipts_import.adapters.telegram.download import download_file
@@ -34,6 +34,7 @@ def pipeline_ports(
     return Ports(
         generate=generate,
         write=functools.partial(write_receipt, conn),
+        find_other_source=functools.partial(find_other_source, conn),
         read_chain_reference=functools.partial(read_chain_reference, conn),
         prepare=functools.partial(images.prepare, max_pixels=settings.image_max_pixels),
         classify=functools.partial(

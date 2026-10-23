@@ -28,6 +28,7 @@ from retail_receipts_import.app.pipeline import (
     WriteOutcome,
     detect_chain,
     extract,
+    precheck,
 )
 from retail_receipts_import.domain.chains import KnownChain
 from retail_receipts_import.domain.chains.pass1 import Pass1Response
@@ -70,10 +71,12 @@ class FakePorts:
     calls_before_error: int = 0
     reference: ChainReference = DEFAULT_REFERENCE
     write_kind: WriteKind = WriteKind.STORED
+    stored_id: uuid.UUID | None = None
     max_pixels: int = 16_000_000
     calls: list[tuple[bytes, str, str, type[BaseModel]]] = field(default_factory=list)
     written: list[NormalizedReceipt] = field(default_factory=list)
     written_ids: list[uuid.UUID] = field(default_factory=list)
+    lookups: list[tuple[str, datetime, ReceiptSource]] = field(default_factory=list)
 
     def generate(self, data: bytes, mime: str, prompt: str, schema: type[BaseModel]) -> str:
         self.calls.append((data, mime, prompt, schema))
@@ -90,6 +93,12 @@ class FakePorts:
         self.written_ids.append(receipt_id)
         return WriteResult(self.write_kind, STORED_ID)
 
+    def find_other_source(
+        self, chain_id: str, purchased_at: datetime, source: ReceiptSource
+    ) -> uuid.UUID | None:
+        self.lookups.append((chain_id, purchased_at, source))
+        return self.stored_id
+
     def read_chain_reference(self) -> ChainReference:
         return self.reference
 
@@ -97,6 +106,7 @@ class FakePorts:
         return Ports(
             generate=self.generate,
             write=self.write,
+            find_other_source=self.find_other_source,
             read_chain_reference=self.read_chain_reference,
             prepare=functools.partial(images.prepare, max_pixels=self.max_pixels),
             classify=functools.partial(classify, initial_s=600, cap_s=1800),
@@ -143,6 +153,38 @@ def test_own_write_is_stored_and_duplicate_is_duplicate(pdf: Path) -> None:
     assert run(pdf, fake_own) == Stored(STORED_ID)
     fake_dup = FakePorts(answers=[pass1_response(), response()], write_kind=WriteKind.DUPLICATE)
     assert run(pdf, fake_dup) == Duplicate(STORED_ID)
+
+
+def test_precheck_names_the_receipt_another_source_stored() -> None:
+    fake = FakePorts(stored_id=STORED_ID)
+    pass1 = Pass1Response.model_validate_json(pass1_response(purchase_date="01.02.2030"))
+    assert precheck(pass1, SOURCE, fake.ports()) == Duplicate(STORED_ID)
+    assert fake.lookups == [("spar", datetime(2030, 2, 1, 8, 5, tzinfo=UTC), SOURCE)]
+
+
+def test_precheck_without_a_stored_receipt_finds_nothing() -> None:
+    fake = FakePorts()
+    pass1 = Pass1Response.model_validate_json(pass1_response())
+    assert precheck(pass1, SOURCE, fake.ports()) is None
+    assert len(fake.lookups) == 1
+
+
+@pytest.mark.parametrize(
+    "overrides",
+    [
+        {"purchase_time": None},
+        {"purchase_date": None},
+        {"purchase_time": "9h"},
+        {"purchase_date": "32.13.2030"},
+    ],
+)
+def test_precheck_skips_the_lookup_for_a_time_it_cannot_read(
+    overrides: dict[str, str | None],
+) -> None:
+    fake = FakePorts(stored_id=STORED_ID)
+    pass1 = Pass1Response.model_validate_json(pass1_response(**overrides))
+    assert precheck(pass1, SOURCE, fake.ports()) is None
+    assert fake.lookups == []
 
 
 def test_joker_discount_is_the_item_above_it(pdf: Path) -> None:

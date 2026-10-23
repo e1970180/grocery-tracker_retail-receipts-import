@@ -105,6 +105,8 @@ class Fakes:
     # Gemini's answers in call order; an exception is raised instead of answered.
     answers: list[str | Exception] = field(default_factory=lambda: list(STORED_ANSWERS))
     write_result: WriteKind | Exception = WriteKind.STORED
+    # The receipt another source already stored under the key pass 1 names; None for a new one.
+    stored_id: uuid.UUID | None = None
     reference: ChainReference = SPAR_ONLY
     download_error: Exception | None = None
     react_error: Exception | None = None
@@ -113,6 +115,7 @@ class Fakes:
     generated: list[type[BaseModel]] = field(default_factory=list)
     step_starts_seen: list[int] = field(default_factory=list)
     written: list[tuple[uuid.UUID, NormalizedReceipt, ReceiptSource]] = field(default_factory=list)
+    lookups: list[tuple[str, datetime, ReceiptSource]] = field(default_factory=list)
     reactions: list[tuple[int, int]] = field(default_factory=list)
     pipelines_opened: int = 0
 
@@ -142,6 +145,12 @@ class Fakes:
             return WriteResult(WriteKind.DUPLICATE, EXISTING_ID)
         return WriteResult(self.write_result, receipt_id)
 
+    def find_other_source(
+        self, chain_id: str, purchased_at: datetime, source: ReceiptSource
+    ) -> uuid.UUID | None:
+        self.lookups.append((chain_id, purchased_at, source))
+        return self.stored_id
+
     def react(self, chat_id: int, message_id: int) -> None:
         # The reaction comes only after the final state is durable.
         assert self.job().state is JobState.STORED
@@ -155,6 +164,7 @@ class Fakes:
         yield Ports(
             generate=self.generate,
             write=self.write,
+            find_other_source=self.find_other_source,
             read_chain_reference=lambda: self.reference,
             prepare=lambda data, mime: data,
             classify=lambda error, waits: classify(error, waits, initial_s=600, cap_s=1800),
@@ -250,6 +260,58 @@ def test_own_earlier_write_is_stored(fakes: Fakes) -> None:
     fakes.write_result = WriteKind.OWN_WRITE
     first_cycle(fakes)
     assert fakes.state() is JobState.STORED
+
+
+def test_resend_from_another_source_ends_after_pass1_without_pass2(
+    fakes: Fakes, caplog: pytest.LogCaptureFixture
+) -> None:
+    fakes.stored_id = EXISTING_ID
+    fakes.answers = [pass1_response(purchase_date="01.02.2030")]
+    caplog.set_level(logging.INFO)
+    first_cycle(fakes)
+    job = fakes.job()
+    assert (job.state, job.receipt_id) == (JobState.DUPLICATE, str(EXISTING_ID))
+    # No attempt, nothing kept for pass 2, and no write.
+    assert (job.attempts, job.pass1_json) == (0, None)
+    assert fakes.generated != [] and fakes.pass2_calls() == 0
+    assert fakes.written == [] and fakes.reactions == []
+    # The printed 09:05 in Zagreb winter time is the key's 08:05 UTC.
+    assert fakes.lookups == [
+        ("spar", datetime(2030, 2, 1, 8, 5, tzinfo=UTC), telegram_source(ALLOWED, 3, "Ana"))
+    ]
+    assert "pre-check" in caplog.text
+
+
+def test_new_purchase_passes_the_precheck_and_is_stored(fakes: Fakes) -> None:
+    first_cycle(fakes)
+    assert fakes.state() is JobState.STORED
+    assert len(fakes.lookups) == 1 and fakes.pass2_calls() == 1
+
+
+def test_precheck_miss_leads_to_the_writers_own_write_and_stored(fakes: Fakes) -> None:
+    # Only the miss path: the own-source filter is the adapter's, covered by
+    # tests/test_dedup.py::test_find_other_source_ignores_the_own_source.
+    fakes.write_result = WriteKind.OWN_WRITE
+    first_cycle(fakes)
+    assert fakes.state() is JobState.STORED
+    assert len(fakes.lookups) == 1 and fakes.pass2_calls() == 1
+
+
+@pytest.mark.parametrize(
+    "overrides",
+    [{"purchase_time": None}, {"purchase_date": None}, {"purchase_time": "9h"}],
+    ids=["no-time", "no-date", "unreadable-time"],
+)
+def test_unreadable_pass1_time_skips_the_lookup_and_the_writer_decides(
+    tmp_path: Path, overrides: dict[str, Any]
+) -> None:
+    fakes = make_fakes(tmp_path, [pass1_response(**overrides), response()])
+    fakes.write_result = WriteKind.DUPLICATE
+    first_cycle(fakes)
+    assert fakes.lookups == []
+    assert fakes.pass2_calls() == 1
+    assert fakes.state() is JobState.DUPLICATE
+    assert fakes.job().receipt_id == str(EXISTING_ID)
 
 
 @pytest.mark.parametrize(

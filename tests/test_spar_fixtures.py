@@ -92,6 +92,7 @@ def test_pipeline_stores_recorded_spar_samples(case: Path, tmp_path: Path) -> No
     ports = Ports(
         generate=fake_generate,
         write=fake_write,
+        find_other_source=lambda chain_id, purchased_at, source: None,
         read_chain_reference=lambda: reference,
         prepare=functools.partial(images.prepare, max_pixels=16_000_000),
         classify=functools.partial(classify, initial_s=600, cap_s=1800),

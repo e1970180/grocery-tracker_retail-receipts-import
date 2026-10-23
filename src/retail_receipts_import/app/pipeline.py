@@ -6,6 +6,7 @@ Each step is separate, so the job can persist its result and a restart resumes a
 import uuid
 from collections.abc import Callable
 from dataclasses import dataclass
+from datetime import datetime
 from pathlib import Path
 
 from pydantic import BaseModel, ValidationError
@@ -37,6 +38,7 @@ from retail_receipts_import.domain.receipt import (
 
 Generate = Callable[[bytes, str, str, type[BaseModel]], str]
 Write = Callable[[uuid.UUID, NormalizedReceipt, ReceiptSource], WriteResult]
+FindOtherSource = Callable[[str, datetime, ReceiptSource], uuid.UUID | None]
 ReadChainReference = Callable[[], ChainReference]
 Prepare = Callable[[bytes, str], bytes]
 # The wait count makes repeated waits back off.
@@ -47,6 +49,7 @@ Classify = Callable[[GeminiCallError, int], Classification]
 class Ports:
     generate: Generate
     write: Write
+    find_other_source: FindOtherSource
     read_chain_reference: ReadChainReference
     prepare: Prepare
     classify: Classify
@@ -116,6 +119,22 @@ def extract(
 ) -> Pass2Result:
     """Pass 2 for the chain pass 1 found, then the OIB and consistency checks."""
     return _with_gemini(lambda: _extract(path, mime, pass1, ports), ports, waits)
+
+
+def precheck(pass1: Pass1Response, source: ReceiptSource, ports: Ports) -> Duplicate | None:
+    """Spares pass 2 for a resend: pass 1's printed time already names the stored receipt.
+
+    Advisory: a time pass 1 misses or misreads just means pass 2 runs and the writer decides.
+    """
+    if pass1.purchase_date is None or pass1.purchase_time is None:
+        return None
+    purchased_at = PLUGINS[pass1.chain].normalize_pass1_time(
+        pass1.purchase_date, pass1.purchase_time
+    )
+    if purchased_at is None:
+        return None
+    existing = ports.find_other_source(pass1.chain, purchased_at, source)
+    return None if existing is None else Duplicate(existing)
 
 
 def store(

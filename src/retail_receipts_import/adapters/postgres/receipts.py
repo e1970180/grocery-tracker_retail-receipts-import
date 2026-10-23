@@ -1,5 +1,6 @@
 """Stores a normalized receipt in one transaction, and tells its own rerun from a duplicate."""
 
+import logging
 import uuid
 from dataclasses import dataclass
 from datetime import datetime
@@ -19,6 +20,8 @@ from retail_receipts_import.domain.receipt import (
     check_consistency,
     check_total,
 )
+
+log = logging.getLogger(__name__)
 
 # Schema-qualified everywhere: the service role's search_path is not something this code sets.
 SCHEMA = "retail_receipts_import"
@@ -82,6 +85,28 @@ def find_by_dedup_key(
 ) -> StoredRef | None:
     row = conn.execute(FIND_BY_DEDUP_KEY, (chain_id, purchased_at)).fetchone()
     return _stored_ref(row)
+
+
+def find_other_source(
+    conn: psycopg.Connection[tuple[Any, ...]],
+    chain_id: str,
+    purchased_at: datetime,
+    source: ReceiptSource,
+) -> uuid.UUID | None:
+    """The receipt another source stored under this dedup key, for the early duplicate check.
+
+    Advisory only: a failed lookup answers None and the writer's unique constraint decides later.
+    The key's own source is no hit, because the writer turns that into the job's own write.
+    """
+    try:
+        found = find_by_dedup_key(conn, chain_id, purchased_at)
+    except psycopg.OperationalError as exc:
+        # The type alone: nothing from the connection may reach the log.
+        log.warning("dedup pre-check lookup failed (%s), continuing without it", type(exc).__name__)
+        return None
+    if found is None or (found.source_kind, found.source_ref) == (source.kind.value, source.ref):
+        return None
+    return found.receipt_id
 
 
 def write_receipt(
