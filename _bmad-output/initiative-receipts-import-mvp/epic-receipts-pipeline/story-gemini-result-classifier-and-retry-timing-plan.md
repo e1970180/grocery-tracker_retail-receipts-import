@@ -96,4 +96,4 @@ A disabled quota is a 429 that Gemini marks only in the message text `limit: 0`,
 
 ## Implementation Notes
 
-- Owner, 2026-10-23: plan approved; code is written by Gemini 3.8 Flash in an external harness; the one-time live recording of the error fixtures is approved.
+- Owner, 2026-10-23: plan approved; code is written by Claude Opus 5.5 in a separate Claude Code CLI session (corrected from Gemini 3.8 Flash the same day); the one-time live recording of the error fixtures is approved.
