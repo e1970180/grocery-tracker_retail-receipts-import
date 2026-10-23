@@ -52,3 +52,7 @@
   summary: Wait count fed into `classify` with doubling to the cap and reset on each transition or attempt; the pipeline ports built from `Settings` in one factory, tested with distinct non-default values; the long poll shortened to the next due job; a permanent download failure consuming an attempt per failure and ending as `failed` with `file_unavailable` and its texts.
   evidence: The entry 6 plan was about 2,400 tokens against the 1,600 limit; the owner left the split to the planner (2026-10-23). Entry 6 keeps the persisted steps, attempts and resume, and adds every queue column this needs.
   resolution: scheduled as epic entry 19, after 6 and before 7 (owner, 2026-10-23).
+
+- source_plan: `_bmad-output/initiative-receipts-import-mvp/epic-receipts-pipeline/story-gemini-result-classifier-and-retry-timing-plan.md`
+  summary: Dev-bot run of the image preparation and the Gemini error path: rebuild the dev service, send a rotated phone photo of a receipt and a Spar PDF, and confirm both are stored as before, with no `ExtractionWait` in the log.
+  evidence: Entry 5 (risk high) was closed on the one-time error recording as its live evidence; EXIF transpose, the pixel cap and `prepare` before pass 1 have not run through the live service. The owner postponed the run (2026-10-23).
