@@ -75,14 +75,15 @@ def _add_unchecked_rows(conn: Conn, rows: list[tuple[Any, ...]]) -> None:
     """Rows the contract table's constraints would refuse, served through the same view."""
     conn.execute(
         "CREATE TABLE public.chains_unchecked "
-        "(chain_id text, display_name text, aliases text[], active boolean)"
+        "(chain_id text, display_name text, aliases text[], seller_oibs text[], active boolean)"
     )
     with conn.cursor() as cur:
-        cur.executemany("INSERT INTO public.chains_unchecked VALUES (%s, %s, %s, %s)", rows)
+        cur.executemany("INSERT INTO public.chains_unchecked VALUES (%s, %s, %s, %s, %s)", rows)
     conn.execute(
         "CREATE OR REPLACE VIEW public.chains_v1 AS "
-        "SELECT chain_id, display_name, aliases, active FROM public.chains "
-        "UNION ALL SELECT chain_id, display_name, aliases, active FROM public.chains_unchecked"
+        "SELECT chain_id, display_name, aliases, seller_oibs, active FROM public.chains "
+        "UNION ALL "
+        "SELECT chain_id, display_name, aliases, seller_oibs, active FROM public.chains_unchecked"
     )
 
 
@@ -97,7 +98,7 @@ def test_reads_seeded_chains_in_order(chains_conn: Conn) -> None:
     assert reference.rejected == ()
     assert reference.inactive_ids == ()
     spar = reference.chains[-1]
-    assert spar == KnownChain("spar", "Spar", ("SPAR", "Spar", "INTERSPAR"))
+    assert spar == KnownChain("spar", "Spar", ("SPAR", "Spar", "INTERSPAR"), ("46108893754",))
 
 
 @pytest.mark.integration
@@ -111,18 +112,22 @@ def test_inactive_chain_is_left_out(chains_conn: Conn) -> None:
 
 @pytest.mark.integration
 def test_bad_rows_are_rejected_and_valid_chains_kept(chains_conn: Conn) -> None:
+    valid_oibs = ["46108893754"]
     _add_unchecked_rows(
         chains_conn,
         [
-            ("Spar", "Spar", ["SPAR"], True),
-            ("other", "Other", [], True),
-            ("nameless", None, ["N"], True),
-            ("x", "X", ["X"], True),
-            ("x", "X again", ["X"], False),
-            (None, "No id", [], True),
-            ("unflagged", "Unflagged", [], None),
-            ("blank_alias", "Blank alias", ["B", ""], True),
-            ("null_aliases", "Null aliases", None, True),
+            ("Spar", "Spar", ["SPAR"], valid_oibs, True),
+            ("other", "Other", [], valid_oibs, True),
+            ("nameless", None, ["N"], valid_oibs, True),
+            ("x", "X", ["X"], valid_oibs, True),
+            ("x", "X again", ["X"], valid_oibs, False),
+            (None, "No id", [], valid_oibs, True),
+            ("unflagged", "Unflagged", [], valid_oibs, None),
+            ("blank_alias", "Blank alias", ["B", ""], valid_oibs, True),
+            ("null_aliases", "Null aliases", None, valid_oibs, True),
+            ("short_oib", "Short OIB", ["S"], ["12345"], True),
+            ("empty_oibs", "Empty OIBs", ["E"], [], True),
+            ("null_oibs", "Null OIBs", ["N"], None, True),
         ],
     )
     reference = read_chain_reference(chains_conn)
@@ -139,6 +144,9 @@ def test_bad_rows_are_rejected_and_valid_chains_kept(chains_conn: Conn) -> None:
             RejectedRow("unflagged", RejectReason.NULL_FIELD),
             RejectedRow("blank_alias", RejectReason.BAD_ALIASES),
             RejectedRow("null_aliases", RejectReason.NULL_FIELD),
+            RejectedRow("short_oib", RejectReason.BAD_OIBS),
+            RejectedRow("empty_oibs", RejectReason.BAD_OIBS),
+            RejectedRow("null_oibs", RejectReason.NULL_FIELD),
         ],
         key=repr,
     )
@@ -149,7 +157,8 @@ def test_text_aliases_column_is_rejected_not_split(chains_conn: Conn) -> None:
     chains_conn.execute("DROP VIEW public.chains_v1")
     chains_conn.execute(
         "CREATE VIEW public.chains_v1 AS "
-        "SELECT chain_id, display_name, aliases::text AS aliases, active FROM public.chains"
+        "SELECT chain_id, display_name, aliases::text AS aliases, seller_oibs, active "
+        "FROM public.chains"
     )
     reference = read_chain_reference(chains_conn)
     assert reference.chains == ()
@@ -157,11 +166,25 @@ def test_text_aliases_column_is_rejected_not_split(chains_conn: Conn) -> None:
 
 
 @pytest.mark.integration
+def test_text_seller_oibs_column_is_rejected_not_split(chains_conn: Conn) -> None:
+    chains_conn.execute("DROP VIEW public.chains_v1")
+    chains_conn.execute(
+        "CREATE VIEW public.chains_v1 AS "
+        "SELECT chain_id, display_name, aliases, seller_oibs::text AS seller_oibs, active "
+        "FROM public.chains"
+    )
+    reference = read_chain_reference(chains_conn)
+    assert reference.chains == ()
+    assert {row.reason for row in reference.rejected} == {RejectReason.BAD_OIBS}
+
+
+@pytest.mark.integration
 def test_non_text_chain_id_is_rejected_per_row(chains_conn: Conn) -> None:
     chains_conn.execute("DROP VIEW public.chains_v1")
     chains_conn.execute(
         "CREATE VIEW public.chains_v1 AS "
-        "SELECT length(chain_id) AS chain_id, display_name, aliases, active FROM public.chains"
+        "SELECT length(chain_id) AS chain_id, display_name, aliases, seller_oibs, active "
+        "FROM public.chains"
     )
     reference = read_chain_reference(chains_conn)
     assert reference.chains == ()

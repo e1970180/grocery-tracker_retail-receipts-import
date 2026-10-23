@@ -25,6 +25,9 @@ class SparPayment(BaseModel):
 
 
 class SparPass2(BaseModel):
+    seller_oib: str | None = Field(
+        default=None, description="Company OIB from the receipt header (11 digits)."
+    )
     store_name: str = Field(description="Store line under the company OIB line.")
     store_address: str | None = Field(default=None, description="Line under the store line.")
     receipt_number: str | None = Field(

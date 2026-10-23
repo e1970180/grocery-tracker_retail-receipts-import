@@ -12,7 +12,7 @@ from retail_receipts_import.domain.chains import RESERVED_IDS, KnownChain, is_ch
 # No WHERE clause: filtering on `active` in SQL would hide a NULL `active` and a duplicate id
 # whose other copy is inactive, both of which must be reported. No ORDER BY either: a retyped
 # `chain_id` would fail the whole query on a collation, instead of being rejected per row.
-QUERY = "SELECT chain_id, display_name, aliases, active FROM public.chains_v1"
+QUERY = "SELECT chain_id, display_name, aliases, seller_oibs, active FROM public.chains_v1"
 
 # The reference is missing or unreadable for this role: undefined table, schema or column, or
 # no privilege. Anything else, notably connection loss, is the caller's to handle as is.
@@ -24,6 +24,7 @@ class RejectReason(StrEnum):
     RESERVED_ID = "reserved_id"
     NULL_FIELD = "null_field"
     BAD_ALIASES = "bad_aliases"
+    BAD_OIBS = "bad_oibs"
     DUPLICATE_ID = "duplicate_id"
 
 
@@ -62,14 +63,14 @@ def _validate(rows: list[tuple[Any, ...]]) -> ChainReference:
     chains: list[KnownChain] = []
     inactive: list[str] = []
     rejected: list[RejectedRow] = []
-    for chain_id, display_name, aliases, active in rows:
-        reason = _row_fault(chain_id, display_name, aliases, active)
+    for chain_id, display_name, aliases, seller_oibs, active in rows:
+        reason = _row_fault(chain_id, display_name, aliases, seller_oibs, active)
         if reason is None and id_counts[chain_id] > 1:
             reason = RejectReason.DUPLICATE_ID
         if reason is not None:
             rejected.append(RejectedRow(chain_id if isinstance(chain_id, str) else None, reason))
         elif active:
-            chains.append(KnownChain(chain_id, display_name, tuple(aliases)))
+            chains.append(KnownChain(chain_id, display_name, tuple(aliases), tuple(seller_oibs)))
         else:
             inactive.append(chain_id)
     return ChainReference(
@@ -80,7 +81,11 @@ def _validate(rows: list[tuple[Any, ...]]) -> ChainReference:
 
 
 def _row_fault(
-    chain_id: object, display_name: object, aliases: object, active: object
+    chain_id: object,
+    display_name: object,
+    aliases: object,
+    seller_oibs: object,
+    active: object,
 ) -> RejectReason | None:
     if chain_id is None:
         return RejectReason.NULL_FIELD
@@ -98,4 +103,15 @@ def _row_fault(
     # A text column would arrive as str, and tuple("DM") is ("D", "M").
     if not isinstance(aliases, list) or not all(isinstance(a, str) and a for a in aliases):
         return RejectReason.BAD_ALIASES
+    if seller_oibs is None:
+        return RejectReason.NULL_FIELD
+    # isdigit alone also accepts non-ASCII digits such as "²".
+    if (
+        not isinstance(seller_oibs, list)
+        or len(seller_oibs) == 0
+        or not all(
+            isinstance(o, str) and len(o) == 11 and o.isascii() and o.isdigit() for o in seller_oibs
+        )
+    ):
+        return RejectReason.BAD_OIBS
     return None

@@ -22,3 +22,4 @@ class KnownChain:
     chain_id: str
     display_name: str
     aliases: tuple[str, ...]
+    seller_oibs: tuple[str, ...]

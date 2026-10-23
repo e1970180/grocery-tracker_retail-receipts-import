@@ -5,6 +5,7 @@ Transcribe this SPAR or INTERSPAR receipt from Croatia into the JSON schema.
 Copy every value exactly as printed. Do not compute, round, convert or correct anything.
 Amounts and quantities keep the printed decimal comma, for example "1,99", "-0,30", "0,326".
 
+- seller_oib: the 11-digit company OIB printed in the header next to "OIB:" or "OIB".
 - store_name: the store line printed under the company's MB and OIB line, for example
   "INTERSPAR ARENA ZAGREB". Never the company name "SPAR HRVATSKA D.O.O.".
 - store_address: the line printed under the store line.

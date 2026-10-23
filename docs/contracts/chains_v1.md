@@ -2,7 +2,7 @@
 
 | | |
 | --- | --- |
-| Version | 1.0.0 |
+| Version | 1.1.0 |
 | Kind | Consumer contract: this project states what it needs; the admin provides it |
 | Provider | The PostgreSQL admin (a person), who owns and writes the reference |
 | Consumer | `retail-receipts-import`, read-only |
@@ -22,6 +22,7 @@ keeps this shape.
 | `chain_id` | `text` | Lowercase ASCII slug matching `^[a-z][a-z0-9_]{0,31}$`. Unique. Stable: never renamed, never reused for another chain. |
 | `display_name` | `text` | Non-blank. Shown to people. |
 | `aliases` | `text[]` | One-dimensional, no NULL or empty elements; may be an empty array. Names as printed on receipts. |
+| `seller_oibs` | `text[]` | One-dimensional, no NULL elements, non-empty, every element exactly 11 decimal digits. The OIBs printed on the chain's fiscal receipts. |
 | `active` | `boolean` | `false` withdraws the chain. Rows are deactivated, never deleted. |
 
 No column may be NULL.
@@ -37,7 +38,7 @@ differs per environment.
 ## What the service does with it
 
 - It returns the `active` rows as known chains, ordered by `chain_id`.
-- A row that breaks a rule above (bad slug, reserved id, NULL field, bad aliases, or a
+- A row that breaks a rule above (bad slug, reserved id, NULL field, bad aliases, bad OIBs, or a
   `chain_id` that appears more than once, active or not) is skipped and reported as rejected;
   the valid chains keep working.
 - A missing view or column, a missing schema, or a missing `SELECT` is a structural fault.
@@ -47,16 +48,20 @@ differs per environment.
 
 Semantic versioning from 1.0.0.
 
-- Adding a column to the view: minor version, same view name.
+- Adding a column to the view: minor version, same view name. Version 1.1.0 added `seller_oibs`
+  to the view and table. To bring an existing dev database to 1.1.0, the admin recreates the
+  table and view from `chains_v1.sql` 1.1.0 (no separate upgrade script).
 - Any other change (removing, renaming or retyping a column, changing a rule): a new view
   `chains_v2`, published next to `chains_v1` until the service has moved over.
 
-## Rows at 1.0.0
+## Rows at 1.1.0
 
-| `chain_id` | `display_name` | `aliases` |
-| --- | --- | --- |
-| `dm` | dm | DM, dm |
-| `kaufland` | Kaufland | KAUFLAND, Kaufland |
-| `lidl` | Lidl | LIDL, Lidl |
-| `mueller` | Müller | MÜLLER, Müller, Muller |
-| `spar` | Spar | SPAR, Spar, INTERSPAR |
+| `chain_id` | `display_name` | `aliases` | `seller_oibs` |
+| --- | --- | --- | --- |
+| `dm` | dm | DM, dm | 94124811986 |
+| `kaufland` | Kaufland | KAUFLAND, Kaufland | 47432874968 |
+| `lidl` | Lidl | LIDL, Lidl | 66089976432 |
+| `mueller` | Müller | MÜLLER, Müller, Muller | 84698789700 |
+| `spar` | Spar | SPAR, Spar, INTERSPAR | 46108893754 |
+
+The OIB values are the company OIBs printed on fiscal receipts issued by each chain in Croatia.

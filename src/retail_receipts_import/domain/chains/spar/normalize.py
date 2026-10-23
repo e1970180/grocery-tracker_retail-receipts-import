@@ -48,6 +48,21 @@ def normalize(response: str, chain_id: str) -> NormalizedReceipt:
         raise UnreadableReceipt(f"receipt fails the model ({exc.error_count()} errors)") from None
 
 
+def normalize_pass1_time(purchase_date: str, purchase_time: str) -> datetime | None:
+    try:
+        if not purchase_date or not purchase_time:
+            return None
+        date = DATE.fullmatch(purchase_date.strip())
+        time = TIME.fullmatch(purchase_time.strip())
+        if date is None or time is None:
+            return None
+        day, month, year = (int(part) for part in date.groups())
+        hour, minute = (int(part) for part in time.groups())
+        return zagreb_to_utc(datetime(year, month, day, hour, minute))
+    except Exception:
+        return None
+
+
 def _stripped(value: str | None) -> str | None:
     if value is None:
         return None
