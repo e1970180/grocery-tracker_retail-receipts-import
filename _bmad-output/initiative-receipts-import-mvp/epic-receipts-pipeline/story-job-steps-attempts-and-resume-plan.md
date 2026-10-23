@@ -105,6 +105,7 @@ Pass 2 re-reads the reference rather than persisting OIBs, so an OIB the admin c
 ## Implementation Notes
 
 - Owner, 2026-10-23: plan approved. The plan stays whole at about 2,100 tokens; code is written by Claude Opus 5.5 in a separate Claude Code CLI session, not a subagent.
+- Dev-bot check, 2026-10-23, with the owner: the dev queue file (version 1, one stored job) was upgraded to version 2 on start with its offset kept. A Spar receipt sent with `RRI_GEMINI_MODEL=gemini-1.0-pro` became job 2 and was blocked (404 NOT_FOUND) in `chain_pending` with 0 attempts, due in 600 s. After a restart with the configured model it ran `extract_pending` → `write_pending` → `stored` at the due time, without a resend. Dev holds exactly one receipt for that source, with its 5 lines and one feed row, under the job's `receipt_id`; no reaction failure was logged.
 
 ## Plan Change Log
 
