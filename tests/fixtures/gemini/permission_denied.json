@@ -1,0 +1,6 @@
+{
+  "status": 403,
+  "headers": {},
+  "body": "{\n  \"error\": {\n    \"code\": 403,\n    \"message\": \"You do not have permission to access the File rri-probe-000000 or it may not exist.\",\n    \"status\": \"PERMISSION_DENIED\"\n  }\n}\n",
+  "key": "dev"
+}

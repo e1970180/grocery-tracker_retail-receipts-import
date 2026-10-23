@@ -1,0 +1,4 @@
+{
+  "transport": "ConnectError",
+  "message": "[Errno 101] Network is unreachable"
+}
