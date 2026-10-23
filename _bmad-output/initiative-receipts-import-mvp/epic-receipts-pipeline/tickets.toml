@@ -1,4 +1,4 @@
-# Entry 4 was split into 4a -> 4b (owner, 2026-10-22). Tracer bullet: 17. Lanes: A = 4b -> 17 -> 5 -> 6 -> 7 -> 12 -> 13 (app/jobs, app/notify, adapters/gemini, adapters/postgres); B = 4b -> 8 -> 9 -> 10 -> 11 (domain/chains + registry); C = 4a -> 14 (migrations, docs/contracts).
+# Entry 4 was split into 4a -> 4b (owner, 2026-10-22). Tracer bullet: 17. Lanes: A = 4b -> 17 -> 5 -> 6 -> 19 -> 7 -> 12 -> 13 (app/jobs, app/notify, adapters/gemini, adapters/postgres); B = 4b -> 8 -> 9 -> 10 -> 11 (domain/chains + registry); C = 4a -> 14 (migrations, docs/contracts).
 
 [[entry]]
 id = 1
@@ -113,14 +113,28 @@ references = ["architecture-receipts-import/architecture-receipts-import.md#ad-7
 [[entry]]
 id = 6
 type = "story"
-title = "Job waits, attempts and resume"
-description = "Completes the job state machine on the classifier's classes: waits with no attempt for unavailable and blocked, the shared attempt limit restarting from pass 1, the unsupported-twice rule with an unknown-chain fixture yielding other, the consistency mismatch as invalid, oversize after getFile as failed, the write_pending wait state (entry 13 classifies the PostgreSQL errors that enter it), the shortened long poll while jobs wait, payload_version resume, and counting step starts for entry 13 to treat."
-verify = "Unit tests with fake ports drive every transition of the AD-3 state diagram, including a restart between steps resuming from the persisted state without calling Gemini again from write_pending."
+title = "Job steps, attempts and resume"
+description = "Makes each AD-3 state a persisted step (pass 1, pass 2 with its checks, write) on the classifier's classes: waits with no attempt for unavailable and blocked, the shared attempt limit restarting from pass 1, the unsupported-twice rule with an unknown-chain fixture yielding other, the consistency mismatch as invalid, oversize after getFile as failed, the write_pending wait state (entry 13 classifies the PostgreSQL errors that enter it), payload_version resume, counting step starts for entry 13 to treat, and the in-place queue upgrade carrying every column entry 19 needs. The owner approves the one-time live pass-1 recording of a Lidl sample and runs the dev-bot check."
+verify = "Unit tests with fake ports drive every transition of the AD-3 state diagram, including a restart between steps resuming from the persisted state without calling Gemini again from write_pending; on the dev bot a receipt sent while Gemini is blocked is stored after a restart and the fix, without a resend."
 covers = ["CAP-5", "CAP-9"]
 after = [5]
-hitl = false
+hitl = true
 risk = "high"
 references = ["architecture-receipts-import/architecture-receipts-import.md#ad-3--one-owner-of-job-state"]
+notes = ["Split along its plan's seam; the waits half is entry 19 (owner, 2026-10-23)."]
+
+[[entry]]
+id = 19
+type = "story"
+title = "Job wait backoff, short poll and failed downloads"
+description = "Feeds the job's persisted wait count into classify, so backoff doubles to its cap and resets on each transition or attempt; builds the pipeline ports from Settings in one factory with a test on distinct non-default values; shortens the long poll to the next due job (AD-14); and ends a permanent download failure (a Telegram 4xx from getFile or the download, or no file_path) by consuming an attempt per failure, retrying after job_retry_delay_s and failing at the limit with the new reason file_unavailable and its owner-approved texts."
+verify = "Unit tests show the second Gemini wait twice the first and capped, the factory delays and pixel cap equal to their distinct settings, a 7 s long poll with the next job due in 7 s, and a download 4xx failing the job with file_unavailable after the attempt limit."
+covers = ["CAP-1", "CAP-9"]
+after = [6]
+hitl = false
+risk = "medium"
+references = ["architecture-receipts-import/architecture-receipts-import.md#ad-7--one-classification-of-extraction-results-adopted", "architecture-receipts-import/architecture-receipts-import.md#ad-14--one-loop-one-thread-adopted"]
+notes = ["Decision: sender text 'Не удалось скачать файл из Telegram. Пришлите чек ещё раз.'; admin text 'Файл не скачивается из Telegram после всех попыток; копия не приложена.' (owner, 2026-10-23)."]
 
 [[entry]]
 id = 7
@@ -129,7 +143,7 @@ title = "Deduplication pre-check"
 description = "Adds the advisory pre-check after pass 1, using the plug-ins' pass-1 time normalization from 4b and reusing the 4a writer's dedup-key lookup, and the job's duplicate final state from the writer's duplicate result."
 verify = "Integration tests show a different photo of the same purchase ending as duplicate with one stored row, the pre-check skipping pass 2, and the job mapping the writer's own-write result to stored after a crash between commit and the final mark."
 covers = ["CAP-6", "CAP-9"]
-after = [6]
+after = [19]
 hitl = false
 risk = "high"
 references = ["architecture-receipts-import/architecture-receipts-import.md#ad-8--dedup-is-a-database-constraint"]
