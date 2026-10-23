@@ -15,6 +15,7 @@ working directory. `.env.example` lists them. The service refuses to start on an
 | `RRI_DB_HOST`, `RRI_DB_PORT`, `RRI_DB_NAME` | PostgreSQL server and database. |
 | `RRI_DB_USER`, `RRI_DB_PASSWORD` | Writer role, used by the service. |
 | `RRI_DB_CONNECT_TIMEOUT_S` | Connect timeout in seconds (default 10). |
+| `RRI_DB_STATEMENT_TIMEOUT_MS` | Server-side cap on one statement in milliseconds (default 30000). |
 | `RRI_MIGRATE_DB_USER`, `RRI_MIGRATE_DB_PASSWORD` | Schema owner role, used only by `migrate`. |
 | `RRI_TEXTS_PATH` | Texts file (default `texts/messages.toml`). |
 | `RRI_LOG_LEVEL` | `DEBUG`, `INFO`, `WARNING` or `ERROR` (default `INFO`). |

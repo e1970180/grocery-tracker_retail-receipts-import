@@ -17,6 +17,7 @@ class Outcome(StrEnum):
 
 class FailureReason(StrEnum):
     ITEMS_SETTLEMENT_MISMATCH = "items_settlement_mismatch"
+    TOTAL_SETTLEMENT_MISMATCH = "total_settlement_mismatch"
     NO_VALID_RESULT = "no_valid_result"
     FILE_TOO_LARGE = "file_too_large"
 

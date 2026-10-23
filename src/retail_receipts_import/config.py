@@ -4,7 +4,7 @@ from pathlib import Path
 from typing import Literal, Self
 
 from psycopg.conninfo import make_conninfo
-from pydantic import SecretStr, model_validator
+from pydantic import Field, SecretStr, model_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 DEV_DATABASE_SUFFIX = "-dev"
@@ -23,6 +23,8 @@ class Settings(BaseSettings):
     db_user: str
     db_password: SecretStr
     db_connect_timeout_s: int = 10
+    # Bounds a runaway statement; the writer's transaction is short, so 30 s is far above it.
+    db_statement_timeout_ms: int = Field(default=30000, gt=0)
     # Schema owner credentials; only the migrate command needs them.
     migrate_db_user: str | None = None
     migrate_db_password: SecretStr | None = None
@@ -51,6 +53,7 @@ class Settings(BaseSettings):
             user=user,
             password=password.get_secret_value(),
             connect_timeout=self.db_connect_timeout_s,
+            options=f"-c statement_timeout={self.db_statement_timeout_ms}",
             application_name="retail-receipts-import",
         )
 

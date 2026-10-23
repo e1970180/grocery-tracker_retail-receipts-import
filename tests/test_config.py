@@ -44,3 +44,17 @@ def test_conninfo_carries_password_and_timeout(rri_env: dict[str, str]) -> None:
     assert "user=owner" in conninfo
     assert DB_PASSWORD in conninfo
     assert "connect_timeout=10" in conninfo
+
+
+def test_statement_timeout_reaches_conninfo(
+    rri_env: dict[str, str], monkeypatch: pytest.MonkeyPatch
+) -> None:
+    monkeypatch.setenv("RRI_DB_STATEMENT_TIMEOUT_MS", "45000")
+    settings = Settings()  # type: ignore[call-arg]
+    assert settings.db_statement_timeout_ms == 45000
+    assert "statement_timeout=45000" in settings.conninfo("owner", settings.db_password)
+
+
+def test_statement_timeout_defaults_to_30_seconds(rri_env: dict[str, str]) -> None:
+    settings = Settings()  # type: ignore[call-arg]
+    assert "statement_timeout=30000" in settings.conninfo("owner", settings.db_password)

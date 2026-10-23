@@ -8,6 +8,8 @@ from pathlib import Path
 import psycopg
 import pytest
 
+from retail_receipts_import.migrate import SCHEMA, apply_migrations
+
 # A dedicated variable, never libpq's PG* defaults: those may point at the production database.
 TEST_DSN_VAR = "RRI_TEST_DATABASE_URL"
 REPO = Path(__file__).resolve().parents[1]
@@ -67,6 +69,31 @@ def block_network(request: pytest.FixtureRequest, monkeypatch: pytest.MonkeyPatc
         )
 
     monkeypatch.setattr(socket.socket, "connect", guarded_connect)
+
+
+@pytest.fixture
+def migrate_conn() -> Iterator[psycopg.Connection[tuple[object, ...]]]:
+    """Autocommit connection to the throwaway test database with a fresh service schema."""
+    dsn = os.environ.get(TEST_DSN_VAR)
+    if not dsn:
+        pytest.fail(f"{TEST_DSN_VAR} is not set; integration tests need a test PostgreSQL database")
+    with psycopg.connect(dsn, autocommit=True, connect_timeout=10) as conn:
+        # The fixture drops the real service schema; never let it near a project database.
+        if "grocery-tracker" in conn.info.dbname:
+            pytest.fail(f"{TEST_DSN_VAR} points at {conn.info.dbname!r}, not a throwaway database")
+        conn.execute(f"DROP SCHEMA IF EXISTS {SCHEMA} CASCADE")
+        conn.execute(f"CREATE SCHEMA {SCHEMA}")
+        yield conn
+        conn.execute(f"DROP SCHEMA IF EXISTS {SCHEMA} CASCADE")
+
+
+@pytest.fixture
+def receipts_conn(
+    migrate_conn: psycopg.Connection[tuple[object, ...]],
+) -> psycopg.Connection[tuple[object, ...]]:
+    """`migrate_conn` with every repo migration applied: the schema the writer runs against."""
+    apply_migrations(migrate_conn, REPO / "migrations")
+    return migrate_conn
 
 
 @pytest.fixture

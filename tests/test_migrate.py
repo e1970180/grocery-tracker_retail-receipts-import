@@ -1,5 +1,3 @@
-import os
-from collections.abc import Iterator
 from pathlib import Path
 
 import psycopg
@@ -11,7 +9,7 @@ from retail_receipts_import.migrate import (
     apply_migrations,
     discover,
 )
-from tests.conftest import REPO, TEST_DSN_VAR
+from tests.conftest import REPO
 
 
 def test_discover_orders_by_number(tmp_path: Path) -> None:
@@ -39,22 +37,6 @@ def test_discover_refuses_duplicate_number(tmp_path: Path) -> None:
     (tmp_path / "0001_b.sql").write_text("SELECT 1;")
     with pytest.raises(MigrationError, match="share a number"):
         discover(tmp_path)
-
-
-@pytest.fixture
-def migrate_conn() -> Iterator[psycopg.Connection[tuple[object, ...]]]:
-    """Autocommit connection to the throwaway test database with a fresh service schema."""
-    dsn = os.environ.get(TEST_DSN_VAR)
-    if not dsn:
-        pytest.fail(f"{TEST_DSN_VAR} is not set; integration tests need a test PostgreSQL database")
-    with psycopg.connect(dsn, autocommit=True, connect_timeout=10) as conn:
-        # The fixture drops the real service schema; never let it near a project database.
-        if "grocery-tracker" in conn.info.dbname:
-            pytest.fail(f"{TEST_DSN_VAR} points at {conn.info.dbname!r}, not a throwaway database")
-        conn.execute(f"DROP SCHEMA IF EXISTS {SCHEMA} CASCADE")
-        conn.execute(f"CREATE SCHEMA {SCHEMA}")
-        yield conn
-        conn.execute(f"DROP SCHEMA IF EXISTS {SCHEMA} CASCADE")
 
 
 def _versions(conn: psycopg.Connection[tuple[object, ...]]) -> list[object]:
