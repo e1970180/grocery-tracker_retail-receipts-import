@@ -3,7 +3,7 @@ title: 'Job steps, attempts and resume'
 type: 'feature'
 ticket: '6'
 created: '2026-10-23'
-status: 'draft'
+status: 'ready-for-dev'
 baseline_revision: ''
 route: 'full'
 route_source: 'auto'
@@ -104,7 +104,7 @@ Pass 2 re-reads the reference rather than persisting OIBs, so an OIB the admin c
 
 ## Implementation Notes
 
-- Owner, 2026-10-23: the plan stays whole at about 2,100 tokens; code is written by Claude Opus 5.5 in a separate Claude Code CLI session, not a subagent.
+- Owner, 2026-10-23: plan approved. The plan stays whole at about 2,100 tokens; code is written by Claude Opus 5.5 in a separate Claude Code CLI session, not a subagent.
 
 ## Plan Change Log
 
