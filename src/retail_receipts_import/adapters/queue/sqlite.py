@@ -7,7 +7,7 @@ acknowledged without its durable job, and a crash between the two keeps neither.
 import sqlite3
 from collections.abc import Iterator, Sequence
 from contextlib import contextmanager
-from datetime import datetime
+from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
 
@@ -216,13 +216,27 @@ class Queue:
             **_STEP_RESET,
         )
 
-    def wait(self, job_id: int, due_at: datetime, now: datetime) -> None:
+    def wait(self, job_id: int, due_at: datetime, now: datetime, *, waits: int) -> None:
         """A wait is a recorded result of the step, so its start count begins again."""
-        self._update(job_id, now, due_at=due_at.timestamp(), step_starts=0)
+        self._update(job_id, now, due_at=due_at.timestamp(), step_starts=0, waits=waits)
+
+    def retry_download(
+        self, job_id: int, due_at: datetime, now: datetime, *, attempts: int
+    ) -> None:
+        """Telegram did not serve the file: the job stays `received` with one more attempt."""
+        self._update(job_id, now, due_at=due_at.timestamp(), attempts=attempts, **_STEP_RESET)
 
     def postpone(self, job_id: int, due_at: datetime, now: datetime) -> None:
         """After an exception: the step produced no result, so its start count stays."""
         self._update(job_id, now, due_at=due_at.timestamp())
+
+    def next_due_at(self) -> datetime | None:
+        """When the earliest unfinished job is due, so the long poll can end in time for it."""
+        [due_at] = self._conn.execute(
+            f"SELECT min(due_at) FROM jobs WHERE state NOT IN ({', '.join('?' * len(_FINAL))})",
+            _FINAL,
+        ).fetchone()
+        return None if due_at is None else datetime.fromtimestamp(due_at, UTC)
 
     def _update(self, job_id: int, now: datetime, **columns: object) -> None:
         # Column names come only from this module, never from data.

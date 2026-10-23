@@ -22,8 +22,7 @@ class Settings(BaseSettings):
     # The lowest level gemini-3.8-flash accepts: thinking costs money and the model only copies.
     gemini_thinking_level: Literal["minimal", "low", "medium", "high"] = "low"
     # Wait after an unavailable or misconfigured Gemini that names no delay of its own. The first
-    # equals the generic job retry; the cap matters once a job's wait count is kept, as each
-    # further wait then doubles.
+    # equals the generic job retry; each further wait in a row doubles, up to the cap.
     gemini_backoff_initial_s: int = Field(default=600, gt=0)
     gemini_backoff_cap_s: int = Field(default=1800, gt=0)
     # Larger images are scaled down before sending; above this, extra pixels add cost, not text.
@@ -44,9 +43,11 @@ class Settings(BaseSettings):
     # Telegram user ids whose private messages are taken as receipts, e.g. "111,222".
     allowed_user_ids: Annotated[list[int], NoDecode] = Field(min_length=1)
     telegram_poll_timeout_s: int = Field(default=30, gt=0)
-    # A job whose step raised waits this long before it runs again; each run may be a paid call.
+    # A job whose step raised, or whose download Telegram refused, waits this long before it
+    # runs again; each run may be a paid call.
     job_retry_delay_s: int = Field(default=600, gt=0)
-    # Results Gemini gets wrong for one file, across both passes, before the job fails.
+    # Refused downloads of one file, then results Gemini gets wrong for it across both passes,
+    # before the job fails; the count starts again once the file is downloaded.
     job_max_attempts: int = Field(default=3, gt=0)
     # The compose volume: the SQLite queue and the downloaded receipt files.
     data_dir: Path = Path("/data")

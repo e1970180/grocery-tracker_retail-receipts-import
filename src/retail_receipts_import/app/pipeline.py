@@ -39,7 +39,8 @@ Generate = Callable[[bytes, str, str, type[BaseModel]], str]
 Write = Callable[[uuid.UUID, NormalizedReceipt, ReceiptSource], WriteResult]
 ReadChainReference = Callable[[], ChainReference]
 Prepare = Callable[[bytes, str], bytes]
-Classify = Callable[[GeminiCallError], Classification]
+# The wait count makes repeated waits back off.
+Classify = Callable[[GeminiCallError, int], Classification]
 
 
 @dataclass(frozen=True)
@@ -105,14 +106,16 @@ Pass2Result = Extracted | ChainWithdrawn | Invalid
 WriteOutcome = Stored | Duplicate
 
 
-def detect_chain(path: Path, mime: str, ports: Ports) -> Pass1Result:
+def detect_chain(path: Path, mime: str, ports: Ports, *, waits: int) -> Pass1Result:
     """Pass 1: which chain printed the receipt, with the reference as its vocabulary."""
-    return _with_gemini(lambda: _detect_chain(path, mime, ports), ports)
+    return _with_gemini(lambda: _detect_chain(path, mime, ports), ports, waits)
 
 
-def extract(path: Path, mime: str, pass1: Pass1Response, ports: Ports) -> Pass2Result:
+def extract(
+    path: Path, mime: str, pass1: Pass1Response, ports: Ports, *, waits: int
+) -> Pass2Result:
     """Pass 2 for the chain pass 1 found, then the OIB and consistency checks."""
-    return _with_gemini(lambda: _extract(path, mime, pass1, ports), ports)
+    return _with_gemini(lambda: _extract(path, mime, pass1, ports), ports, waits)
 
 
 def store(
@@ -125,13 +128,13 @@ def store(
     return Stored(written.receipt_id)
 
 
-def _with_gemini[R](step: Callable[[], R], ports: Ports) -> R | Invalid:
+def _with_gemini[R](step: Callable[[], R], ports: Ports, waits: int) -> R | Invalid:
     """A Gemini failure caused by the file is `Invalid`; any other one raises `ExtractionWait`."""
     try:
         return step()
     except GeminiCallError as exc:
         failure = exc
-    found = ports.classify(failure)
+    found = ports.classify(failure, waits)
     if found.kind is ExtractionClass.INVALID:
         return Invalid(
             FailureReason.NO_VALID_RESULT,

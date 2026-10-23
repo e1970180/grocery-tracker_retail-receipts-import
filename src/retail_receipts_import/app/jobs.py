@@ -12,14 +12,14 @@ import uuid
 from collections.abc import Callable
 from contextlib import AbstractContextManager
 from dataclasses import dataclass
-from datetime import datetime
+from datetime import datetime, timedelta
 from pathlib import Path
 
 from pydantic import ValidationError
 
 from retail_receipts_import.adapters.files.store import FileStore
 from retail_receipts_import.adapters.queue.sqlite import Queue
-from retail_receipts_import.adapters.telegram.download import FileTooLarge
+from retail_receipts_import.adapters.telegram.download import FileTooLarge, FileUnavailable
 from retail_receipts_import.app import pipeline
 from retail_receipts_import.app.pipeline import (
     ChainFound,
@@ -61,14 +61,15 @@ class JobPorts:
     clock: Callable[[], datetime]
 
 
-def advance(job: Job, ports: JobPorts, max_attempts: int) -> None:
+def advance(job: Job, ports: JobPorts, max_attempts: int, retry_delay: timedelta) -> None:
     """Runs the job's steps until it ends or waits; an exception leaves the last recorded state."""
     if job.state is JobState.RECEIVED:
         _start_step(job, ports)
-        _download(job, ports)
+        _download(job, ports, max_attempts, retry_delay)
         job = ports.queue.job(job.job_id)
-    if job.state in FINAL_STATES:
-        return
+        # Failed, or still `received` and due again later: nothing for the pipeline yet.
+        if job.state is not JobState.CHAIN_PENDING:
+            return
     # Opened after the download, so a PostgreSQL outage does not hold back Telegram downloads.
     with ports.open_pipeline() as steps:
         while job.state not in FINAL_STATES:
@@ -86,7 +87,7 @@ def _start_step(job: Job, ports: JobPorts) -> None:
     ports.queue.start_step(job.job_id, ports.clock())
 
 
-def _download(job: Job, ports: JobPorts) -> None:
+def _download(job: Job, ports: JobPorts, max_attempts: int, retry_delay: timedelta) -> None:
     item = job.accepted
     try:
         data = ports.download(item.file_id, item.declared_size)
@@ -94,13 +95,30 @@ def _download(job: Job, ports: JobPorts) -> None:
         log.info("job %s: %s", job.job_id, exc)
         _finish(job, ports, JobState.FAILED, failure_reason=FailureReason.FILE_TOO_LARGE)
         return
+    except FileUnavailable as exc:
+        _file_unavailable(job, ports, exc, max_attempts, retry_delay)
+        return
     ports.files.save(_path(job, ports), data)
+    # Gemini gets all its attempts whatever the download took.
     ports.queue.to_chain_pending(job.job_id, ports.clock(), attempts=0, unsupported=False)
     log.info("job %s: %s", job.job_id, JobState.CHAIN_PENDING)
 
 
+def _file_unavailable(
+    job: Job, ports: JobPorts, exc: FileUnavailable, max_attempts: int, retry_delay: timedelta
+) -> None:
+    # Telegram may only be unable to serve the file for now, so it gets the attempts.
+    attempts = job.attempts + 1
+    log.info("job %s: file unavailable: %s (attempt %d)", job.job_id, exc, attempts)
+    if attempts >= max_attempts:
+        _finish(job, ports, JobState.FAILED, failure_reason=FailureReason.FILE_UNAVAILABLE)
+        return
+    now = ports.clock()
+    ports.queue.retry_download(job.job_id, now + retry_delay, now, attempts=attempts)
+
+
 def _detect_chain(job: Job, ports: JobPorts, steps: Ports, max_attempts: int) -> None:
-    match pipeline.detect_chain(_path(job, ports), job.accepted.mime, steps):
+    match pipeline.detect_chain(_path(job, ports), job.accepted.mime, steps, waits=job.waits):
         case ChainFound(pass1):
             ports.queue.to_extract_pending(
                 job.job_id, ports.clock(), pass1_json=pass1.model_dump_json()
@@ -114,7 +132,7 @@ def _detect_chain(job: Job, ports: JobPorts, steps: Ports, max_attempts: int) ->
 
 def _extract(job: Job, ports: JobPorts, steps: Ports, max_attempts: int) -> None:
     pass1 = Pass1Response.model_validate_json(_pass1_json(job))
-    match pipeline.extract(_path(job, ports), job.accepted.mime, pass1, steps):
+    match pipeline.extract(_path(job, ports), job.accepted.mime, pass1, steps, waits=job.waits):
         case Extracted(receipt):
             ports.queue.to_write_pending(
                 job.job_id,
@@ -198,7 +216,7 @@ def _wait(job: Job, ports: JobPorts, wait: ExtractionWait) -> None:
         wait.delay.total_seconds(),
     )
     now = ports.clock()
-    ports.queue.wait(job.job_id, now + wait.delay, now)
+    ports.queue.wait(job.job_id, now + wait.delay, now, waits=job.waits + 1)
 
 
 def _kept_receipt(job: Job) -> NormalizedReceipt | None:

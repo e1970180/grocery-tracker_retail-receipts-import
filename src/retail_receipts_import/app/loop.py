@@ -1,6 +1,7 @@
 """The service's single loop: long-poll Telegram, persist new jobs, run every due job, repeat."""
 
 import logging
+import math
 import threading
 from collections.abc import Collection, Sequence
 from dataclasses import dataclass
@@ -28,7 +29,7 @@ class Updates(Protocol):
 class LoopSettings:
     allowed_user_ids: Collection[int]
     poll_timeout_s: int
-    # A step that raised waits this long and runs again; it consumes no attempt.
+    # A step that raised, or a download Telegram refused, waits this long and runs again.
     retry_delay: timedelta
     max_attempts: int
 
@@ -48,7 +49,7 @@ def run(telegram: Updates, ports: JobPorts, settings: LoopSettings, stop: thread
 def poll(telegram: Updates, ports: JobPorts, settings: LoopSettings) -> None:
     updates = telegram.get_updates(
         offset=ports.queue.read_offset(),
-        timeout=settings.poll_timeout_s,
+        timeout=_poll_timeout(ports, settings),
         allowed_updates=ALLOWED_UPDATES,
     )
     if not updates:
@@ -60,12 +61,22 @@ def poll(telegram: Updates, ports: JobPorts, settings: LoopSettings) -> None:
     log.info("polled %d update(s), %d job(s)", len(updates), len(accepted))
 
 
+def _poll_timeout(ports: JobPorts, settings: LoopSettings) -> int:
+    """Ends the long poll when the next job is due, so a waiting job is not held up by it."""
+    next_due = ports.queue.next_due_at()
+    if next_due is None:
+        return settings.poll_timeout_s
+    # Rounded up: at most a second late, and never a run of zero-timeout polls before it is due.
+    until_due = math.ceil((next_due - ports.clock()).total_seconds())
+    return min(max(until_due, 0), settings.poll_timeout_s)
+
+
 def run_due(ports: JobPorts, settings: LoopSettings, stop: threading.Event) -> None:
     for job in ports.queue.due_jobs(ports.clock()):
         if stop.is_set():
             return
         try:
-            advance(job, ports, settings.max_attempts)
+            advance(job, ports, settings.max_attempts, settings.retry_delay)
         except Exception:
             # Adapters redact their secrets, so the traceback is safe to log.
             log.exception("job %s failed in its step; retrying later", job.job_id)

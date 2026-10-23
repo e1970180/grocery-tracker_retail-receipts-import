@@ -22,10 +22,10 @@ NEW_RECEIPT_ID = uuid.UUID(int=99)
 def run_steps(
     path: Path, mime: str, source: ReceiptSource, ports: Ports
 ) -> Pass1Result | Pass2Result | WriteOutcome:
-    found = detect_chain(path, mime, ports)
+    found = detect_chain(path, mime, ports, waits=0)
     if not isinstance(found, ChainFound):
         return found
-    extracted = extract(path, mime, found.pass1, ports)
+    extracted = extract(path, mime, found.pass1, ports, waits=0)
     if not isinstance(extracted, Extracted):
         return extracted
     return store(NEW_RECEIPT_ID, extracted.receipt, source, ports)

@@ -20,6 +20,7 @@ class FailureReason(StrEnum):
     TOTAL_SETTLEMENT_MISMATCH = "total_settlement_mismatch"
     NO_VALID_RESULT = "no_valid_result"
     FILE_TOO_LARGE = "file_too_large"
+    FILE_UNAVAILABLE = "file_unavailable"
 
 
 # Which outcomes carry which kind of text. A failed outcome takes its sender message and

@@ -3,14 +3,14 @@ title: 'Job wait backoff, short poll and failed downloads'
 type: 'feature'
 ticket: '19'
 created: '2026-10-23'
-status: 'ready-for-dev'
+status: 'built'
 baseline_revision: 'c621b0041d9f91832be44030e5d5192a2ddde9f2'
 route: 'full'
 route_source: 'auto'
 risk: 'medium'
-review: ''
-review_source: ''
-lenses_ran: []
+review: 'quick'
+review_source: 'pinned'
+lenses_ran: ['quick']
 review_loop_iteration: 0
 context: []
 ---
@@ -85,11 +85,11 @@ context: []
 ## Tasks & Acceptance
 
 **Execution:**
-- [ ] `src/retail_receipts_import/adapters/telegram/download.py`, `tests/test_telegram_download.py` -- the 4xx wrap. Tests: a 400 from getFile and a 404 from the download raise `FileUnavailable`; a 401 raises `TelegramAPIError`; a 5xx raises `TelegramRetryExhaustedError`.
-- [ ] `src/retail_receipts_import/domain/outcomes.py`, `texts/messages.toml` -- the reason and its texts.
-- [ ] `src/retail_receipts_import/adapters/queue/sqlite.py` -- `wait` with the count, `retry_download`, `next_due_at`.
-- [ ] `src/retail_receipts_import/app/pipeline.py`, `src/retail_receipts_import/app/jobs.py`, `src/retail_receipts_import/app/loop.py`, `src/retail_receipts_import/app/service.py`, `src/retail_receipts_import/config.py`, `src/retail_receipts_import/domain/jobs.py` -- wiring and the factory.
-- [ ] `tests/test_loop.py`, `tests/test_queue.py`, `tests/test_service.py` -- every matrix row. Also:
+- [x] `src/retail_receipts_import/adapters/telegram/download.py`, `tests/test_telegram_download.py` -- the 4xx wrap. Tests: a 400 from getFile and a 404 from the download raise `FileUnavailable`; a 401 raises `TelegramAPIError`; a 5xx raises `TelegramRetryExhaustedError`.
+- [x] `src/retail_receipts_import/domain/outcomes.py`, `texts/messages.toml` -- the reason and its texts.
+- [x] `src/retail_receipts_import/adapters/queue/sqlite.py` -- `wait` with the count, `retry_download`, `next_due_at`.
+- [x] `src/retail_receipts_import/app/pipeline.py`, `src/retail_receipts_import/app/jobs.py`, `src/retail_receipts_import/app/loop.py`, `src/retail_receipts_import/app/service.py`, `src/retail_receipts_import/config.py`, `src/retail_receipts_import/domain/jobs.py` -- wiring and the factory.
+- [x] `tests/test_loop.py`, `tests/test_queue.py`, `tests/test_service.py` -- every matrix row. Also:
   - `waits` survives a reopen;
   - a retried `FileUnavailable` never enters `open_pipeline` and logs no exception;
   - the poll-timeout rows run on a real `Queue`, not only on `Fakes`;
@@ -119,6 +119,14 @@ Why the factory test values all differ: `waits=0` alone cannot tell initial from
 ## Implementation Notes
 
 - Owner, 2026-10-23: plan approved and stopped at `ready-for-dev`; implementation resumes in a fresh `bmad-build` session.
+- Owner, 2026-10-23: implemented in the main session (Opus 5.5), no subagent.
+- The factory test uses initial 700 and cap 2000 instead of 600 and 1800. Those are the `Settings` defaults, so a factory that ignored both settings would still pass, which goes against the ticket's "distinct non-default values". Retry delay 900 and pixel cap 100 are as planned. The test also sets `job_max_attempts` 4 and the poll timeout 25.
+- Outside the Code Map, these call sites follow the new signatures: `tests/test_pipeline.py`, `tests/test_spar_fixtures.py` and `tests/steps.py`. `waits` is keyword-only and required, so a missed pass-through fails mypy instead of falling back to 0.
+- `tests/test_texts.py` adds a refusal test for a texts file without `file_unavailable`, for the third acceptance criterion.
+- Verification, in WSL:
+  - ruff check, ruff format --check and mypy are clean;
+  - `pytest` passed 318;
+  - `pytest -m integration` passed 28 against a throwaway `postgres:18.6` container on port 55432, which was stopped afterwards.
 
 ## Plan Change Log
 
@@ -130,3 +138,6 @@ Why the factory test values all differ: `waits=0` alone cannot tell initial from
   - the getFile-400 rationale added.
 
 ## Review Triage Log
+
+- quick: second acceptance criterion tested only in parts (fake download raises `FileUnavailable`; no getFile 400 runs through the real client) -- low; the composed behaviour held, but the criterion as written was untested end to end -- patch: `test_getfile_400_through_the_real_client_fails_the_job_at_the_limit` runs a MockTransport 400 through `TelegramClient`, `download_file` and `run_due`; 319 passed.
+- quick: factory test uses initial 700 and cap 2000 instead of the task's 600 and 1800 -- false; the deviation is recorded in Implementation Notes, since the defaults could not catch a factory that ignores the settings -- rejected.

@@ -9,20 +9,31 @@ from datetime import UTC, datetime, timedelta
 from pathlib import Path
 from typing import Any
 
+import httpx
 import pytest
-from pydantic import BaseModel
+from pydantic import BaseModel, SecretStr
 
 from retail_receipts_import.adapters.files.store import FileStore
 from retail_receipts_import.adapters.postgres.chains import ChainReference
 from retail_receipts_import.adapters.postgres.receipts import WriteKind, WriteResult
 from retail_receipts_import.adapters.queue.sqlite import Queue
-from retail_receipts_import.adapters.telegram.download import FileTooLarge
+from retail_receipts_import.adapters.telegram.client import (
+    TelegramAPIError,
+    TelegramClient,
+    TelegramRetryExhaustedError,
+)
+from retail_receipts_import.adapters.telegram.download import (
+    FileTooLarge,
+    FileUnavailable,
+    download_file,
+)
 from retail_receipts_import.app import jobs, loop
 from retail_receipts_import.app.jobs import JobPorts
 from retail_receipts_import.app.pipeline import Ports
 from retail_receipts_import.domain.chains import KnownChain
 from retail_receipts_import.domain.chains.spar.schema import SparPass2
 from retail_receipts_import.domain.extraction import GeminiCallError, classify
+from retail_receipts_import.domain.intake import MAX_FILE_BYTES
 from retail_receipts_import.domain.jobs import Job, JobState
 from retail_receipts_import.domain.receipt import (
     PAYLOAD_VERSION,
@@ -76,12 +87,14 @@ def pdf_update(
 class FakeTelegram:
     batches: list[list[dict[str, Any]]]
     offsets: list[int | None] = field(default_factory=list)
+    timeouts: list[int] = field(default_factory=list)
 
     def get_updates(
         self, *, offset: int | None, timeout: int, allowed_updates: Sequence[str] | None = None
     ) -> list[dict[str, Any]]:
         assert allowed_updates == ("message",)
         self.offsets.append(offset)
+        self.timeouts.append(timeout)
         return self.batches.pop(0) if self.batches else []
 
 
@@ -101,6 +114,7 @@ class Fakes:
     step_starts_seen: list[int] = field(default_factory=list)
     written: list[tuple[uuid.UUID, NormalizedReceipt, ReceiptSource]] = field(default_factory=list)
     reactions: list[tuple[int, int]] = field(default_factory=list)
+    pipelines_opened: int = 0
 
     def download(self, file_id: str, declared_size: int) -> bytes:
         self.downloads.append(file_id)
@@ -137,12 +151,13 @@ class Fakes:
 
     @contextlib.contextmanager
     def open_pipeline(self) -> Iterator[Ports]:
+        self.pipelines_opened += 1
         yield Ports(
             generate=self.generate,
             write=self.write,
             read_chain_reference=lambda: self.reference,
             prepare=lambda data, mime: data,
-            classify=lambda error: classify(error, waits=0, initial_s=600, cap_s=1800),
+            classify=lambda error, waits: classify(error, waits, initial_s=600, cap_s=1800),
         )
 
     def ports(self) -> JobPorts:
@@ -441,7 +456,7 @@ def test_gemini_wait_keeps_the_state_and_consumes_no_attempt(
     first_cycle(fakes)
     job = fakes.job()
     waiting = JobState.CHAIN_PENDING if pass_no == 1 else JobState.EXTRACT_PENDING
-    assert (job.state, job.attempts, job.waits, job.step_starts) == (waiting, 0, 0, 0)
+    assert (job.state, job.attempts, job.waits, job.step_starts) == (waiting, 0, 1, 0)
     assert fakes.due_at() == fakes.now + timedelta(seconds=delay)
     [record] = [r for r in caplog.records if r.name == jobs.__name__ and r.levelno == level]
     assert record.exc_info is None
@@ -481,6 +496,63 @@ def test_gemini_wait_logs_the_quota_message_on_one_line(
     assert "\n" not in message
 
 
+def wait_again(fakes: Fakes, answers: Sequence[str | Exception]) -> timedelta:
+    """Runs the job when it is due with the given answers; returns how long it now waits."""
+    fakes.now = fakes.due_at()
+    fakes.answers = list(answers)
+    rerun(fakes)
+    return fakes.due_at() - fakes.now
+
+
+def test_repeated_gemini_waits_double_up_to_the_cap(tmp_path: Path) -> None:
+    fakes = make_fakes(tmp_path, [BLOCKED])
+    first_cycle(fakes)
+    first = fakes.due_at() - fakes.now
+    delays = [first, wait_again(fakes, [BLOCKED]), wait_again(fakes, [BLOCKED])]
+    assert delays == [timedelta(seconds=s) for s in (600, 1200, 1800)]
+    job = fakes.job()
+    assert (job.state, job.attempts, job.waits) == (JobState.CHAIN_PENDING, 0, 3)
+
+
+def test_server_delay_wins_over_the_backoff_and_still_counts(tmp_path: Path) -> None:
+    fakes = make_fakes(tmp_path, [BLOCKED])
+    first_cycle(fakes)
+    assert wait_again(fakes, [UNAVAILABLE]) == timedelta(seconds=37)
+    assert fakes.job().waits == 2
+
+
+@pytest.mark.parametrize(
+    ("answers", "state"),
+    [
+        ([pass1_response(), BLOCKED], JobState.EXTRACT_PENDING),
+        (["not json", BLOCKED], JobState.CHAIN_PENDING),
+    ],
+    ids=["transition", "attempt"],
+)
+def test_transition_or_attempt_starts_the_backoff_again(
+    tmp_path: Path, answers: list[str | Exception], state: JobState
+) -> None:
+    fakes = make_fakes(tmp_path, [BLOCKED])
+    first_cycle(fakes)
+    assert wait_again(fakes, [BLOCKED]) == timedelta(seconds=1200)
+    assert wait_again(fakes, answers) == timedelta(seconds=600)
+    job = fakes.job()
+    assert (job.state, job.waits) == (state, 1)
+
+
+def test_step_exception_keeps_the_wait_count(tmp_path: Path) -> None:
+    # A retry delay unlike the backoff, so the two cannot be mistaken for each other.
+    settings = dataclasses.replace(SETTINGS, retry_delay=timedelta(seconds=900))
+    fakes = make_fakes(tmp_path, [BLOCKED])
+    first_cycle(fakes, settings)
+    fakes.now = fakes.due_at()
+    fakes.answers = [STOP]
+    loop.run_due(fakes.ports(), settings, threading.Event())
+    assert fakes.due_at() - fakes.now == timedelta(seconds=900)
+    assert fakes.job().waits == 1
+    assert wait_again(fakes, [BLOCKED]) == timedelta(seconds=1200)
+
+
 def test_step_start_is_counted_before_the_step_and_kept_by_an_exception(fakes: Fakes) -> None:
     fakes.answers = [STOP]
     first_cycle(fakes)
@@ -508,12 +580,112 @@ def test_oversize_after_getfile_fails_the_job(fakes: Fakes) -> None:
     assert fakes.generated == []
 
 
-def test_download_exception_keeps_the_job_received(fakes: Fakes) -> None:
-    fakes.download_error = RuntimeError("telegram unavailable")
+@pytest.mark.parametrize(
+    "error",
+    [
+        RuntimeError("telegram unavailable"),
+        TelegramAPIError("getFile", 401, "Unauthorized"),
+        TelegramRetryExhaustedError("getFile", 3),
+    ],
+    ids=["exception", "unauthorized", "retries-exhausted"],
+)
+def test_download_exception_keeps_the_job_received_without_an_attempt(
+    fakes: Fakes, error: Exception
+) -> None:
+    fakes.download_error = error
     first_cycle(fakes)
-    assert fakes.state() is JobState.RECEIVED
+    job = fakes.job()
+    assert (job.state, job.attempts) == (JobState.RECEIVED, 0)
     assert fakes.due_at() == fakes.now + SETTINGS.retry_delay
-    assert fakes.generated == []
+    assert fakes.generated == [] and fakes.pipelines_opened == 0
+
+
+UNAVAILABLE_FILE = FileUnavailable("getFile: HTTP 400: Bad Request: wrong file_id")
+
+
+def test_unavailable_file_consumes_an_attempt_and_opens_no_pipeline(
+    fakes: Fakes, caplog: pytest.LogCaptureFixture
+) -> None:
+    fakes.download_error = UNAVAILABLE_FILE
+    first_cycle(fakes)
+    job = fakes.job()
+    assert (job.state, job.attempts, job.step_starts) == (JobState.RECEIVED, 1, 0)
+    assert fakes.due_at() == fakes.now + SETTINGS.retry_delay
+    assert fakes.pipelines_opened == 0
+    assert all(record.exc_info is None for record in caplog.records)
+    assert "failed in its step" not in caplog.text
+
+
+def test_unavailable_file_fails_the_job_at_the_attempt_limit(fakes: Fakes) -> None:
+    fakes.download_error = UNAVAILABLE_FILE
+    first_cycle(fakes)
+    for _ in range(2):
+        fakes.now = fakes.due_at()
+        rerun(fakes)
+    assert fakes.state() is JobState.FAILED
+    assert fakes.failure_reason() == "file_unavailable"
+    assert len(fakes.downloads) == 3
+    assert fakes.generated == [] and fakes.pipelines_opened == 0
+
+
+def test_getfile_400_through_the_real_client_fails_the_job_at_the_limit(fakes: Fakes) -> None:
+    getfile_calls: list[str] = []
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        getfile_calls.append(str(request.url))
+        return httpx.Response(400, json={"ok": False, "description": "Bad Request: wrong file_id"})
+
+    client = TelegramClient(SecretStr("1:fake"), transport=httpx.MockTransport(handler))
+    ports = dataclasses.replace(
+        fakes.ports(),
+        download=lambda file_id, size: download_file(client, file_id, size, MAX_FILE_BYTES),
+    )
+    loop.poll(FakeTelegram([[pdf_update(100, 3)]]), ports, SETTINGS)
+    for _ in range(3):
+        loop.run_due(ports, SETTINGS, threading.Event())
+        fakes.now += SETTINGS.retry_delay
+    assert fakes.state() is JobState.FAILED
+    assert fakes.failure_reason() == "file_unavailable"
+    assert len(getfile_calls) == 3 and all("/getFile" in url for url in getfile_calls)
+    assert fakes.generated == [] and fakes.pipelines_opened == 0
+
+
+def test_file_fetched_after_refusals_gets_every_gemini_attempt(fakes: Fakes) -> None:
+    fakes.download_error = UNAVAILABLE_FILE
+    first_cycle(fakes)
+    fakes.now = fakes.due_at()
+    rerun(fakes)
+    fakes.download_error = None
+    # Two wrong results would end the job if the refused downloads still counted.
+    fakes.answers = ["not json", "not json", *STORED_ANSWERS]
+    fakes.now = fakes.due_at()
+    rerun(fakes)
+    assert fakes.state() is JobState.STORED
+    assert len(fakes.downloads) == 3
+
+
+@pytest.mark.parametrize(
+    ("due_in_s", "timeout"),
+    [(7, 7), (6.2, 7), (0, 0), (-90, 0), (45, 30)],
+    ids=["in-7s", "rounded-up", "due-now", "overdue", "beyond-timeout"],
+)
+def test_long_poll_ends_when_the_next_job_is_due(
+    fakes: Fakes, due_in_s: float, timeout: int
+) -> None:
+    loop.poll(FakeTelegram([[pdf_update(100, 3)]]), fakes.ports(), SETTINGS)
+    fakes.queue.postpone(1, fakes.now + timedelta(seconds=due_in_s), fakes.now)
+    telegram = FakeTelegram([])
+    loop.poll(telegram, fakes.ports(), SETTINGS)
+    assert telegram.timeouts == [timeout]
+
+
+def test_long_poll_is_full_with_no_waiting_job(fakes: Fakes) -> None:
+    telegram = FakeTelegram([[pdf_update(100, 3)]])
+    cycle(telegram, fakes)
+    assert fakes.state() is JobState.STORED
+    loop.poll(telegram, fakes.ports(), SETTINGS)
+    # Empty queue, then only a finished job.
+    assert telegram.timeouts == [30, 30]
 
 
 @pytest.mark.parametrize(

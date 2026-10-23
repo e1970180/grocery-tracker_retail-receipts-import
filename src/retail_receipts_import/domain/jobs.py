@@ -27,9 +27,10 @@ class Job:
     job_id: int
     accepted: Accepted
     state: JobState
-    # Gemini results the file got wrong so far, across both passes.
+    # In `received`, downloads Telegram refused; after it, Gemini results the file got wrong,
+    # across both passes.
     attempts: int = 0
-    # Gemini waits since the last transition or attempt; nothing grows it yet.
+    # Gemini waits since the last transition or attempt; each one doubles the next backoff.
     waits: int = 0
     # Starts of the current step with no result recorded, so a crash inside a step shows.
     step_starts: int = 0

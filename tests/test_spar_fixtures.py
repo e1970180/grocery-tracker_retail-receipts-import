@@ -94,7 +94,7 @@ def test_pipeline_stores_recorded_spar_samples(case: Path, tmp_path: Path) -> No
         write=fake_write,
         read_chain_reference=lambda: reference,
         prepare=functools.partial(images.prepare, max_pixels=16_000_000),
-        classify=functools.partial(classify, waits=0, initial_s=600, cap_s=1800),
+        classify=functools.partial(classify, initial_s=600, cap_s=1800),
     )
     result = run_steps(
         pdf_path, "application/pdf", telegram_source(0, 1, buyer_name="tester"), ports

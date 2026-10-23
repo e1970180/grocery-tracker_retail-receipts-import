@@ -169,7 +169,7 @@ def test_step_starts_survive_an_exception_and_reset_on_a_result(tmp_path: Path) 
     queue.to_chain_pending(job.job_id, NOW, attempts=0, unsupported=False)
     assert step_starts(queue, job.job_id) == 0
     queue.start_step(job.job_id, NOW)
-    queue.wait(job.job_id, NOW + timedelta(seconds=37), NOW)
+    queue.wait(job.job_id, NOW + timedelta(seconds=37), NOW, waits=1)
     assert step_starts(queue, job.job_id) == 0
     assert queue.due_jobs(NOW) == []
 
@@ -193,6 +193,47 @@ def test_each_transition_keeps_exactly_what_the_next_step_needs(tmp_path: Path) 
     queue.to_chain_pending(job.job_id, NOW, attempts=2, unsupported=False)
     restarted = queue.job(job.job_id)
     assert (restarted.pass1_json, restarted.receipt_json, restarted.receipt_id) == (None,) * 3
+
+
+def test_wait_count_is_kept_across_a_reopen_and_reset_by_a_transition(tmp_path: Path) -> None:
+    path = tmp_path / "q.sqlite3"
+    queue = Queue(path)
+    queue.enqueue([accepted(1)], 101, NOW)
+    queue.to_chain_pending(1, NOW, attempts=0, unsupported=False)
+    queue.wait(1, NOW + timedelta(seconds=600), NOW, waits=1)
+    queue.wait(1, NOW + timedelta(seconds=1200), NOW, waits=2)
+    queue.close()
+    reopened = Queue(path)
+    assert reopened.job(1).waits == 2
+    # An exception leaves the count; a transition starts it again.
+    reopened.postpone(1, NOW, NOW)
+    assert reopened.job(1).waits == 2
+    reopened.to_extract_pending(1, NOW, pass1_json="{}")
+    assert reopened.job(1).waits == 0
+
+
+def test_retry_download_keeps_the_job_received_with_its_attempts(tmp_path: Path) -> None:
+    queue = Queue(tmp_path / "q.sqlite3")
+    queue.enqueue([accepted(1)], 101, NOW)
+    queue.start_step(1, NOW)
+    queue.retry_download(1, NOW + timedelta(seconds=600), NOW, attempts=1)
+    job = queue.job(1)
+    assert (job.state, job.attempts, job.waits, job.step_starts) == (JobState.RECEIVED, 1, 0, 0)
+    assert queue.due_jobs(NOW) == []
+    assert [j.job_id for j in queue.due_jobs(NOW + timedelta(seconds=600))] == [1]
+
+
+def test_next_due_at_is_the_earliest_unfinished_job_in_utc(tmp_path: Path) -> None:
+    queue = Queue(tmp_path / "q.sqlite3")
+    assert queue.next_due_at() is None
+    queue.enqueue([accepted(1), accepted(2)], 101, NOW)
+    queue.finish(1, JobState.FAILED, NOW, failure_reason=FailureReason.FILE_UNAVAILABLE)
+    queue.postpone(2, NOW + timedelta(seconds=7), NOW)
+    due = queue.next_due_at()
+    assert due == NOW + timedelta(seconds=7)
+    assert due is not None and due.tzinfo is UTC
+    queue.finish(2, JobState.STORED, NOW)
+    assert queue.next_due_at() is None
 
 
 def test_only_a_final_state_finishes_a_job(tmp_path: Path) -> None:

@@ -37,6 +37,12 @@ def test_missing_key_is_refused_by_name(tmp_path: Path) -> None:
         load_texts(path)
 
 
+def test_texts_without_file_unavailable_are_refused(tmp_path: Path) -> None:
+    path = _variant(tmp_path, 'file_unavailable = "Файл не', 'other = "Файл не')
+    with pytest.raises(TextsError, match=r"admin_messages\.file_unavailable"):
+        load_texts(path)
+
+
 def test_missing_table_is_refused(tmp_path: Path) -> None:
     path = _variant(tmp_path, "[admin_messages]", "[admin]")
     with pytest.raises(TextsError, match=r"missing table \[admin_messages\]"):

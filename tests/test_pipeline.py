@@ -99,7 +99,7 @@ class FakePorts:
             write=self.write,
             read_chain_reference=self.read_chain_reference,
             prepare=functools.partial(images.prepare, max_pixels=self.max_pixels),
-            classify=functools.partial(classify, waits=0, initial_s=600, cap_s=1800),
+            classify=functools.partial(classify, initial_s=600, cap_s=1800),
         )
 
 
@@ -283,7 +283,7 @@ def test_recorded_unknown_chain_is_other(tmp_path: Path) -> None:
     photo.write_bytes(b"png")
     fake = FakePorts(answers=[recorded], reference=spar_only)
     ports = dataclasses.replace(fake.ports(), prepare=lambda data, mime: data)
-    result = detect_chain(photo, "image/png", ports)
+    result = detect_chain(photo, "image/png", ports, waits=0)
     assert isinstance(result, Unsupported)
     assert result.chain_id == "other"
 
@@ -293,7 +293,8 @@ SPAR_PASS1 = Pass1Response.model_validate_json(pass1_response())
 
 def test_chain_withdrawn_before_pass2_calls_no_gemini(pdf: Path) -> None:
     fake = FakePorts(answers=[response()], reference=SPAR_WITHDRAWN)
-    assert extract(pdf, "application/pdf", SPAR_PASS1, fake.ports()) == ChainWithdrawn("spar")
+    result = extract(pdf, "application/pdf", SPAR_PASS1, fake.ports(), waits=0)
+    assert result == ChainWithdrawn("spar")
     assert fake.calls == []
 
 
@@ -304,7 +305,7 @@ def test_pass2_checks_the_oib_against_the_reference_read_now(pdf: Path) -> None:
         rejected=(),
     )
     fake = FakePorts(answers=[response(seller_oib="12345678903")], reference=corrected)
-    assert isinstance(extract(pdf, "application/pdf", SPAR_PASS1, fake.ports()), Extracted)
+    assert isinstance(extract(pdf, "application/pdf", SPAR_PASS1, fake.ports(), waits=0), Extracted)
 
 
 def test_blank_store_name_is_none(pdf: Path) -> None:
