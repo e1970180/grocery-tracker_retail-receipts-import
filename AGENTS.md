@@ -50,7 +50,7 @@ Import pipeline for retail grocery receipts into PostgreSQL over LAN. Python 3.1
 
 ## Conventions that differ from defaults
 
-- External database target is PostgreSQL over LAN. Connection parameters configured via environment variables with strict validation.
+- External database target is PostgreSQL 18.6 or later over LAN, in dev, CI and production; migrations may use PostgreSQL 18 features. Connection parameters configured via environment variables with strict validation.
 - All dependencies pinned with exact versions (`==`) in `pyproject.toml`. State the reason in the commit message when adding a package.
 - Code docstrings and comments say why, in plain English. They never restate a spec.
 - Never overengineer: stay within the system's scale as stated in the brief. Prefer a 10-line implementation over a 100-line abstraction. Reject fixes for conditions this deployment cannot reach.

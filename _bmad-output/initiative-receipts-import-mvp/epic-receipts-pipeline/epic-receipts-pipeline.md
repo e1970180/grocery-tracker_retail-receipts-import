@@ -58,4 +58,5 @@ The whole initiative in one service; see the spec's non-goals. The platform base
 - Decision: entry 17 "Telegram receipt to dev end to end" is the tracer bullet, superseding the 2026-10-21 decision naming entry 4; it takes the Telegram half from `deferred-work.md` and the dev-bot verify (owner, 2026-10-22).
 - Decision: no production until the whole project is developed; entry 16 owns the first production deployment, with the production database and roles, the production chains_v1 rows and the Resolver login role; one bot serves dev and production, as story 2 recorded (owner, 2026-10-22).
 - Decision: the dedup key is the purchase timestamp to the minute for every chain; AD-8 amended (owner, 2026-10-22).
+- Decision: a plug-in rejects as invalid a receipt whose printed seller OIB is not among its chain's OIBs, which `chains_v1` 1.1.0 adds; 4a guards `chain_id` with a slug and reserved-id check in the model and the schema (owner, 2026-10-23).
 - Decision: own-write recognition (AD-9) moves from entry 7 to 4a, because a rerun of its own write violates both unique keys at once; entry 7 is now "Deduplication pre-check" (owner, 2026-10-22).

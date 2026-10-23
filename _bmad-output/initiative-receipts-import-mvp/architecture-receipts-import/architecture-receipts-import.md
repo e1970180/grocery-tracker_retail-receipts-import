@@ -123,7 +123,7 @@ stateDiagram-v2
 
 - **Binds:** CAP-2, CAP-3
 - **Prevents:** chain-specific branches scattered through the pipeline as the 5 chains grow to 10.
-- **Rule:** Each chain plug-in is one unit under `domain/chains/<chain_id>/`, keyed by the reference `chain_id` (AD-18). It holds the pass-1 time hint, the pass-2 prompt, the response schema, the normalization rules and the fixtures. One registry lists the plug-ins. A **supported** chain is an active reference chain that has a plug-in; a known chain without a plug-in is unsupported. The pass-1 vocabulary is the active reference ids plus two sentinels defined in `domain`. `other` and a known chain without a plug-in both count as unsupported (AD-7). `unreadable` is `invalid`. The printed store name goes into the admin message. Each plug-in fixes which printed field is the purchase time and normalizes the pass-1 time with the same rule. It has a fixture for paper and one for PDF where the chain issues both. A fixture of an unknown chain must yield `other`. Adding a chain means a reference row (admin) plus its plug-in and one registry line. No code outside `domain/chains/` branches on a chain id.
+- **Rule:** Each chain plug-in is one unit under `domain/chains/<chain_id>/`, keyed by the reference `chain_id` (AD-18). It holds the pass-1 time hint, the pass-2 prompt, the response schema, the normalization rules and the fixtures. One registry lists the plug-ins. A **supported** chain is an active reference chain that has a plug-in; a known chain without a plug-in is unsupported. The pass-1 vocabulary is the active reference ids plus two sentinels defined in `domain`. `other` and a known chain without a plug-in both count as unsupported (AD-7). `unreadable` is `invalid`. The printed store name goes into the admin message. The plug-in sets `chain_id` from its own key, never from model text, and rejects a receipt as `invalid` when the printed seller OIB is not one of its chain's OIBs in the reference, so a receipt classified as the wrong chain is never stored under it (owner decision 2026-10-23). Each plug-in fixes which printed field is the purchase time and normalizes the pass-1 time with the same rule. It has a fixture for paper and one for PDF where the chain issues both. A fixture of an unknown chain must yield `other`. Adding a chain means a reference row (admin) plus its plug-in and one registry line. No code outside `domain/chains/` branches on a chain id.
 
 ### AD-7 — One classification of extraction results `[ADOPTED]`
 
@@ -149,13 +149,13 @@ stateDiagram-v2
 
 - **Binds:** CAP-6, CAP-9
 - **Prevents:** a sender seeing the duplicate reaction on their own first send after a crash between the PostgreSQL commit and the SQLite final mark.
-- **Rule:** Each receipt row stores its source reference (Telegram chat id + message id), with a unique constraint. Before inserting, the writer looks up the source reference. If a row has it, the job resolves to `stored` and nothing is written. Otherwise a dedup conflict resolves to `duplicate`.
+- **Rule:** Each receipt row stores its source reference, a source kind plus a reference text unique within it (Telegram: `<chat_id>:<message_id>`; owner decision 2026-10-23, so other sources need no migration), with a unique constraint. Before inserting, the writer looks up the source reference. If a row has it, the job resolves to `stored` and nothing is written. Otherwise a dedup conflict resolves to `duplicate`.
 
 ### AD-10 — One atomic PostgreSQL write per receipt
 
 - **Binds:** CAP-4, CAP-7, CAP-11
 - **Prevents:** partial receipts, and stored receipts the Resolver never hears about.
-- **Rule:** The receipt, its lines, its settlement entries and its feed row are inserted in one PostgreSQL transaction. Nothing else writes to the receipt tables.
+- **Rule:** The receipt, its lines, its settlement entries and its feed row are inserted in one PostgreSQL transaction. Nothing else writes to the receipt tables, except the admin delete command, which removes a receipt and appends its `deleted` feed event in one transaction (owner decision 2026-10-23).
 
 ### AD-11 — Order of effects per job
 
@@ -222,7 +222,7 @@ stateDiagram-v2
 - **Prevents:** a hard-coded chain list drifting from the admin's list, chain ids changing under the dedup key, and coupling of migrations between owners.
 - **Rule:** The admin (a person) owns the chain reference in PostgreSQL; this project neither creates nor writes it. This project publishes the required shape as its own consumer contract in `docs/contracts/`, semver from 1.0.0:
   - a table read through a versioned view (`chains_v1`), never a PostgreSQL enum;
-  - columns: `chain_id` (stable ASCII slug, never changed or reused), display name, printed aliases, an `active` flag;
+  - columns: `chain_id` (stable ASCII slug, never changed or reused), display name, printed aliases, an `active` flag; from 1.1.0 also the seller OIBs printed on the chain's fiscal receipts (owner decision 2026-10-23);
   - `SELECT` for the service's role.
 
   The service reads the reference at startup and before each pass 1. While it is unreachable, the job waits as for PostgreSQL (AD-16). Receipt tables store `chain_id` without a foreign key to the reference. A plug-in whose `chain_id` is missing or inactive in the reference is not used and raises one `chain_reference` alert; startup is never blocked by it.
@@ -232,8 +232,8 @@ stateDiagram-v2
 | Concern | Convention |
 | --- | --- |
 | Naming | Self-explanatory English `snake_case` for tables and columns. A table names its entity in the plural (`receipts`, `receipt_lines`, `receipt_settlements`). Chain ids are lowercase ASCII slugs (`kaufland`, `lidl`, `dm`, `mueller`, `spar`). |
-| IDs | `receipt_id` is a UUIDv7 from Python's `uuid.uuid7()` and is the id in the contract. Child rows are keyed by (`receipt_id`, `line_no`). The feed cursor is a bigint identity. |
-| Money | `Decimal` in Python and `numeric(12,2)` in PostgreSQL, never float. The contract carries money as decimal strings. Settlement amounts are signed. Only EUR, so there is no currency column. |
+| IDs | `receipt_id` is a UUIDv7 from Python's `uuid.uuid7()` and is the id in the contract. A receipt line has its own `line_id`, a UUIDv7 from Python, and (`receipt_id`, `line_no`) stays unique; settlement entries are keyed by (`receipt_id`, `settlement_no`) (owner decision 2026-10-23). The feed cursor is a bigint identity. |
+| Money | `Decimal` in Python and `numeric(12,2)` in PostgreSQL, never float. The contract carries money as decimal strings. Settlement amounts are signed. Only EUR; the currency column is constrained to `EUR` (owner decision 2026-10-23). |
 | Time | Purchase time is stored as `timestamptz`, converted per AD-17. Contract timestamps are ISO-8601 UTC with an explicit `Z`. The contract also exposes the purchase local time with its Europe/Zagreb offset. All "now" values come from the clock port. |
 | Timeouts | Every outbound call has an explicit timeout from config: Telegram (per the reference pack), the Gemini request timeout, and the PostgreSQL `connect_timeout` and `statement_timeout`. Nothing may block the loop indefinitely. |
 | Outcome keys | Outcomes and failure reasons are closed enums in `domain`. The texts file is keyed by them. At startup the loader checks that every key is present and that every reaction emoji is one Telegram allows, and fails fast otherwise. |
@@ -301,11 +301,11 @@ flowchart LR
 erDiagram
   receipts ||--|{ receipt_lines : has
   receipts ||--|{ receipt_settlements : "settled by"
-  receipts ||--|| receipt_feed : "announced by"
+  receipts ||--o{ receipt_feed : "announced by, no FK"
   chains_v1 ||--o{ receipts : "chain_id, no FK, admin-owned"
 ```
 
-Deployment: `git clone` with sparse-checkout and `compose build` on the home server. There is one compose service and one named volume. PostgreSQL is the existing LAN instance and is not in compose. Three PostgreSQL roles are used:
+Deployment: `git clone` with sparse-checkout and `compose build` on the home server. There is one compose service and one named volume. PostgreSQL is the existing LAN instance, version 18.6 or later (owner decision 2026-10-23), and is not in compose. Three PostgreSQL roles are used:
 
 - the schema owner, used only by the `migrate` command;
 - a writer login role, used by the service;
