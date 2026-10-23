@@ -73,3 +73,23 @@ def test_gemini_timeout_must_be_positive(
 def test_statement_timeout_defaults_to_30_seconds(rri_env: dict[str, str]) -> None:
     settings = Settings()  # type: ignore[call-arg]
     assert "statement_timeout=30000" in settings.conninfo("owner", settings.db_password)
+
+
+@pytest.mark.parametrize(
+    ("raw", "expected"),
+    [("358177329", [358177329]), ("1, 2", [1, 2]), ("1,2,", [1, 2])],
+)
+def test_allowed_user_ids_parse_from_a_comma_list(
+    rri_env: dict[str, str], monkeypatch: pytest.MonkeyPatch, raw: str, expected: list[int]
+) -> None:
+    monkeypatch.setenv("RRI_ALLOWED_USER_IDS", raw)
+    assert Settings().allowed_user_ids == expected  # type: ignore[call-arg]
+
+
+@pytest.mark.parametrize("raw", ["", "abc", "1;2"])
+def test_allowed_user_ids_must_be_a_non_empty_id_list(
+    rri_env: dict[str, str], monkeypatch: pytest.MonkeyPatch, raw: str
+) -> None:
+    monkeypatch.setenv("RRI_ALLOWED_USER_IDS", raw)
+    with pytest.raises(ValidationError, match="allowed_user_ids"):
+        Settings()  # type: ignore[call-arg]

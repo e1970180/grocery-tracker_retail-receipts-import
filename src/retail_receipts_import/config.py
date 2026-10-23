@@ -1,11 +1,11 @@
 """Service configuration from `RRI_*` environment variables, validated once at startup."""
 
 from pathlib import Path
-from typing import Literal, Self
+from typing import Annotated, Literal, Self
 
 from psycopg.conninfo import make_conninfo
-from pydantic import Field, SecretStr, model_validator
-from pydantic_settings import BaseSettings, SettingsConfigDict
+from pydantic import Field, SecretStr, field_validator, model_validator
+from pydantic_settings import BaseSettings, NoDecode, SettingsConfigDict
 
 DEV_DATABASE_SUFFIX = "-dev"
 
@@ -34,8 +34,24 @@ class Settings(BaseSettings):
     migrate_db_user: str | None = None
     migrate_db_password: SecretStr | None = None
 
+    # Telegram user ids whose private messages are taken as receipts, e.g. "111,222".
+    allowed_user_ids: Annotated[list[int], NoDecode] = Field(min_length=1)
+    telegram_poll_timeout_s: int = Field(default=30, gt=0)
+    # A job whose step raised waits this long before it runs again; each run may be a paid call.
+    job_retry_delay_s: int = Field(default=600, gt=0)
+    # The compose volume: the SQLite queue and the downloaded receipt files.
+    data_dir: Path = Path("/data")
+
     texts_path: Path = Path("texts/messages.toml")
     log_level: Literal["DEBUG", "INFO", "WARNING", "ERROR"] = "INFO"
+
+    # pydantic-settings would read a list as JSON; the environment holds plain comma lists.
+    @field_validator("allowed_user_ids", mode="before")
+    @classmethod
+    def _split_user_ids(cls, value: object) -> object:
+        if isinstance(value, str):
+            return [part.strip() for part in value.split(",") if part.strip()]
+        return value
 
     # One bot serves both environments, so the database name is the only thing that tells
     # a dev run from production. A mismatch would write test receipts to the real data.

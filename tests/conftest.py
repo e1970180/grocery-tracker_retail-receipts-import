@@ -35,6 +35,8 @@ def rri_env(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> dict[str, str]:
         "RRI_DB_USER": "writer",
         "RRI_DB_PASSWORD": DB_PASSWORD,
         "RRI_TEXTS_PATH": str(REPO / "texts" / "messages.toml"),
+        "RRI_ALLOWED_USER_IDS": "12345",
+        "RRI_DATA_DIR": str(tmp_path / "data"),
     }
     for name, value in values.items():
         monkeypatch.setenv(name, value)

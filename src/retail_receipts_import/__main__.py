@@ -11,6 +11,8 @@ from pathlib import Path
 import psycopg
 from pydantic import ValidationError
 
+from retail_receipts_import.adapters.queue.sqlite import QueueError
+from retail_receipts_import.app.service import serve
 from retail_receipts_import.app.texts import TextsError, load_texts
 from retail_receipts_import.config import Settings
 from retail_receipts_import.migrate import MigrationError, apply_migrations
@@ -45,7 +47,7 @@ def main(argv: Sequence[str] | None = None, stop: threading.Event | None = None)
 
 def _run(settings: Settings, stop: threading.Event) -> int:
     try:
-        load_texts(settings.texts_path)
+        texts = load_texts(settings.texts_path)
     except TextsError as exc:
         log.error("%s", exc)
         return 2
@@ -53,7 +55,11 @@ def _run(settings: Settings, stop: threading.Event) -> int:
     if threading.current_thread() is threading.main_thread():
         signal.signal(signal.SIGTERM, lambda *_: stop.set())
     log.info("ready: env=%s database=%s", settings.env, settings.redacted_dsn(settings.db_user))
-    stop.wait()
+    try:
+        serve(settings, texts, stop)
+    except QueueError as exc:
+        log.error("%s", exc)
+        return 2
     log.info("stopped")
     return 0
 

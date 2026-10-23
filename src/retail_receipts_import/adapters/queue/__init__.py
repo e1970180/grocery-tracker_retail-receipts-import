@@ -1,0 +1,1 @@
+"""SQLite job queue adapter."""
