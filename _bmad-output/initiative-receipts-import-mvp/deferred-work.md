@@ -41,3 +41,7 @@
 - source_plan: `_bmad-output/initiative-receipts-import-mvp/epic-receipts-pipeline/story-telegram-receipt-to-dev-end-to-end-plan.md`
   summary: End a job whose download fails permanently (a Telegram 4xx from getFile or the download, or getFile with no `file_path`) instead of retrying it every `RRI_JOB_RETRY_DELAY_S` forever, with a failure reason and texts the sender and admin can read.
   evidence: Entry 17 keeps every download exception in `received` and retries it, as its matrix requires. A file Telegram no longer serves never ends and never reaches the sender, at one getFile call per retry. The attempt and step-count rules of entries 6 and 13 are where it ends.
+
+- source_plan: `_bmad-output/initiative-receipts-import-mvp/epic-receipts-pipeline/story-gemini-result-classifier-and-retry-timing-plan.md`
+  summary: Test that `service.serve` binds `image_max_pixels`, `gemini_backoff_initial_s` and `gemini_backoff_cap_s` into the `prepare` and `classify` ports, for example through a small `Ports` factory built from `Settings`.
+  evidence: The three keyword arguments in `serve` are covered by no test (`serve` opens PostgreSQL and Telegram and has no harness); swapping `initial_s` and `cap_s`, or binding `job_retry_delay_s`, passes mypy and every test. Found by the verification-gap lens; deferred as low, since entry 6 changes this wiring when the wait count is persisted.
