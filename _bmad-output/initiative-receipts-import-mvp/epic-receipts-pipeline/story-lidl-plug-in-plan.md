@@ -3,7 +3,7 @@ title: 'Lidl plug-in'
 type: 'feature'
 ticket: '8'
 created: '2026-10-24'
-status: 'built'
+status: done
 baseline_revision: '759046a194d82260d7324c5d181f314f956e30ff'
 route: 'full'
 route_source: 'auto'
@@ -87,7 +87,7 @@ context: []
 - Registered `LIDL` in `src/retail_receipts_import/domain/chains/registry.py`.
 - Updated test references and assertions in `tests/test_pass1.py` (switched unsupported check to `dm`), `tests/test_pipeline.py` (switched unsupported test to `dm`), `tests/test_alerts.py`, and `tests/test_loop.py` to include `LIDL` in default chain references to avoid spurious `missing plug-in: lidl` alerts.
 - Recorded 6 Lidl cases via `scratch/record_lidl.py` from Gemini API into `tests/fixtures/lidl/<Br.rač. segment>/{pass1,pass2}.json`.
-- `expected.json` for all 6 cases was generated from the normalizer output (`scratch/derive_lidl_expected.py`), not derived from the images; review then compared every record line by line against its image (2003, 31095, 94695 by the quick lens; 1465, 91418, 297 by the orchestrator) and all six match. Owner confirmation is still open.
+- `expected.json` for all 6 cases was generated from the normalizer output (`scratch/derive_lidl_expected.py`), not derived from the images; review then compared every record line by line against its image (2003, 31095, 94695 by the quick lens; 1465, 91418, 297 by the orchestrator) and all six match. The owner confirmed all six records on 2026-10-24.
 - Created `tests/lidl_samples.py` for synthetic Lidl payloads and `tests/test_lidl_fixtures.py` verifying all edge-case matrix scenarios, time normalizer, seller OIB extraction, card slip exclusion, offline fixture normalization, and pipeline storage.
 
 ## Plan Change Log
@@ -114,4 +114,4 @@ Lidl prints a weighed item's amount on the name row and `qty kg x price EUR/kg` 
 - `wsl -- bash -lc 'UV_PROJECT_ENVIRONMENT=$HOME/.venvs/$(basename "$PWD") PYTHONPYCACHEPREFIX=$HOME/.cache/pyc uv run ruff check && uv run ruff format --check && uv run mypy && uv run pytest'` -- expected: all pass
 
 **Manual checks:**
-- Owner confirms the six `expected.json` against the images.
+- Owner confirms the six `expected.json` against the images. -- confirmed by the owner, 2026-10-24.
