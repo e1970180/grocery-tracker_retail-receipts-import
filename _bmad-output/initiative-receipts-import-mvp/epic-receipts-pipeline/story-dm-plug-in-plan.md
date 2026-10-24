@@ -3,7 +3,7 @@ title: 'DM plug-in'
 type: 'feature'
 ticket: '10'
 created: '2026-10-24'
-status: 'built'
+status: 'done'
 baseline_revision: '85ac00db17accaf945bb76bdb85aa363e0964abd'
 route: 'full'
 route_source: 'auto'
@@ -114,4 +114,4 @@ The storno stays a row with `cancels_line` rather than being dropped in the plug
 - `wsl -- bash -lc 'UV_PROJECT_ENVIRONMENT=$HOME/.venvs/$(basename "$PWD") PYTHONPYCACHEPREFIX=$HOME/.cache/pyc uv run ruff check && uv run ruff format --check && uv run mypy && uv run pytest'` -- expected: all pass
 
 **Manual checks:**
-- Owner confirms the nine `expected.json` against the PDFs.
+- Owner confirms the nine `expected.json` against the PDFs. -- confirmed by the owner, 2026-10-24, including the seven shop addresses read from the header image, the ", " join of a two-line address, and accepting the live `48549` storno quantity without re-recording.
