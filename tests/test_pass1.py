@@ -34,9 +34,10 @@ def test_pass1_prompt_lists_aliases_and_time_hints() -> None:
 
 
 def test_is_supported_chain() -> None:
-    active = {"spar", "mueller"}
+    active = {"spar", "tommy"}
     assert is_supported_chain("spar", active, PLUGINS) is True
-    assert is_supported_chain("mueller", active, PLUGINS) is False
+    assert is_supported_chain("tommy", active, PLUGINS) is False
+    assert is_supported_chain("mueller", active | {"mueller"}, PLUGINS) is True
     assert is_supported_chain("kaufland", active | {"kaufland"}, PLUGINS) is True
     assert is_supported_chain("dm", active | {"dm"}, PLUGINS) is True
     assert is_supported_chain(OTHER, active, PLUGINS) is False

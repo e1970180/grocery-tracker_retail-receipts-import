@@ -1,0 +1,76 @@
+{
+  "payload_version": 1,
+  "chain_id": "mueller",
+  "store_name": "Zagreb EKZ Arena",
+  "branch_number": "4981",
+  "receipt_number": "18101/4981/3",
+  "store_address": "Ulica Vice Vukova 6, 10000 Zagreb",
+  "loyalty_card_number": null,
+  "purchased_at": "2025-02-08T14:04:00Z",
+  "total": "25.36",
+  "lines": [
+    {
+      "printed_text": "KOZMETIČKO OGLEDALO",
+      "quantity": "1",
+      "unit": null,
+      "unit_price": "11.99",
+      "printed_amount": "11.99"
+    },
+    {
+      "printed_text": "ARTIST CC PRIVRE.BO",
+      "quantity": "1",
+      "unit": null,
+      "unit_price": "3.30",
+      "printed_amount": "3.30"
+    },
+    {
+      "printed_text": "BARFUSS UREA*BD KRE",
+      "quantity": "1",
+      "unit": null,
+      "unit_price": "1.58",
+      "printed_amount": "1.58"
+    },
+    {
+      "printed_text": "AVEO MED BALZAM ZA",
+      "quantity": "1",
+      "unit": null,
+      "unit_price": "2.35",
+      "printed_amount": "2.35"
+    },
+    {
+      "printed_text": "MINI ČETKA ZA KOSU",
+      "quantity": "1",
+      "unit": null,
+      "unit_price": "2.00",
+      "printed_amount": "2.00"
+    },
+    {
+      "printed_text": "AVEO KREMA ZA RUKE",
+      "quantity": "1",
+      "unit": null,
+      "unit_price": "0.60",
+      "printed_amount": "0.60"
+    },
+    {
+      "printed_text": "CLEAN PAC VREĆICE Z",
+      "quantity": "1",
+      "unit": null,
+      "unit_price": "1.89",
+      "printed_amount": "1.89"
+    },
+    {
+      "printed_text": "CLEAN PAC FILTER ZA",
+      "quantity": "1",
+      "unit": null,
+      "unit_price": "1.65",
+      "printed_amount": "1.65"
+    }
+  ],
+  "settlements": [
+    {
+      "kind": "card",
+      "printed_text": "PLACANJE KARTICOM EUR",
+      "amount": "25.36"
+    }
+  ]
+}

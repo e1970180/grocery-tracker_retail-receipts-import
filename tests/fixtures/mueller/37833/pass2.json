@@ -1,0 +1,37 @@
+{
+  "seller_oib": "84698789700",
+  "store_name": "Zagreb EKZ Arena",
+  "store_address": "Ulica Vice Vukova 6, 10000 Zagreb",
+  "receipt_number": "37833/4981/3",
+  "purchase_date": "15.03.2025",
+  "purchase_time": "19:17",
+  "amount_to_pay": "1,03",
+  "lines": [
+    {
+      "text": "AVEO KREMASTI SAPUN",
+      "quantity": "1",
+      "unit_price": "0,95",
+      "discount": null,
+      "amount": "0,95a",
+      "discount_note": null
+    },
+    {
+      "text": "AVEO KREMASTI SAPUN",
+      "quantity": "1",
+      "unit_price": "0,95",
+      "discount": null,
+      "amount": "0,95a",
+      "discount_note": null
+    }
+  ],
+  "payments": [
+    {
+      "text": "Müller bodovi EUR",
+      "amount": "0,87"
+    },
+    {
+      "text": "PLACANJE KARTICOM EUR",
+      "amount": "1,03"
+    }
+  ]
+}

@@ -1,0 +1,53 @@
+{
+  "payload_version": 1,
+  "chain_id": "mueller",
+  "store_name": "Zagreb Avenue Mall",
+  "branch_number": "4972",
+  "receipt_number": "76391/4972/5",
+  "store_address": "Avenija Dubrovnik 16, 10000 Zagreb",
+  "loyalty_card_number": null,
+  "purchased_at": "2025-04-05T13:21:00Z",
+  "total": "6.29",
+  "lines": [
+    {
+      "printed_text": "AVEO KREMASTA KUPKA",
+      "quantity": "1",
+      "unit": null,
+      "unit_price": "1.39",
+      "printed_amount": "1.39"
+    },
+    {
+      "printed_text": "MAMINA MAST MAST ZA",
+      "quantity": "1",
+      "unit": null,
+      "unit_price": "3.85",
+      "printed_amount": "3.85"
+    },
+    {
+      "printed_text": "JAMNICA SENSATION B",
+      "quantity": "1",
+      "unit": null,
+      "unit_price": "0.95",
+      "printed_amount": "0.95"
+    },
+    {
+      "printed_text": "POVRATNA NAKNADA",
+      "quantity": "1",
+      "unit": null,
+      "unit_price": "0.10",
+      "printed_amount": "0.10"
+    }
+  ],
+  "settlements": [
+    {
+      "kind": "bonus_points",
+      "printed_text": "Müller bodovi EUR",
+      "amount": "3.01"
+    },
+    {
+      "kind": "card",
+      "printed_text": "PLACANJE KARTICOM EUR",
+      "amount": "3.28"
+    }
+  ]
+}

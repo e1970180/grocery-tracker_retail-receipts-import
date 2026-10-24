@@ -1,0 +1,53 @@
+{
+  "seller_oib": "84698789700",
+  "store_name": "Zagreb Avenue Mall",
+  "store_address": "Avenija Dubrovnik 16, 10000 Zagreb",
+  "receipt_number": "76391/4972/5",
+  "purchase_date": "05.04.2025",
+  "purchase_time": "15:21",
+  "amount_to_pay": "3,28",
+  "lines": [
+    {
+      "text": "AVEO KREMASTA KUPKA",
+      "quantity": "1",
+      "unit_price": "1,39",
+      "discount": null,
+      "amount": "1,39a",
+      "discount_note": null
+    },
+    {
+      "text": "MAMINA MAST MAST ZA",
+      "quantity": "1",
+      "unit_price": "3,85",
+      "discount": null,
+      "amount": "3,85a",
+      "discount_note": null
+    },
+    {
+      "text": "JAMNICA SENSATION B",
+      "quantity": "1",
+      "unit_price": "0,95",
+      "discount": null,
+      "amount": "0,95a",
+      "discount_note": null
+    },
+    {
+      "text": "POVRATNA NAKNADA  *",
+      "quantity": null,
+      "unit_price": "0,10",
+      "discount": null,
+      "amount": "0,10b",
+      "discount_note": null
+    }
+  ],
+  "payments": [
+    {
+      "text": "Müller bodovi EUR",
+      "amount": "3,01"
+    },
+    {
+      "text": "PLACANJE KARTICOM      EUR",
+      "amount": "3,28"
+    }
+  ]
+}

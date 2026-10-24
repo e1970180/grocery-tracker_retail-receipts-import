@@ -1,0 +1,34 @@
+{
+  "payload_version": 1,
+  "chain_id": "mueller",
+  "store_name": "Zagreb EKZ Arena",
+  "branch_number": "4981",
+  "receipt_number": "456/4981/8",
+  "store_address": "Ulica Vice Vukova 6, 10000 Zagreb",
+  "loyalty_card_number": null,
+  "purchased_at": "2024-12-10T19:12:00Z",
+  "total": "0.98",
+  "lines": [
+    {
+      "printed_text": "M&G TR3 KEMIJSKA OL",
+      "quantity": "1",
+      "unit": null,
+      "unit_price": "0.49",
+      "printed_amount": "0.49"
+    },
+    {
+      "printed_text": "M&G TR-3 KEMIJSKA O",
+      "quantity": "1",
+      "unit": null,
+      "unit_price": "0.49",
+      "printed_amount": "0.49"
+    }
+  ],
+  "settlements": [
+    {
+      "kind": "card",
+      "printed_text": "PLACANJE KARTICOM EUR",
+      "amount": "0.98"
+    }
+  ]
+}

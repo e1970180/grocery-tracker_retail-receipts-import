@@ -1,0 +1,45 @@
+{
+  "seller_oib": "84698789700",
+  "store_name": "Zagreb EKZ Arena",
+  "store_address": "Ulica Vice Vukova 6, 10000 Zagreb",
+  "receipt_number": "148305/4981/3",
+  "purchase_date": "04.10.2024",
+  "purchase_time": "17:23",
+  "amount_to_pay": "15,60",
+  "lines": [
+    {
+      "text": "BILJEŽNICA CUTIE JE",
+      "quantity": "1",
+      "unit_price": "10,59",
+      "discount": null,
+      "amount": "10,59a",
+      "discount_note": null
+    },
+    {
+      "text": "VREĆICA VELIKA EXCL",
+      "quantity": "1",
+      "unit_price": "1,84",
+      "discount": null,
+      "amount": "1,84a",
+      "discount_note": null
+    },
+    {
+      "text": "MILKA HERZLICHEN GL",
+      "quantity": "1",
+      "unit_price": "3,17",
+      "discount": null,
+      "amount": "3,17a",
+      "discount_note": null
+    }
+  ],
+  "payments": [
+    {
+      "text": "GOTOVINA EUR",
+      "amount": "50,00"
+    },
+    {
+      "text": "POVRAT NOVCA EUR",
+      "amount": "-34,40"
+    }
+  ]
+}

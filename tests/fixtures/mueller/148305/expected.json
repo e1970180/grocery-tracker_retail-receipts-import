@@ -1,0 +1,41 @@
+{
+  "payload_version": 1,
+  "chain_id": "mueller",
+  "store_name": "Zagreb EKZ Arena",
+  "branch_number": "4981",
+  "receipt_number": "148305/4981/3",
+  "store_address": "Ulica Vice Vukova 6, 10000 Zagreb",
+  "loyalty_card_number": null,
+  "purchased_at": "2024-10-04T15:23:00Z",
+  "total": "15.60",
+  "lines": [
+    {
+      "printed_text": "BILJEŽNICA CUTIE JE",
+      "quantity": "1",
+      "unit": null,
+      "unit_price": "10.59",
+      "printed_amount": "10.59"
+    },
+    {
+      "printed_text": "VREĆICA VELIKA EXCL",
+      "quantity": "1",
+      "unit": null,
+      "unit_price": "1.84",
+      "printed_amount": "1.84"
+    },
+    {
+      "printed_text": "MILKA HERZLICHEN GL",
+      "quantity": "1",
+      "unit": null,
+      "unit_price": "3.17",
+      "printed_amount": "3.17"
+    }
+  ],
+  "settlements": [
+    {
+      "kind": "cash",
+      "printed_text": "GOTOVINA EUR",
+      "amount": "15.60"
+    }
+  ]
+}

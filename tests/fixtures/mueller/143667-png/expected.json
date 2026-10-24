@@ -1,0 +1,74 @@
+{
+  "payload_version": 1,
+  "chain_id": "mueller",
+  "store_name": "Zagreb Avenue Mall",
+  "branch_number": "4972",
+  "receipt_number": "143667/4972/4",
+  "store_address": "Avenija Dubrovnik 16, 10000 Zagreb",
+  "loyalty_card_number": null,
+  "purchased_at": "2025-12-20T14:38:00Z",
+  "total": "8.90",
+  "lines": [
+    {
+      "printed_text": "SUPER PRICE BOJA 72",
+      "quantity": "1",
+      "unit": null,
+      "unit_price": "1.45",
+      "printed_amount": "1.45"
+    },
+    {
+      "printed_text": "SUPER PRICE BOJA 72",
+      "quantity": "1",
+      "unit": null,
+      "unit_price": "1.45",
+      "printed_amount": "1.45"
+    },
+    {
+      "printed_text": "SUPER PRICE BOJA 72",
+      "quantity": "1",
+      "unit": null,
+      "unit_price": "1.45",
+      "printed_amount": "1.45"
+    },
+    {
+      "printed_text": "SUPER PRICE BOJA 72",
+      "quantity": "1",
+      "unit": null,
+      "unit_price": "1.45",
+      "printed_amount": "1.45"
+    },
+    {
+      "printed_text": "SUPER PRICE BOJA 72",
+      "quantity": "1",
+      "unit": null,
+      "unit_price": "1.45",
+      "printed_amount": "1.45"
+    },
+    {
+      "printed_text": "SUPER PRICE BOJA 72",
+      "quantity": "1",
+      "unit": null,
+      "unit_price": "1.45",
+      "printed_amount": "1.45"
+    },
+    {
+      "printed_text": "PAPIRNATA VREĆICA",
+      "quantity": "1",
+      "unit": null,
+      "unit_price": "0.20",
+      "printed_amount": "0.20"
+    }
+  ],
+  "settlements": [
+    {
+      "kind": "bonus_points",
+      "printed_text": "Müller bodovi EUR",
+      "amount": "0.49"
+    },
+    {
+      "kind": "card",
+      "printed_text": "PLACANJE KARTICOM EUR",
+      "amount": "8.41"
+    }
+  ]
+}

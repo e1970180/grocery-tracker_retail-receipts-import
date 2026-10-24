@@ -1,0 +1,39 @@
+{
+  "payload_version": 1,
+  "chain_id": "mueller",
+  "store_name": "Zagreb EKZ Arena",
+  "branch_number": "4981",
+  "receipt_number": "37833/4981/3",
+  "store_address": "Ulica Vice Vukova 6, 10000 Zagreb",
+  "loyalty_card_number": null,
+  "purchased_at": "2025-03-15T18:17:00Z",
+  "total": "1.90",
+  "lines": [
+    {
+      "printed_text": "AVEO KREMASTI SAPUN",
+      "quantity": "1",
+      "unit": null,
+      "unit_price": "0.95",
+      "printed_amount": "0.95"
+    },
+    {
+      "printed_text": "AVEO KREMASTI SAPUN",
+      "quantity": "1",
+      "unit": null,
+      "unit_price": "0.95",
+      "printed_amount": "0.95"
+    }
+  ],
+  "settlements": [
+    {
+      "kind": "bonus_points",
+      "printed_text": "Müller bodovi EUR",
+      "amount": "0.87"
+    },
+    {
+      "kind": "card",
+      "printed_text": "PLACANJE KARTICOM EUR",
+      "amount": "1.03"
+    }
+  ]
+}

@@ -1,0 +1,49 @@
+{
+  "seller_oib": "84698789700",
+  "store_name": "Zagreb EKZ Arena",
+  "store_address": "Ulica Vice Vukova 6, 10000 Zagreb",
+  "receipt_number": "99102/4981/4",
+  "purchase_date": "06.12.2025",
+  "purchase_time": "15:41",
+  "amount_to_pay": "14,50",
+  "lines": [
+    {
+      "text": "SMINT 2 HOURS CB PE",
+      "quantity": "1",
+      "unit_price": "3,57",
+      "discount": null,
+      "amount": "3,57a",
+      "discount_note": null
+    },
+    {
+      "text": "SMINT 2 HOURS CB PE",
+      "quantity": "1",
+      "unit_price": "3,57",
+      "discount": null,
+      "amount": "3,57a",
+      "discount_note": null
+    },
+    {
+      "text": "SMINT 2 HOURS CB PE",
+      "quantity": "1",
+      "unit_price": "3,57",
+      "discount": null,
+      "amount": "3,57a",
+      "discount_note": null
+    },
+    {
+      "text": "MENTOS WHITE ŽVAKAĆ",
+      "quantity": "1",
+      "unit_price": "3,79",
+      "discount": null,
+      "amount": "3,79a",
+      "discount_note": null
+    }
+  ],
+  "payments": [
+    {
+      "text": "PLACANJE KARTICOM EUR",
+      "amount": "14,50"
+    }
+  ]
+}

@@ -1,0 +1,48 @@
+{
+  "payload_version": 1,
+  "chain_id": "mueller",
+  "store_name": "Zagreb EKZ Arena",
+  "branch_number": "4981",
+  "receipt_number": "99102/4981/4",
+  "store_address": "Ulica Vice Vukova 6, 10000 Zagreb",
+  "loyalty_card_number": null,
+  "purchased_at": "2025-12-06T14:41:00Z",
+  "total": "14.50",
+  "lines": [
+    {
+      "printed_text": "SMINT 2 HOURS CB PE",
+      "quantity": "1",
+      "unit": null,
+      "unit_price": "3.57",
+      "printed_amount": "3.57"
+    },
+    {
+      "printed_text": "SMINT 2 HOURS CB PE",
+      "quantity": "1",
+      "unit": null,
+      "unit_price": "3.57",
+      "printed_amount": "3.57"
+    },
+    {
+      "printed_text": "SMINT 2 HOURS CB PE",
+      "quantity": "1",
+      "unit": null,
+      "unit_price": "3.57",
+      "printed_amount": "3.57"
+    },
+    {
+      "printed_text": "MENTOS WHITE ŽVAKAĆ",
+      "quantity": "1",
+      "unit": null,
+      "unit_price": "3.79",
+      "printed_amount": "3.79"
+    }
+  ],
+  "settlements": [
+    {
+      "kind": "card",
+      "printed_text": "PLACANJE KARTICOM EUR",
+      "amount": "14.50"
+    }
+  ]
+}

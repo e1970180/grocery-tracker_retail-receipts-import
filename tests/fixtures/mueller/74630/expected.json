@@ -1,0 +1,36 @@
+{
+  "payload_version": 1,
+  "chain_id": "mueller",
+  "store_name": "Zagreb EKZ Arena",
+  "branch_number": "4981",
+  "receipt_number": "74630/4981/3",
+  "store_address": "Ulica Vice Vukova 6, 10000 Zagreb",
+  "loyalty_card_number": null,
+  "purchased_at": "2026-05-16T11:40:00Z",
+  "total": "20.88",
+  "lines": [
+    {
+      "printed_text": "BLINK SPUŽVASTA KRP",
+      "quantity": "1",
+      "unit": null,
+      "unit_price": "0.99",
+      "printed_amount": "0.89",
+      "included_discount": "0.10",
+      "discount_text": "Coupon 0,89 Blink"
+    },
+    {
+      "printed_text": "PFEILRING KLIJEŠ.ZA",
+      "quantity": "1",
+      "unit": null,
+      "unit_price": "19.99",
+      "printed_amount": "19.99"
+    }
+  ],
+  "settlements": [
+    {
+      "kind": "card",
+      "printed_text": "PLACANJE KARTICOM EUR",
+      "amount": "20.88"
+    }
+  ]
+}

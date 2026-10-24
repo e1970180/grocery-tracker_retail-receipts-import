@@ -54,7 +54,7 @@ DEFAULT_CHAINS = (
     KnownChain("dm", "dm", ("DM", "dm"), ("94124811986",)),
     KnownChain("kaufland", "Kaufland", ("KAUFLAND", "Kaufland"), ("47432874968",)),
     KnownChain("lidl", "Lidl", ("LIDL", "Lidl"), ("66089976432",)),
-    KnownChain("mueller", "Müller", ("MÜLLER", "Müller", "Muller"), ("84698789700",)),
+    KnownChain("tommy", "Tommy", ("TOMMY", "Tommy"), ("12345678901",)),
     KnownChain("spar", "Spar", ("SPAR", "Spar", "INTERSPAR"), ("46108893754",)),
 )
 DEFAULT_REFERENCE = ChainReference(
@@ -273,8 +273,8 @@ def test_deposit_info_is_not_a_settlement(pdf: Path) -> None:
 
 
 def test_chain_without_plugin_is_unsupported(pdf: Path) -> None:
-    fake = FakePorts(answers=[pass1_response(chain="mueller", store_name="MÜLLER ZAGREB")])
-    assert run(pdf, fake) == Unsupported("mueller", "MÜLLER ZAGREB")
+    fake = FakePorts(answers=[pass1_response(chain="tommy", store_name="TOMMY D.D.")])
+    assert run(pdf, fake) == Unsupported("tommy", "TOMMY D.D.")
     assert len(fake.calls) == 1
     assert fake.written == []
 

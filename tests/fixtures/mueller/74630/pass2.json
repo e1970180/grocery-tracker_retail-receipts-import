@@ -1,0 +1,33 @@
+{
+  "seller_oib": "84698789700",
+  "store_name": "Zagreb EKZ Arena",
+  "store_address": "Ulica Vice Vukova 6, 10000 Zagreb",
+  "receipt_number": "74630/4981/3",
+  "purchase_date": "16.05.2026",
+  "purchase_time": "13:40",
+  "amount_to_pay": "20,88",
+  "lines": [
+    {
+      "text": "BLINK SPUŽVASTA KRP",
+      "quantity": "1",
+      "unit_price": "0,99",
+      "discount": "-0,10",
+      "amount": "0,89a",
+      "discount_note": "Coupon 0,89 Blink"
+    },
+    {
+      "text": "PFEILRING KLIJEŠ.ZA",
+      "quantity": "1",
+      "unit_price": "19,99",
+      "discount": null,
+      "amount": "19,99a",
+      "discount_note": null
+    }
+  ],
+  "payments": [
+    {
+      "text": "PLACANJE KARTICOM EUR",
+      "amount": "20,88"
+    }
+  ]
+}

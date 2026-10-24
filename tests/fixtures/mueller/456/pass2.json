@@ -1,0 +1,33 @@
+{
+  "seller_oib": "84698789700",
+  "store_name": "Zagreb EKZ Arena",
+  "store_address": "Ulica Vice Vukova 6, 10000 Zagreb",
+  "receipt_number": "456/4981/8",
+  "purchase_date": "10.12.2024",
+  "purchase_time": "20:12",
+  "amount_to_pay": "0,98",
+  "lines": [
+    {
+      "text": "M&G TR3 KEMIJSKA OL",
+      "quantity": "1",
+      "unit_price": "0,49",
+      "discount": null,
+      "amount": "0,49a",
+      "discount_note": null
+    },
+    {
+      "text": "M&G TR-3 KEMIJSKA O",
+      "quantity": "1",
+      "unit_price": "0,49",
+      "discount": null,
+      "amount": "0,49a",
+      "discount_note": null
+    }
+  ],
+  "payments": [
+    {
+      "text": "PLACANJE KARTICOM EUR",
+      "amount": "0,98"
+    }
+  ]
+}

@@ -1,0 +1,41 @@
+{
+  "seller_oib": "84698789700",
+  "store_name": "Zagreb EKZ Arena",
+  "store_address": "Ulica Vice Vukova 6, 10000 Zagreb",
+  "receipt_number": "66233/4981/3",
+  "purchase_date": "03.05.2025",
+  "purchase_time": "18:05",
+  "amount_to_pay": "3,59",
+  "lines": [
+    {
+      "text": "AVEO GEL ZA TUŠIRAN",
+      "quantity": "1",
+      "unit_price": "0,85",
+      "discount": null,
+      "amount": "0,85a",
+      "discount_note": null
+    },
+    {
+      "text": "AVEO MED PH  BLAGI",
+      "quantity": "1",
+      "unit_price": "1,29",
+      "discount": null,
+      "amount": "1,29a",
+      "discount_note": null
+    },
+    {
+      "text": "DERMOPLAST VODOOTPO",
+      "quantity": "1",
+      "unit_price": "1,45",
+      "discount": null,
+      "amount": "1,45a",
+      "discount_note": null
+    }
+  ],
+  "payments": [
+    {
+      "text": "PLACANJE KARTICOM EUR",
+      "amount": "3,59"
+    }
+  ]
+}

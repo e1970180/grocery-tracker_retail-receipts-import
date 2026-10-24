@@ -22,7 +22,10 @@ SPAR = KnownChain("spar", "Spar", ("SPAR", "Spar", "INTERSPAR"), ("46108893754",
 LIDL = KnownChain("lidl", "Lidl", ("LIDL", "Lidl"), ("66089976432",))
 KAUFLAND = KnownChain("kaufland", "Kaufland", ("KAUFLAND", "Kaufland"), ("47432874968",))
 DM = KnownChain("dm", "dm", ("DM", "dm"), ("94124811986",))
-CLEAN_REFERENCE = ChainReference(chains=(SPAR, LIDL, KAUFLAND, DM), inactive_ids=(), rejected=())
+MUELLER = KnownChain("mueller", "Müller", ("MÜLLER", "Müller", "Muller"), ("84698789700",))
+CLEAN_REFERENCE = ChainReference(
+    chains=(SPAR, LIDL, KAUFLAND, DM, MUELLER), inactive_ids=(), rejected=()
+)
 
 
 @pytest.fixture
@@ -125,7 +128,7 @@ def test_check_reference_detects_missing_plugin(
 def test_check_reference_detects_inactive_plugin(
     telegram: RecordingTelegram, alerts: Alerts
 ) -> None:
-    ref = ChainReference(chains=(LIDL, KAUFLAND, DM), inactive_ids=("spar",), rejected=())
+    ref = ChainReference(chains=(LIDL, KAUFLAND, DM, MUELLER), inactive_ids=("spar",), rejected=())
     returned = alerts.check_reference(ref)
 
     assert returned is ref
@@ -138,7 +141,9 @@ def test_check_reference_detects_rejected_rows(telegram: RecordingTelegram, aler
         RejectedRow("spar", RejectReason.DUPLICATE_ID),
         RejectedRow(None, RejectReason.NULL_FIELD),
     )
-    ref = ChainReference(chains=(SPAR, LIDL, KAUFLAND, DM), inactive_ids=(), rejected=rejected)
+    ref = ChainReference(
+        chains=(SPAR, LIDL, KAUFLAND, DM, MUELLER), inactive_ids=(), rejected=rejected
+    )
     returned = alerts.check_reference(ref)
 
     assert returned is ref
@@ -147,7 +152,9 @@ def test_check_reference_detects_rejected_rows(telegram: RecordingTelegram, aler
 
 
 def test_check_reference_recovers_when_clean(telegram: RecordingTelegram, alerts: Alerts) -> None:
-    bad_ref = ChainReference(chains=(LIDL, KAUFLAND, DM), inactive_ids=("spar",), rejected=())
+    bad_ref = ChainReference(
+        chains=(LIDL, KAUFLAND, DM, MUELLER), inactive_ids=("spar",), rejected=()
+    )
     alerts.check_reference(bad_ref)
     assert alerts.is_active(AlertKind.CHAIN_REFERENCE)
 
