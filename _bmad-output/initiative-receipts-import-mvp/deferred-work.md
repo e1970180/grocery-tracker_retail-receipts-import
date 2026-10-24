@@ -72,8 +72,8 @@
 - source_plan: `_bmad-output/initiative-receipts-import-mvp/epic-receipts-pipeline/story-operational-alerts-and-per-job-error-boundary-plan.md`
   summary: Per-job error boundary (AD-16): PostgreSQL connection-class errors (SQLSTATE class 08, 57P01–57P03, or none) and Telegram download errors become waits that reset step starts without touching the Gemini wait count, with `postgres_unreachable` and `telegram_unreachable`; any other step exception, and a job picked with three unrecorded step starts, is alerted as `internal:<state>` and logged, and the job is not retried (owner decision 2026-10-24, superseding AD-16's retry with backoff); a kept `pass1_json` that no longer parses goes back to `chain_pending` without an attempt.
   evidence: The 1.13 plan was about 2,400 tokens against the 1,600 limit and implementation goes to Gemini 3.8 Flash; the owner chose to split (2026-10-24). Decision: a job stopped by an internal error is moved to `failed` (owner, 2026-10-24). Open: its failure reason and sender/admin texts, and the matching AD-16 amendment.
-  resolution: built in `plan-1-13-per-job-error-boundary.md` (owner decisions 2026-10-24).
+  resolution: built in `epic-receipts-pipeline/story-per-job-error-boundary-plan.md` (owner decisions 2026-10-24).
 
-- source_plan: `_bmad-output/initiative-receipts-import-mvp/plan-1-13-per-job-error-boundary.md`
+- source_plan: `_bmad-output/initiative-receipts-import-mvp/epic-receipts-pipeline/story-per-job-error-boundary-plan.md`
   summary: Rework the wording and layout of every sender and admin message, including the technical lines in alerts and recoveries (for example the bare `postgres_unreachable` key under "PostgreSQL снова доступен.").
   evidence: In the 1.13 live run the owner found the alert key line in the recovery message confusing (2026-10-24); the key, then the reason, follow the texts-file line by the alerts plan. The owner chose a separate pass over all texts instead of a one-off fix.

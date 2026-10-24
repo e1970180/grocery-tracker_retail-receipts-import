@@ -3,7 +3,7 @@ title: 'Operational alerts'
 type: 'feature'
 ticket: '13'
 created: '2026-10-24'
-status: 'built'
+status: done
 baseline_revision: '383e5e577a40d22b30eb8fdfbcb0bd36fc18466e'
 route: 'full'
 route_source: 'auto'

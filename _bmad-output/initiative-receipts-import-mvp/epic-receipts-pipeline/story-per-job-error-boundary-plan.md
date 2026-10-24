@@ -1,7 +1,6 @@
 ---
-title: 'Per-job error boundary'
+title: 'Per-job error boundary (second half of ticket 13; its status is in story-operational-alerts-and-per-job-error-boundary-plan.md)'
 type: 'feature'
-ticket: '13'
 created: '2026-10-24'
 status: 'built'
 baseline_revision: 'faf23f4bcdcd52f851c9751e430fa495ea25104a'
