@@ -264,6 +264,18 @@ hitl = false
 risk = "low"
 
 [[entry]]
+id = 22
+type = "bug"
+title = "Kaufland receipt with a returned bottle fails as unreadable"
+description = "A valid Kaufland receipt with a returned-bottle row such as \"Boca za pivo * 4 * 0,16 -0,64\" fails as no_valid_result, because the row becomes a sale line with a negative amount, which the receipt model refuses; per CAP-3 and CAP-4 the receipt is stored with the return recorded and its checks exact."
+verify = "The trial sample's recorded response normalizes to a receipt whose lines and settlements match it exactly, and the Kaufland fixtures are unchanged."
+covers = ["CAP-3", "CAP-4"]
+after = [9]
+hitl = false
+risk = "medium"
+refine = true
+
+[[entry]]
 id = 16
 type = "story"
 title = "First production deployment and acceptance demo"
