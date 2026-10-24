@@ -3,7 +3,7 @@ title: 'Kaufland plug-in'
 type: 'feature'
 ticket: '9'
 created: '2026-10-24'
-status: 'built'
+status: done
 baseline_revision: '0601390efd0d0acb5dfa33bf197e2e7f9f1697d8'
 route: 'full'
 route_source: 'auto'
@@ -107,4 +107,4 @@ Quick lens, pass 1: medium 1, low 3, false 0, maybe-false 0.
 - `wsl -- bash -lc 'UV_PROJECT_ENVIRONMENT=$HOME/.venvs/$(basename "$PWD") PYTHONPYCACHEPREFIX=$HOME/.cache/pyc uv run ruff check && uv run ruff format --check && uv run mypy && uv run pytest'` -- expected: all pass
 
 **Manual checks:**
-- Owner confirms the eight `expected.json` against the PDFs.
+- Owner confirms the eight `expected.json` against the PDFs. -- confirmed by the owner, 2026-10-24, except the `total` of 17582 and 36863: the owner ruled that `total` is the value of goods and the settlements, deposit refunds included, sum to it; that cross-chain fix is its own bug ticket.
