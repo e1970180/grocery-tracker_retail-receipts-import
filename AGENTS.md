@@ -8,7 +8,8 @@ Import pipeline for retail grocery receipts into PostgreSQL over LAN. Python 3.1
 ## Policy
 
 - Direct commits to `main` are permitted; use Conventional Commits.
-- Agent-made commits must end with a `Co-Authored-By:` footer naming the exact model you are running as and its vendor's noreply address. If your tool already added such a footer, don't add another.
+- Agent-made commits end with `Co-Authored-By: <model display name without effort/mode suffix> <vendor noreply address>`, e.g. `Claude Opus 5.5 <noreply@anthropic.com>`, `Gemini 3.8 Flash <noreply@google.com>`. If your tool already added such a footer, don't add another.
+- For commit subject conventions, read subjects only: `git log -n 30 --format="%s | %(trailers:key=Co-Authored-By,valueonly)"`. Never `git show` past commits just to learn a message format.
 - Keep process references (story numbers, spec section numbers) out of code and docstrings; put them in commit messages.
 - Never modify `_bmad/` or installed skills directly; re-run the BMad installer, or override through `_bmad/custom/*.toml`.
 - Create project skills only in `.claude/skills/`, then run `pwsh -File ~/.claude/skills/harness-parity/scripts/parity-sync.ps1 -Path .` and commit the regenerated `.agents/`.
@@ -44,6 +45,7 @@ Import pipeline for retail grocery receipts into PostgreSQL over LAN. Python 3.1
   - `uv run mypy` (strict mode)
   - `uv run pytest`
   - `uv run pytest -m integration` (needs `RRI_TEST_DATABASE_URL` pointing at a throwaway PostgreSQL; fails when unset; never a production database)
+- Commits touching only docs, `_bmad-output/`, or ignore files skip the check suite.
 - CI runs exactly the checks run locally, on every push. Keep local commands and CI workflows in sync.
 - Unmarked tests must not touch the network. Tests calling real external services carry the `live` marker and run only on request (`uv run pytest -m live`).
 - Record external API responses once into static fixtures (`tests/fixtures/`); tests read only fixtures.
