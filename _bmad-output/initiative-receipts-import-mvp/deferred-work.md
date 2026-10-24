@@ -23,6 +23,7 @@
 - source_plan: `_bmad-output/initiative-receipts-import-mvp/epic-receipts-pipeline/story-receipt-model-and-storage-plan.md`
   summary: Admin command to delete a wrongly stored receipt so it can be resent: in one transaction it deletes the receipt (lines and settlements cascade) and inserts a `deleted` feed event, which `resolver_v1` exposes.
   evidence: Owner chose to support deletion (2026-10-23), because a receipt stored with a correct time but a wrong detail turns its resend into a duplicate. 4a adds the cascades and the `deleted` event to the schema; the command waits for the Resolver contract (entry 14).
+  resolution: built in story 23 via stored procedures in migration 0006 (owner, 2026-10-24).
 
 - source_plan: `_bmad-output/initiative-receipts-import-mvp/epic-receipts-pipeline/story-receipt-model-and-storage-plan.md`
   summary: Document for family members (Russian user guide plus the sender message in the texts file) that a receipt is not stored when a storno cancels more than was sold, or when nothing purchased remains after storno and returns, such as a return-only receipt; and that storno lines and returns are counted in the balance check but never appear in the stored receipt.
@@ -90,6 +91,7 @@
 - source_plan: `_bmad-output/initiative-receipts-import-mvp/epic-receipts-pipeline/story-resolver-feed-contract-resolver-v1-plan.md`
   summary: The admin delete command must serialize its feed insert with the service writer (for example `LOCK TABLE retail_receipts_import.receipt_feed IN EXCLUSIVE MODE` in both transactions), or `resolver_v1` readers can skip an event.
   evidence: `seq` is taken at insert, not at commit; with two overlapping writers a lower `seq` can commit after a Resolver has read a higher one with `seq > cursor`, and is never read. `resolver_v1` 1.0.0 promises commit order of a single writer; today only the service loop writes (AD-14). Found by the 1.14 thorough review.
+  resolution: built in story 23 via delete_receipt locking receipt_feed in EXCLUSIVE mode (owner, 2026-10-24).
 
 - source_plan: `_bmad-output/initiative-receipts-import-mvp/epic-receipts-pipeline/story-kaufland-plug-in-plan.md`
   summary: A recorded fixture of a receipt whose deposit refund exceeds the purchase (negative payout), as the spec's CAP-4 success asks.
