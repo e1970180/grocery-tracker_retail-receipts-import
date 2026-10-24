@@ -70,7 +70,7 @@ The receipt model's total check sums only card and cash settlements, both checks
 - Decision: both checks require an exact match; any difference is an extraction error, superseding the ±0.01 EUR tolerance (owner, 2026-10-24).
 - Decision: a plug-in derives the total as the printed amount to pay plus the settlements printed outside it (deposit refunds; Müller bonus points), so the check still catches a misread amount to pay (owner, 2026-10-24).
 - Decision: the sender text in criterion 2 (owner, 2026-10-24).
-- Assumption: the admin texts drop "больше чем на 0,01 EUR" to match the exact rule (`total_settlement_mismatch` as in criterion 2; `items_settlement_mismatch` becomes "Сумма позиций не сходится с суммой оплат."); the owner confirms at plan approval.
+- Decision: the admin texts drop "больше чем на 0,01 EUR" to match the exact rule (`total_settlement_mismatch` as in criterion 2; `items_settlement_mismatch` becomes "Сумма позиций не сходится с суммой оплат.") (owner, 2026-10-24).
 - Decision: storing the total and exposing it in `resolver_v1` is entry 21, not this bug (owner, 2026-10-24).
 - Decision: built before entry 10, so the DM plug-in follows the new rule (owner, 2026-10-24).
 - Assumption: the architecture's extraction rule and `invalid` class are reworded to match.
