@@ -100,6 +100,7 @@ context: []
 - Verification in WSL: `ruff check`, `ruff format --check`, `mypy`, `pytest` (438 passed, 34 integration deselected) all clean. Manual check on dev-bot pending owner.
 - Review fixes (pass 1 patches, Antigravity): `_finish` recovers `internal:<state>`; one-line logs for waits; the three-starts guard finishes directly with reason `step_starts=<n>`; `ProcessKilled(BaseException)` drives the guard and the crash-after-commit test; added tests for the download alert text, `internal:received` recovery and the `run_due` catch; AD-3 fallback edge.
 - Final verification (WSL, by the session): ruff, format, mypy clean; `pytest` 440 passed; `pytest -m integration` 34 passed against a throwaway `postgres:18.6` on localhost:55432. Live dev run (risk high) still pending owner approval.
+- Owner accepted both review notes as they are (2026-10-24): a SQLite fault after the PostgreSQL commit ends the job `failed` although the receipt is stored, and the `internal_error` sender text does not ask for a resend.
 
 ## Plan Change Log
 
