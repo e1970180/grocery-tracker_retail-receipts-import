@@ -88,7 +88,11 @@ context: []
 - Defect found: Kaufland `20260427_231253.pdf` (valid receipt) fails `no_valid_result` because the returned bottle line `Boca za pivo * 4 * 0,16 -0,64` becomes a sale line with a negative amount, which the model refuses; reproduced on a second run, pass-2 response kept in `scratch/diagnose-pass2.json`. Filed as bug 22 and deferred there; not fixed here and not a condition of this ticket (Decision 2026-10-24, owner).
 - Live bot run, 2026-10-24 16:29: the owner sent one Kaufland receipt to the bot; the srv22 service log shows job 1 go `chain_pending` → `extract_pending (kaufland)` → `write_pending` → `stored` in 10 s, two Gemini calls, no warnings. The Resolver reader then sees the feed at 52 rows (51 after the import).
 
+- Development split from the service, 2026-10-24 (owner decision): `scratch/dev_role_split.py` generated two passwords without printing them, put a new writer password only into the srv22 `.env` (mode 600) and a new `rri_dev_developer` into the local `.env`; the owner ran `scratch/admin_dev_role.sql` (SCRAM verifiers only) as `postgres`. The developer is a member of `rri_dev_owner`, with CONNECT, CREATE, TEMPORARY on the dev database and SELECT on `public.chains_v1`. `scratch/check_developer.py`: reads, updates, deletes, DDL, new schemas and TEMP work; the other project's schema, `public` DDL and the other databases are refused. The srv22 container was recreated; logging in from it as the writer with the new password succeeds and stops at `permission denied for schema retail_receipts_import`, as the narrowed role should.
+
 ## Plan Change Log
+
+- 2026-10-24, owner: the workstation gets its own broad developer role in the dev database; the writer's password lives only on srv22.
 
 - 2026-10-24, owner: scope moved from a production deployment to trial operation on the dev database with role narrowing and a 50-receipt live import; the production steps wait for a later run of this ticket.
 

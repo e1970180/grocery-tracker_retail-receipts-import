@@ -13,6 +13,10 @@ own database and three login roles:
 None of them may connect to any other database, update or delete a receipt, or touch the
 migrations ledger. `dev` needs a database name ending in `-dev`; `prod` one that does not.
 
+Only the home server holds the writer's password. In dev, the workstation works as a fourth role,
+`rri_dev_developer`: a member of the schema owner, with CONNECT, CREATE and TEMPORARY on the dev
+database and SELECT on `public.chains_v1`. Production has no such role.
+
 The SQL steps need `psql`. Where it is not installed, run it from the PostgreSQL image with the
 repository mounted, for example on the home server:
 
