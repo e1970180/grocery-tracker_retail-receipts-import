@@ -35,7 +35,8 @@ A role created on the cluster later then needs an explicit CONNECT to reach thos
 
 ## 2. Provision the environment (admin, once per environment)
 
-From a full checkout (the script includes `docs/contracts/chains_v1.sql`):
+From the repository root, here or on the home server after step 3 (the script includes
+`docs/contracts/chains_v1.sql`):
 
 ```bash
 psql -h <host> -p <port> -U postgres -d postgres -v ON_ERROR_STOP=1 -v db=grocery-tracker-dev -v owner=rri_dev_owner -v writer=rri_dev_writer -v reader=resolver_dev_reader -f docs/deploy/provision.sql
@@ -53,7 +54,7 @@ git clone --no-checkout --filter=blob:none https://github.com/e1970180/grocery-t
 ```
 
 ```bash
-cd ~/grocery-tracker/retail-receipts-import && git sparse-checkout set --no-cone /Dockerfile /compose.yaml /.dockerignore /.env.example /pyproject.toml /uv.lock /README.md /src/ /migrations/ /texts/ && git checkout main
+cd ~/grocery-tracker/retail-receipts-import && git sparse-checkout set --no-cone /Dockerfile /compose.yaml /.dockerignore /.env.example /pyproject.toml /uv.lock /README.md /src/ /migrations/ /texts/ /docs/deploy/ /docs/contracts/ && git checkout main
 ```
 
 Copy `.env.example` to `.env` and fill it in with the writer's credentials; keep the schema
@@ -65,13 +66,20 @@ docker compose build
 
 ## 4. Migrate (every deploy)
 
-Export the schema owner's credentials in the shell for this run only:
+Export the schema owner's credentials in the shell for this run only, typing the password at a
+silent prompt so it stays out of the shell history, and `unset` both afterwards:
+
+```bash
+export RRI_MIGRATE_DB_USER=rri_dev_owner; read -rs RRI_MIGRATE_DB_PASSWORD; export RRI_MIGRATE_DB_PASSWORD
+```
 
 ```bash
 docker compose run --rm -e RRI_MIGRATE_DB_USER -e RRI_MIGRATE_DB_PASSWORD receipts migrate
 ```
 
-When the run created tables, trim the writer again (idempotent, as the schema owner):
+Then always trim the writer (idempotent, as the schema owner). The default privileges give it
+SELECT, INSERT on every table a migration creates, the migrations ledger included, until this
+runs:
 
 ```bash
 psql -h <host> -p <port> -U rri_dev_owner -d grocery-tracker-dev -v ON_ERROR_STOP=1 -v writer=rri_dev_writer -f docs/deploy/after-migrate.sql
@@ -93,7 +101,11 @@ docker compose logs -f receipts
 ## Update
 
 ```bash
-git pull --ff-only && docker compose build && docker compose up -d
+git pull --ff-only && docker compose build
 ```
 
-Run step 4 between the build and the start when the update brings a new migration.
+When the update brings a new migration, run step 4 now, before the new code starts. Then:
+
+```bash
+docker compose up -d
+```

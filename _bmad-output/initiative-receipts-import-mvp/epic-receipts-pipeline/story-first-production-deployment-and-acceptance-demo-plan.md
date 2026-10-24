@@ -3,14 +3,14 @@ title: 'First production deployment and acceptance demo'
 type: 'chore'
 ticket: '16'
 created: '2026-10-24'
-status: 'in-progress'
+status: 'built'
 baseline_revision: 'b295de207540daa3db89e644f97bc77c7e85bf8a'
 route: 'full'
 route_source: 'auto'
 risk: 'high'
-review: ''
-review_source: ''
-lenses_ran: []
+review: 'thorough'
+review_source: 'user'
+lenses_ran: ['blind-hunter', 'edge-case-hunter', 'verification-gap', 'intent-alignment']
 review_loop_iteration: 0
 context: []
 ---
@@ -93,6 +93,29 @@ context: []
 - 2026-10-24, owner: scope moved from a production deployment to trial operation on the dev database with role narrowing and a 50-receipt live import; the production steps wait for a later run of this ticket.
 
 ## Review Triage Log
+
+Thorough review, 2026-10-24, four lenses on the docs and the scratch scripts since the baseline (scratch is ignored but did the live work).
+
+| Finding | Verdict | Evidence | Route |
+| --- | --- | --- | --- |
+| Sparse set lacks `/docs/`, so step 4's `after-migrate.sql` (and step 2's `provision.sql`) cannot run on the server (3 lenses) | medium | `ls` of the srv22 checkout: no `docs/` | patch: sparse set gains `/docs/deploy/ /docs/contracts/`; step 2 may run there |
+| Default privileges give the writer SELECT, INSERT on new tables incl. the ledger until the trim; the trim is conditional (3 lenses) | medium | `provision.sql` default privileges; `migrate.py` creates `schema_migrations`; live dev is trimmed (matrix shows no ledger right) | patch: trim after every migrate, said in the runbook and the script header |
+| Update one-liner starts the new code before migrate and the trim | medium | `docs/deployment.md` Update section chained `up -d` | patch: build, then step 4, then `up -d` |
+| Step 4 gives no safe way to enter the owner's password | low | runbook only said "export" | patch: `read -rs` and `unset` |
+| `after-migrate.sql` names today's tables; a new table loses its default grant | low | `REVOKE ALL` then explicit grants | patch: header line asks for a grant per new table |
+| No test runs the writer's SQL under the trimmed grants | medium | `tests/conftest.py` uses the owner connection | defer |
+| Three other roles lost TEMP on `template1` | low | `datacl` `=c` where PUBLIC had `Tc`; intent says others keep their access | defer, admin-only one-line fix |
+| PUBLIC keeps CONNECT/TEMP on `grocery-tracker-dev` | false | `datacl` of the dev database has no PUBLIC entry; owner has `c` only |  reject |
+| Unlisted login roles lose access to `postgres`, `data`, `template1` | false | `pg_roles`: the only other login roles are the three re-granted; `exp_dev` is NOLOGIN | reject |
+| `check_overreach.py` may count "undefined object" as refused | false | rerun: every statement refused with 42501 | reject |
+| Server `.env` may stay world-readable if it existed | false | `stat`: mode 600 | reject |
+| `provision.sql` on a shared database would cut off a co-tenant's `public` | false | it starts with `CREATE DATABASE` under `ON_ERROR_STOP`, so it stops on an existing database | reject |
+| The 50 receipts ran from the workstation, not through the deployed container | false | intent asks for the real pipeline and Gemini; the deployed service is proven by the srv22 bot receipt | reject |
+| Runbook is dev-only; no prod names | false | intent: production provisioning waits | reject |
+| No verification step in the runbook; partial-failure cleanup; single-poller check in Update | low | real but rare, fix adds steps | reject |
+| `import_samples.py`: unfiltered spare files, crc32 collisions, report written after the loop, newline in details; `deploy_srv22.py` unquoted values; `resolver_counts.py` lacks a dev guard; `assert` checks | low | scratch scripts, run once; the batch completed and its report exists | reject |
+| Plan says "one transaction as the temporary admin" and "process_file" | false | fix would edit this plan | reject |
+| Writer grants not covered by a positive check | false | the 50-file import and the bot receipt wrote as the writer | reject |
 
 ## Verification
 

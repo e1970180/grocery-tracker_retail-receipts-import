@@ -1,4 +1,6 @@
--- Trims the writer to the rights the service uses, after a migrate run that created tables.
+-- Trims the writer to the rights the service uses, after every migrate run: the default
+-- privileges hand it SELECT, INSERT on each new table, the migrations ledger included.
+-- A migration that adds a table the service writes or reads needs its grant line here.
 -- Idempotent; run as the schema owner (or the admin):
 --   psql -h <host> -p <port> -U rri_dev_owner -d grocery-tracker-dev -v ON_ERROR_STOP=1 \
 --        -v writer=rri_dev_writer -f docs/deploy/after-migrate.sql

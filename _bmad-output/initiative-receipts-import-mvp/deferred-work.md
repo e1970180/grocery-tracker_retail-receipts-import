@@ -107,3 +107,11 @@
 - source_plan: `_bmad-output/initiative-receipts-import-mvp/epic-receipts-pipeline/story-store-the-receipt-total-and-expose-it-in-resolver-v1-plan.md`
   summary: CAP-4 success asks that recorded Müller bonus-point, coupon and negative-payout fixtures be read back through `resolver_v1` with their total; 1.21 proves the total path only with synthetic receipts.
   evidence: Intent-alignment lens on 1.21; no Müller plug-in exists yet and the coupon and negative-payout fixtures are already missing (Kaufland entries above). Close when those fixtures exist: a writer-to-`resolver_v1.receipts` read of each total.
+
+- source_plan: `_bmad-output/initiative-receipts-import-mvp/epic-receipts-pipeline/story-first-production-deployment-and-acceptance-demo-plan.md`
+  summary: No test runs the writer's SQL under the grants of `docs/deploy/after-migrate.sql`; every receipts integration test connects as the schema owner, so the grant script and the service's statements can drift apart unseen.
+  evidence: Verification-gap lens on 1.16; `tests/conftest.py` makes `receipts_conn` the migrate connection. Today the live dev import and the srv22 bot receipt prove the grants. Settle with an integration test that grants a throwaway role exactly what the script grants and runs `write_receipt` and `find_other_source` as it.
+
+- source_plan: `_bmad-output/initiative-receipts-import-mvp/epic-receipts-pipeline/story-first-production-deployment-and-acceptance-demo-plan.md`
+  summary: Closing PUBLIC on `template1` re-granted only CONNECT to `lab_loader`, `lab_reader` and `retail_prices_ingest`, so they lost the TEMPORARY they had through PUBLIC there.
+  evidence: Edge-case lens on 1.16; `pg_database.datacl` for `template1` shows `=c` for the three roles where PUBLIC had `Tc`. Admin-only fix: `GRANT TEMPORARY ON DATABASE template1 TO lab_loader, lab_reader, retail_prices_ingest;` as `postgres`, if any of them needs it.
