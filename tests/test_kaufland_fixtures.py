@@ -262,6 +262,7 @@ def test_matrix_deposit_return() -> None:
         payments=[payment(CARD, "1,50")],
     )
     receipt = PLUGINS["kaufland"].normalize(raw)
+    assert receipt.total == Decimal("2.90")
     assert len(receipt.lines) == 1
     assert receipt.lines[0].printed_text == "K.Voda 7L"
     assert len(receipt.settlements) == 2
@@ -275,7 +276,7 @@ def test_matrix_deposit_return() -> None:
 
 def test_matrix_refund_beats_purchase_synthetic() -> None:
     # Refund beats purchase: lines 1,00, refunds 3,00, Za platiti -2,00, cash -2,00
-    # -> stored; total -2.00, cash -2.00
+    # -> stored; total 1.00, cash -2.00
     raw = response(
         lines=[
             item("K.kamilica", "1", None, "1,00"),
@@ -285,7 +286,7 @@ def test_matrix_refund_beats_purchase_synthetic() -> None:
         payments=[payment(CASH, "-2,00")],
     )
     receipt = PLUGINS["kaufland"].normalize(raw)
-    assert receipt.total == Decimal("-2.00")
+    assert receipt.total == Decimal("1.00")
     assert len(receipt.settlements) == 2
     assert receipt.settlements[0].kind == SettlementKind.CASH
     assert receipt.settlements[0].amount == Decimal("-2.00")
@@ -293,6 +294,18 @@ def test_matrix_refund_beats_purchase_synthetic() -> None:
     assert receipt.settlements[1].amount == Decimal("3.00")
     assert check_consistency(receipt) is None
     assert check_total(receipt) is None
+
+
+def test_kaufland_misread_amount_to_pay_fails_check_total() -> None:
+    # Lines and payments agree (2.00), but printed amount to pay is off by 0,01.
+    raw = response(
+        lines=[item("Kruh", "1", None, "2,00")],
+        total="2,01",
+        payments=[payment(CARD, "2,00")],
+    )
+    receipt = PLUGINS["kaufland"].normalize(raw)
+    assert check_consistency(receipt) is None
+    assert check_total(receipt) == Decimal("0.01")
 
 
 def test_matrix_cash_with_change() -> None:

@@ -246,6 +246,7 @@ def test_matrix_deposit_return() -> None:
         payments=[payment(CARD, "1,99")],
     )
     receipt = PLUGINS["lidl"].normalize(raw)
+    assert receipt.total == Decimal("5.59")
     assert len(receipt.lines) == 1
     assert receipt.lines[0].printed_text == "Kremšnita"
     assert len(receipt.settlements) == 2
@@ -259,6 +260,31 @@ def test_matrix_deposit_return() -> None:
     assert deposit_settlement.amount == Decimal("3.60")
     assert check_consistency(receipt) is None
     assert check_total(receipt) is None
+
+
+def test_deposit_return_among_payments_counts_in_the_total() -> None:
+    # The model may list Otkup ambalaže under payments; it is still outside za platiti.
+    raw = response(
+        lines=[item("Kremšnita", "1", None, "5,59")],
+        total="1,99",
+        payments=[payment(CARD, "1,99"), payment("Otkup ambalaže", "-3,60")],
+    )
+    receipt = PLUGINS["lidl"].normalize(raw)
+    assert receipt.total == Decimal("5.59")
+    assert check_consistency(receipt) is None
+    assert check_total(receipt) is None
+
+
+def test_lidl_misread_amount_to_pay_fails_check_total() -> None:
+    # Lines and payments agree (2.00), but printed amount to pay is off by 0,01.
+    raw = response(
+        lines=[item("Kruh", "1", None, "2,00")],
+        total="2,01",
+        payments=[payment(CARD, "2,00")],
+    )
+    receipt = PLUGINS["lidl"].normalize(raw)
+    assert check_consistency(receipt) is None
+    assert check_total(receipt) == Decimal("0.01")
 
 
 def test_matrix_price_change() -> None:

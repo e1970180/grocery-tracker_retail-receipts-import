@@ -27,9 +27,6 @@ PAYLOAD_VERSION = 1
 # Shops print in Zagreb local time; the stored purchase time is UTC.
 STORE_TIMEZONE = ZoneInfo("Europe/Zagreb")
 
-# A printed receipt can be off by a cent after rounding; anything larger is a misread.
-TOLERANCE = Decimal("0.01")
-
 Money = Annotated[Decimal, Field(max_digits=12, decimal_places=2)]
 Quantity = Annotated[Decimal, Field(max_digits=12, decimal_places=3)]
 
@@ -53,7 +50,7 @@ class SourceKind(StrEnum):
 
 
 class ItemsSettlementMismatch(Exception):
-    """The printed lines do not add up to the printed payments, beyond the tolerance."""
+    """The printed lines do not add up to the printed payments."""
 
     def __init__(self, difference: Decimal) -> None:
         self.difference = difference
@@ -61,11 +58,11 @@ class ItemsSettlementMismatch(Exception):
 
 
 class TotalSettlementMismatch(Exception):
-    """The printed total is not the card plus cash paid, beyond the tolerance."""
+    """The total does not add up to the settlements."""
 
     def __init__(self, difference: Decimal) -> None:
         self.difference = difference
-        super().__init__(f"total differs from card plus cash by {difference}")
+        super().__init__(f"total differs from settlements by {difference}")
 
 
 class ReceiptLine(BaseModel):
@@ -258,25 +255,23 @@ def zagreb_to_utc(naive: datetime) -> datetime:
 
 
 def check_consistency(receipt: NormalizedReceipt) -> Decimal | None:
-    """The signed difference between printed lines and payments, when it exceeds the tolerance.
+    """The signed difference between printed lines and payments, when they disagree.
 
-    Storno and return lines count here, so the check sees the whole printed receipt.
+    A real receipt agrees to the cent; storno and return lines count here, so the check sees
+    the whole printed receipt.
     """
     lines_total = sum((line.effective_amount for line in receipt.lines), Decimal(0))
     settlements_total = sum((s.amount for s in receipt.settlements), Decimal(0))
     difference = lines_total - settlements_total
-    return difference if abs(difference) > TOLERANCE else None
+    return difference or None
 
 
 def check_total(receipt: NormalizedReceipt) -> Decimal | None:
-    """The signed difference between the printed total and card plus cash, past the tolerance."""
-    paid = sum(
-        (
-            s.amount
-            for s in receipt.settlements
-            if s.kind in (SettlementKind.CARD, SettlementKind.CASH)
-        ),
-        Decimal(0),
-    )
-    difference = receipt.total - paid
-    return difference if abs(difference) > TOLERANCE else None
+    """The signed difference between the total and settlements, when they disagree.
+
+    A real receipt agrees to the cent, so every settlement is summed and any non-zero
+    difference is reported.
+    """
+    settlements_total = sum((s.amount for s in receipt.settlements), Decimal(0))
+    difference = receipt.total - settlements_total
+    return difference or None

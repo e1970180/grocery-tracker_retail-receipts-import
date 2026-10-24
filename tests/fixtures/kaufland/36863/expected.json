@@ -7,7 +7,7 @@
   "store_address": "Jaruščica 6",
   "loyalty_card_number": "xxxxx8265",
   "purchased_at": "2026-04-10T12:09:00Z",
-  "total": "14.99",
+  "total": "16.39",
   "lines": [
     {"printed_text": "Amer. Tost 750g", "quantity": "1", "unit": null, "unit_price": null, "printed_amount": "1.69"},
     {"printed_text": "Šljiva okrugla", "quantity": "1.054", "unit": "kg", "unit_price": "1.79", "printed_amount": "1.89"},

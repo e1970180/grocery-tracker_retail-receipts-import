@@ -96,25 +96,32 @@ def _miss_first_call(real: Callable[..., Any]) -> Callable[..., Any]:
 
 
 def test_mismatch_writes_nothing(receipts_conn: psycopg.Connection[Any]) -> None:
-    receipt = _receipt([_line("Kruh", printed="2.00")], [_card("2.02")])
+    receipt = _receipt([_line("Kruh", printed="2.00")], [_card("2.01")])
     with pytest.raises(ItemsSettlementMismatch):
         write_receipt(receipts_conn, uuid.uuid7(), receipt, telegram_source(1, 1, "Ana"))
     assert _counts(receipts_conn) == _empty()
 
 
 def test_total_mismatch_writes_nothing(receipts_conn: psycopg.Connection[Any]) -> None:
-    receipt = _receipt([_line("Kruh", printed="2.00")], total="2.02")
+    receipt = _receipt([_line("Kruh", printed="2.00")], total="2.01")
     with pytest.raises(TotalSettlementMismatch):
         write_receipt(receipts_conn, uuid.uuid7(), receipt, telegram_source(1, 1, "Ana"))
     assert _counts(receipts_conn) == _empty()
 
 
-def test_one_cent_difference_is_written(receipts_conn: psycopg.Connection[Any]) -> None:
-    receipt = _receipt([_line("Kruh", printed="2.00")], [_card("2.01")], total="2.01")
+def test_exact_match_is_written_and_one_cent_difference_refused(
+    receipts_conn: psycopg.Connection[Any],
+) -> None:
+    exact = _receipt([_line("Kruh", printed="2.00")], [_card("2.00")], total="2.00")
     receipt_id = uuid.uuid7()
-    result = write_receipt(receipts_conn, receipt_id, receipt, telegram_source(1, 1, "Ana"))
+    result = write_receipt(receipts_conn, receipt_id, exact, telegram_source(1, 1, "Ana"))
     assert result.kind is WriteKind.STORED
     assert result.receipt_id == receipt_id
+    assert _counts(receipts_conn)["receipts"] == 1
+
+    one_cent_off = _receipt([_line("Kruh", printed="2.00")], [_card("2.01")], total="2.01")
+    with pytest.raises(ItemsSettlementMismatch):
+        write_receipt(receipts_conn, uuid.uuid7(), one_cent_off, telegram_source(1, 2, "Ana"))
     assert _counts(receipts_conn)["receipts"] == 1
 
 
@@ -301,7 +308,7 @@ def test_round_trip_keeps_every_field_and_reference(
         store_address="Ilica 1, Zagreb",
         loyalty_card_number="**** 1234",
         purchased_at=PURCHASED,
-        total=Decimal("-3.20"),
+        total=Decimal("6.30"),
         lines=lines,
         settlements=settlements,
     )

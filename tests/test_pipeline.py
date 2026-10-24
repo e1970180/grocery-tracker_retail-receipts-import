@@ -42,6 +42,7 @@ from retail_receipts_import.domain.receipt import (
     SettlementKind,
     telegram_source,
 )
+from tests.lidl_samples import response as lidl_response
 from tests.spar_samples import CARD, CASH, discount, item, pass1_response, payment, response
 from tests.steps import NEW_RECEIPT_ID, run_steps
 
@@ -448,14 +449,32 @@ def test_total_not_matching_payments_is_invalid(pdf: Path) -> None:
     assert fake.written == []
 
 
-def test_a_cent_of_rounding_is_tolerated(pdf: Path) -> None:
+def test_a_cent_of_rounding_is_refused(pdf: Path) -> None:
     fake = FakePorts(
         answers=[
             pass1_response(),
             response(total="2,00", payments=[payment(CARD, "2,00")]),
         ]
     )
-    assert isinstance(run(pdf, fake), Stored)
+    result = run(pdf, fake)
+    assert isinstance(result, Invalid)
+    assert result.reason is FailureReason.ITEMS_SETTLEMENT_MISMATCH
+    assert fake.written == []
+
+
+def test_misread_amount_to_pay_by_one_cent_is_invalid(pdf: Path) -> None:
+    # Lines and payments agree (1.99), but amount to pay is off by 0.01 (2.00).
+    fake = FakePorts(
+        answers=[
+            pass1_response(chain="lidl"),
+            lidl_response(total="2,00"),
+        ]
+    )
+    result = run(pdf, fake)
+    assert isinstance(result, Invalid)
+    assert result.reason is FailureReason.TOTAL_SETTLEMENT_MISMATCH
+    assert result.detail == "total minus settlements is 0.01"
+    assert fake.written == []
 
 
 def test_unknown_error_propagates_unchanged_and_writes_nothing(pdf: Path) -> None:

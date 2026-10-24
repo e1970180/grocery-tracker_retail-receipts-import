@@ -6,7 +6,7 @@
   "receipt_number": "94695/POSL0205/10520",
   "store_address": "Omladinska 1A, Mali Lošinj",
   "purchased_at": "2026-06-26T12:04:00Z",
-  "total": "16.82",
+  "total": "20.42",
   "lines": [
     {"printed_text": "Svježi sok jabuka", "quantity": "1", "unit": null, "unit_price": null, "printed_amount": "2.39", "separate_discount": "0.60", "discount_text": "Lidl Plus popust"},
     {"printed_text": "Bitter Lemon", "quantity": "2", "unit": null, "unit_price": "2.23", "printed_amount": "4.46"},

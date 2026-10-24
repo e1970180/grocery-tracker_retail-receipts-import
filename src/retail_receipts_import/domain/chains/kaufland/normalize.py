@@ -54,7 +54,8 @@ def normalize(response: str, chain_id: str) -> NormalizedReceipt:
             store_address=stripped(raw.store_address),
             loyalty_card_number=_loyalty_card(raw.loyalty_card),
             purchased_at=zagreb_to_utc(_purchase_time(raw.purchase_date, raw.purchase_time)),
-            total=money(raw.total, "total"),
+            # The total is the value of the goods, and Za platiti has the deposit refunds taken off.
+            total=money(raw.total, "total") + sum((r.amount for r in deposit_refunds), Decimal(0)),
             lines=lines,
             settlements=settlements,
         )

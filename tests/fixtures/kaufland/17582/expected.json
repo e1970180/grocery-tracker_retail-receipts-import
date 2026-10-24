@@ -7,7 +7,7 @@
   "store_address": "Jaruščica 6",
   "loyalty_card_number": "xxxxx8265",
   "purchased_at": "2026-03-26T09:00:00Z",
-  "total": "75.93",
+  "total": "78.13",
   "lines": [
     {"printed_text": "Violeta neven 240kom", "quantity": "8", "unit": null, "unit_price": "3.99", "printed_amount": "31.92"},
     {"printed_text": "K.Jagode 750g", "quantity": "6", "unit": null, "unit_price": "2.79", "printed_amount": "16.74"},

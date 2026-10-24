@@ -45,7 +45,9 @@ def normalize(response: str, chain_id: str) -> NormalizedReceipt:
             receipt_number=stripped(raw.receipt_number),
             store_address=stripped(raw.store_address),
             purchased_at=zagreb_to_utc(_purchase_time(raw.purchase_date, raw.purchase_time)),
-            total=money(raw.total, "total"),
+            # The total is the value of the goods, and za platiti has the deposit refunds taken
+            # off, wherever the model listed them.
+            total=money(raw.total, "total") + _refunded(settlements),
             lines=lines,
             settlements=settlements,
         )
@@ -213,3 +215,9 @@ def _settlements(
     ]
     settlements.extend(deposit_refunds)
     return settlements
+
+
+def _refunded(settlements: list[Settlement]) -> Decimal:
+    return sum(
+        (s.amount for s in settlements if s.kind is SettlementKind.DEPOSIT_REFUND), Decimal(0)
+    )

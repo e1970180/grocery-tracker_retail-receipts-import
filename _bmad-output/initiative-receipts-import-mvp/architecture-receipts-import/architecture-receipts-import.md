@@ -122,7 +122,7 @@ stateDiagram-v2
 
 - **Binds:** CAP-2, CAP-3, CAP-4, CAP-5
 - **Prevents:** pricing or trap handling split between the prompt and the code.
-- **Rule:** Gemini returns printed values only: line texts, printed amounts, quantities, discount lines and settlement lines. Deterministic domain code per chain derives the regular and effective amounts and applies every chain trap: the Lidl footer `POPUST`, DM `STORNO RETKA`, Müller bonus points, Kaufland's ignored lines and its bank-terminal date. Line amounts are checked against the printed fields, never against price × quantity. A cash payment records the receipt total and ignores the change. The code then runs the ±0.01 EUR items-vs-settlement check. Fixtures test all of this without the network.
+- **Rule:** Gemini returns printed values only: line texts, printed amounts, quantities, discount lines and settlement lines. Deterministic domain code per chain derives the regular and effective amounts and applies every chain trap: the Lidl footer `POPUST`, DM `STORNO RETKA`, Müller bonus points, Kaufland's ignored lines and its bank-terminal date. Line amounts are checked against the printed fields, never against price × quantity. A cash payment records the amount paid and ignores the change. The receipt total is the value of the goods: the printed amount to pay plus the settlements printed outside it (deposit refunds, Müller bonus points). The code then checks, exactly to the cent, that the lines' effective amounts and the total each equal the sum of all settlements. Fixtures test all of this without the network.
 
 ### AD-6 — A chain is one plug-in `[ADOPTED]`
 
@@ -137,7 +137,7 @@ stateDiagram-v2
 - **Rule:** A single function maps every Gemini call result to one of four classes:
   - `unavailable`: HTTP 429, 5xx, an httpx timeout or transport error. No attempt is consumed. The job waits with no deadline, and the sender gets the in-progress reaction once, on the first `unavailable`. The next try is at `RetryInfo.retryDelay` from the error details, else `Retry-After`, else capped exponential backoff.
   - `blocked`: a configuration fault, classified from the SDK error status and reason, not the HTTP code alone. Examples: auth or billing failure, disabled quota, a retired model, a request rejected for its configuration. The job waits as for `unavailable`, consumes no attempt, and raises the `gemini_config` alert (AD-13).
-  - `invalid`: a response that fails the schema or comes back empty or blocked for its content, a 4xx caused by this file, an `unreadable` chain, a pass-2 purchase date that cannot be read, or a consistency mismatch beyond ±0.01 EUR. One attempt is consumed, and the job restarts from pass 1.
+  - `invalid`: a response that fails the schema or comes back empty or blocked for its content, a 4xx caused by this file, an `unreadable` chain, a pass-2 purchase date that cannot be read, or any consistency mismatch, even 0.01 EUR. One attempt is consumed, and the job restarts from pass 1.
   - `valid`.
 
   An unsupported pass-1 result consumes an attempt and repeats pass 1. Only the second unsupported result in a row makes the job `unsupported_chain`. An unsupported result that uses up the last attempt also ends as `unsupported_chain`, not `failed`. The attempt limit comes from config (default 3) and is shared across both passes. When it is reached, the job goes to `failed` with the reason of the last attempt. A pass-1 purchase time that cannot be read is not `invalid`; it only skips the pre-check (AD-8).

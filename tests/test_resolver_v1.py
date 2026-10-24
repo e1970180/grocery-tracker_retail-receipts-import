@@ -266,7 +266,7 @@ def test_stored_receipt_read_back_field_by_field(resolver_session: ResolverSessi
         store_address="Slavonska avenija 11, Zagreb",
         loyalty_card_number="**** 9999",
         purchased_at=purchased_at,
-        total=Decimal("2.00"),
+        total=Decimal("2.80"),
         lines=lines,
         settlements=settlements,
     )

@@ -229,6 +229,6 @@ def _extract(path: Path, mime: str, pass1: Pass1Response, ports: Ports) -> Pass2
         )
     if difference := check_total(receipt):
         return Invalid(
-            FailureReason.TOTAL_SETTLEMENT_MISMATCH, f"total minus card and cash is {difference}"
+            FailureReason.TOTAL_SETTLEMENT_MISMATCH, f"total minus settlements is {difference}"
         )
     return Extracted(receipt)

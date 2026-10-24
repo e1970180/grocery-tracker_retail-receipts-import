@@ -181,27 +181,27 @@ def test_purchased_at_must_be_utc_to_the_minute() -> None:
         NormalizedReceipt(purchased_at=datetime(2026, 10, 24, 10, 34, 5, tzinfo=UTC), **base)
 
 
-def test_consistency_passes_at_one_cent_and_fails_at_two() -> None:
-    assert check_consistency(_receipt([_line(printed="2.00")], [_card("2.01")])) is None
-    difference = check_consistency(_receipt([_line(printed="2.00")], [_card("2.02")]))
-    assert difference == Decimal("-0.02")
+def test_consistency_passes_at_exact_match_and_fails_at_one_cent() -> None:
+    assert check_consistency(_receipt([_line(printed="2.00")], [_card("2.00")])) is None
+    difference = check_consistency(_receipt([_line(printed="2.00")], [_card("2.01")]))
+    assert difference == Decimal("-0.01")
 
 
-def test_total_passes_at_one_cent_and_fails_at_two() -> None:
-    assert check_total(_receipt([_line(printed="2.00")], total="2.01")) is None
-    assert check_total(_receipt([_line(printed="2.00")], total="2.02")) == Decimal("0.02")
+def test_total_passes_at_exact_match_and_fails_at_one_cent() -> None:
+    assert check_total(_receipt([_line(printed="2.00")], total="2.00")) is None
+    assert check_total(_receipt([_line(printed="2.00")], total="2.01")) == Decimal("0.01")
 
 
-def test_total_checks_card_plus_cash_with_a_negative_card() -> None:
+def test_total_checks_all_settlements_with_a_negative_card() -> None:
     settlements = [
         Settlement(kind=SettlementKind.CARD, printed_text="KARTICA", amount=Decimal("-3.00")),
         Settlement(kind=SettlementKind.CASH, printed_text="GOTOVINA", amount=Decimal("5.00")),
         Settlement(kind=SettlementKind.COUPON, printed_text="KUPON", amount=Decimal("1.00")),
     ]
-    ok = _receipt([_line(printed="2.00")], settlements, total="2.00")
+    ok = _receipt([_line(printed="3.00")], settlements, total="3.00")
     assert check_total(ok) is None
-    bad = _receipt([_line(printed="2.00")], settlements, total="3.00")
-    assert check_total(bad) == Decimal("1.00")
+    bad = _receipt([_line(printed="3.00")], settlements, total="2.00")
+    assert check_total(bad) == Decimal("-1.00")
 
 
 def test_full_storno_nets_to_nothing_and_is_dropped() -> None:
