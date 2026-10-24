@@ -3,7 +3,7 @@ title: 'Resolver feed contract resolver_v1'
 type: 'feature'
 ticket: '14'
 created: '2026-10-24'
-status: 'built'
+status: 'done'
 baseline_revision: '7b4144451c9efe0c9ff89324b9043077f523f623'
 route: 'full'
 route_source: 'auto'
@@ -89,7 +89,7 @@ context: []
 
 ## Plan Change Log
 
-- 2026-10-24 -- Dev live check passed on owner approval. The pg18 MCP reaches only the `postgres` database, so `scratch/provision_resolver_dev.py` provisioned as `rri_dev_owner` (it holds CREATE on the database): schema `resolver_v1` owned by `rri_dev_owner`, USAGE and default SELECT `FOR ROLE rri_dev_owner` for `resolver_dev_reader`. `migrate` as `rri_dev_owner` applied `0003_store_name_optional.sql` (not yet applied in dev) and `0004_resolver_v1.sql`. `scratch/verify_resolver_dev.py` as `resolver_dev_reader` read 5 `stored` feed rows (seq 1..5) and 5 receipts with `Z` and `+01:00`/`+02:00` local times, line counts and decimal-string settlements; `receipts`, `receipt_lines`, `receipt_settlements` and `receipt_feed` in `retail_receipts_import` were refused with 42501.
+- 2026-10-24 -- Dev live check passed on owner approval. The pg18 MCP reaches only the `postgres` database, so `scratch/provision_resolver_dev.py` provisioned as `rri_dev_owner` (it holds CREATE on the database): schema `resolver_v1` owned by `rri_dev_owner`, USAGE and default SELECT `FOR ROLE rri_dev_owner` for `resolver_dev_reader`. `migrate` as `rri_dev_owner` applied `0003_store_name_optional.sql` (not yet applied in dev) and `0004_resolver_v1.sql`. `scratch/verify_resolver_dev.py` as `resolver_dev_reader` read 5 `stored` feed rows (seq 1..5) and 5 receipts with `Z` and `+01:00`/`+02:00` local times, line counts and decimal-string settlements; `receipts`, `receipt_lines`, `receipt_settlements` and `receipt_feed` in `retail_receipts_import` were refused with 42501. Owner accepted the ticket; status done.
 
 ## Review Triage Log
 
