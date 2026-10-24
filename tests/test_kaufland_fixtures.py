@@ -33,6 +33,7 @@ from tests.kaufland_samples import (
     CASH,
     CHANGE,
     KAUFLAND_OIB,
+    SAMPLE_20260427_231253_PASS2,
     discount,
     item,
     payment,
@@ -429,3 +430,107 @@ def test_matrix_info_rows_dropped() -> None:
     assert len(receipt.settlements) == 1
     assert receipt.settlements[0].kind == SettlementKind.CARD
     assert receipt.settlements[0].amount == Decimal("1.45")
+
+
+def test_matrix_returned_beer_bottle() -> None:
+    # Returned beer bottles: Boca za pivo * 4 * 0,16 -0,64 -> deposit_refund of 0.64 EUR
+    # Bought beer bottle: Boca za pivo * 1 * 0,16 0,16 -> sale line (qty 1, price 0.16, amount 0.16)
+    raw = response(
+        lines=[
+            item("Boca za pivo *", "1", "0,16", "0,16"),
+            item("Boca za pivo *", "4", "0,16", "-0,64"),
+        ],
+        total="-0,48",
+        payments=[payment(CARD, "-0,48")],
+    )
+    receipt = PLUGINS["kaufland"].normalize(raw)
+    assert receipt.total == Decimal("0.16")
+    assert len(receipt.lines) == 1
+    assert receipt.lines[0].printed_text == "Boca za pivo *"
+    assert receipt.lines[0].quantity == Decimal(1)
+    assert receipt.lines[0].unit_price == Decimal("0.16")
+    assert receipt.lines[0].printed_amount == Decimal("0.16")
+    assert len(receipt.settlements) == 2
+    assert receipt.settlements[0].kind == SettlementKind.CARD
+    assert receipt.settlements[0].amount == Decimal("-0.48")
+    assert receipt.settlements[1].kind == SettlementKind.DEPOSIT_REFUND
+    assert receipt.settlements[1].amount == Decimal("0.64")
+    assert check_consistency(receipt) is None
+    assert check_total(receipt) is None
+
+
+def test_matrix_mixed_deposit_refunds() -> None:
+    # Mixed deposit refunds: amb.- staklo -0.20, ambalaža - PET -0.40, Boca za pivo -0.64
+    # -> three deposit_refund settlements summing to 1.24 EUR
+    raw = response(
+        lines=[
+            item("Kruh njemački", "1", None, "2,00"),
+            discount("amb.- staklo", "-0,20"),
+            discount("ambalaža - PET", "-0,40"),
+            item("Boca za pivo", "4", "0,16", "-0,64"),
+        ],
+        total="0,76",
+        payments=[payment(CARD, "0,76")],
+    )
+    receipt = PLUGINS["kaufland"].normalize(raw)
+    assert receipt.total == Decimal("2.00")
+    assert len(receipt.lines) == 1
+    deposit_refunds = [s for s in receipt.settlements if s.kind == SettlementKind.DEPOSIT_REFUND]
+    assert len(deposit_refunds) == 3
+    assert [s.amount for s in deposit_refunds] == [
+        Decimal("0.20"),
+        Decimal("0.40"),
+        Decimal("0.64"),
+    ]
+    assert sum(s.amount for s in deposit_refunds) == Decimal("1.24")
+    assert check_consistency(receipt) is None
+    assert check_total(receipt) is None
+
+
+def test_matrix_standard_deposit_with_quantity() -> None:
+    # Standard deposit row: ambalaža - PET * 14 * 0,10 -1,40 -> deposit_refund of 1.40 EUR
+    raw = response(
+        lines=[
+            item("K.Voda 7L", "2", "1,45", "2,90"),
+            item("ambalaža - PET * 14 * 0,10", "14", "0,10", "-1,40"),
+        ],
+        total="1,50",
+        payments=[payment(CARD, "1,50")],
+    )
+    receipt = PLUGINS["kaufland"].normalize(raw)
+    assert receipt.total == Decimal("2.90")
+    assert len(receipt.lines) == 1
+    deposit_refunds = [s for s in receipt.settlements if s.kind == SettlementKind.DEPOSIT_REFUND]
+    assert len(deposit_refunds) == 1
+    assert deposit_refunds[0].amount == Decimal("1.40")
+    assert check_consistency(receipt) is None
+    assert check_total(receipt) is None
+
+
+def test_matrix_unknown_negative_item_with_quantity() -> None:
+    # Unknown negative item with qty: Nepoznati artikl * 2 * 1,00 -2,00 -> unreadable naming row
+    raw = response(lines=[item("Nepoznati artikl", "2", "1,00", "-2,00")])
+    with pytest.raises(UnreadableReceipt, match="Nepoznati artikl"):
+        PLUGINS["kaufland"].normalize(raw)
+
+
+def test_sample_20260427_231253_with_returned_bottles() -> None:
+    # Sample 20260427_231253: 18 goods lines (62.47), 3 refunds (1.24), Card 61.23
+    receipt = PLUGINS["kaufland"].normalize(SAMPLE_20260427_231253_PASS2)
+    assert len(receipt.lines) == 18
+    assert sum(line.effective_amount for line in receipt.lines) == Decimal("62.47")
+    assert receipt.total == Decimal("62.47")
+    assert sum(s.amount for s in receipt.settlements) == Decimal("62.47")
+    deposit_refunds = [s for s in receipt.settlements if s.kind == SettlementKind.DEPOSIT_REFUND]
+    assert len(deposit_refunds) == 3
+    assert [s.amount for s in deposit_refunds] == [
+        Decimal("0.20"),
+        Decimal("0.40"),
+        Decimal("0.64"),
+    ]
+    assert sum(s.amount for s in deposit_refunds) == Decimal("1.24")
+    card_settlements = [s for s in receipt.settlements if s.kind == SettlementKind.CARD]
+    assert len(card_settlements) == 1
+    assert card_settlements[0].amount == Decimal("61.23")
+    assert check_consistency(receipt) is None
+    assert check_total(receipt) is None

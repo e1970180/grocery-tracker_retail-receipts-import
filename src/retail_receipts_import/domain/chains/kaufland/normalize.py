@@ -169,7 +169,19 @@ def _lines(rows: list[KauflandLine]) -> tuple[list[ReceiptLine], list[Settlement
             continue
 
         amount = money(row.amount, "line amount")
+        if folded.startswith("BOCA ZA PIVO") and amount < Decimal(0):
+            deposit_refunds.append(
+                Settlement(
+                    kind=SettlementKind.DEPOSIT_REFUND,
+                    printed_text=row.text.strip(),
+                    amount=abs(amount),
+                )
+            )
+            continue
+
         if row.quantity is not None:
+            if amount < Decimal(0):
+                raise UnreadableReceipt(f"negative row {row.text!r} is not a known deposit refund")
             qty = quantity(row.quantity)
             items.append(_Item(row=row, text=row.text.strip(), quantity=qty, amount=amount))
             continue
