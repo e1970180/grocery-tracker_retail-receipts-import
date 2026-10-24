@@ -3,7 +3,7 @@ title: 'Kaufland receipt with a returned bottle fails as unreadable'
 type: 'bugfix'
 ticket: '22'
 created: '2026-10-24'
-status: 'built'
+status: done
 baseline_revision: '512a5393471cb3e3a71991287c6070f722802311'
 route: 'full'
 route_source: 'pinned'
