@@ -77,3 +77,7 @@
 - source_plan: `_bmad-output/initiative-receipts-import-mvp/epic-receipts-pipeline/story-per-job-error-boundary-plan.md`
   summary: Rework the wording and layout of every sender and admin message, including the technical lines in alerts and recoveries (for example the bare `postgres_unreachable` key under "PostgreSQL снова доступен.").
   evidence: In the 1.13 live run the owner found the alert key line in the recovery message confusing (2026-10-24); the key, then the reason, follow the texts-file line by the alerts plan. The owner chose a separate pass over all texts instead of a one-off fix.
+
+- source_plan: `_bmad-output/initiative-receipts-import-mvp/epic-receipts-pipeline/story-lidl-plug-in-plan.md`
+  summary: A Lidl paper-receipt photo fixture for the Lidl plug-in, as AD-6 asks where a chain issues both paper and digital receipts.
+  evidence: All Lidl samples are Lidl Plus app screenshots; no paper receipt is at hand, and the owner chose screenshots only for 1.8 (2026-10-24).
