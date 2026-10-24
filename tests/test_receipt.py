@@ -140,6 +140,29 @@ def test_currency_is_eur_only() -> None:
         )
 
 
+def test_store_name_is_optional_and_rejects_empty_string() -> None:
+    receipt = NormalizedReceipt(
+        payload_version=1,
+        chain_id="spar",
+        purchased_at=PURCHASED,
+        total=Decimal("1"),
+        lines=[_line()],
+        settlements=[_card("1")],
+    )
+    assert receipt.store_name is None
+
+    with pytest.raises(ValidationError):
+        NormalizedReceipt(
+            payload_version=1,
+            chain_id="spar",
+            store_name="",
+            purchased_at=PURCHASED,
+            total=Decimal("1"),
+            lines=[_line()],
+            settlements=[_card("1")],
+        )
+
+
 def test_purchased_at_must_be_utc_to_the_minute() -> None:
     base: dict[str, Any] = {
         "payload_version": 1,

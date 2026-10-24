@@ -399,3 +399,28 @@ def test_round_trip_keeps_every_field_and_reference(
         "SELECT receipt_id, event FROM retail_receipts_import.receipt_feed"
     ).fetchall()
     assert feed == [(receipt_id, "stored")]
+
+
+def test_round_trip_with_null_store_name(
+    receipts_conn: psycopg.Connection[Any],
+) -> None:
+    receipt = NormalizedReceipt(
+        payload_version=1,
+        chain_id="lidl",
+        store_name=None,
+        purchased_at=PURCHASED,
+        total=Decimal("2.00"),
+        lines=[_line("Kruh", printed="2.00")],
+        settlements=[_card("2.00")],
+    )
+    receipt_id = uuid.uuid7()
+    result = write_receipt(receipts_conn, receipt_id, receipt, telegram_source(1, 1, "Ana"))
+    assert result.kind is WriteKind.STORED
+    assert result.receipt_id == receipt_id
+
+    row = receipts_conn.execute(
+        "SELECT store_name FROM retail_receipts_import.receipts WHERE receipt_id = %s",
+        (receipt_id,),
+    ).fetchone()
+    assert row is not None
+    assert row[0] is None

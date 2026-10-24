@@ -146,7 +146,7 @@ class NormalizedReceipt(BaseModel):
 
     payload_version: Literal[1]
     chain_id: str
-    store_name: str = Field(min_length=1)
+    store_name: str | None = Field(default=None, min_length=1)
     branch_number: str | None = None
     receipt_number: str | None = None
     store_address: str | None = None
