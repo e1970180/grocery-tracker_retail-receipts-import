@@ -11,6 +11,15 @@ def test_valid_dev_config(rri_env: dict[str, str]) -> None:
     assert settings.db_port == 5432
 
 
+def test_admin_chat_id_is_required(
+    rri_env: dict[str, str], monkeypatch: pytest.MonkeyPatch
+) -> None:
+    assert Settings().admin_chat_id == 777  # type: ignore[call-arg]
+    monkeypatch.delenv("RRI_ADMIN_CHAT_ID")
+    with pytest.raises(ValidationError, match="admin_chat_id"):
+        Settings()  # type: ignore[call-arg]
+
+
 def test_prod_with_dev_database_is_refused(
     rri_env: dict[str, str], monkeypatch: pytest.MonkeyPatch
 ) -> None:

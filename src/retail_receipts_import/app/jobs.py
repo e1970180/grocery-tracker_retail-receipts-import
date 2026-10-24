@@ -3,8 +3,11 @@
 Each state is one step whose result is persisted before the next step starts, so a restart
 resumes where the job stopped: `received` downloads the file, `chain_pending` runs pass 1,
 `extract_pending` runs pass 2 and its checks, and `write_pending` stores the kept receipt
-without calling Gemini again. The success reaction follows the PostgreSQL commit and the final
-state, and its failure is only logged.
+without calling Gemini again.
+
+Every final path runs in one order: the PostgreSQL commit (when there is one), the final state,
+the notifications, then deleting the local file. A notification never changes the job, and
+nothing is sent again after a crash; the original stays in Telegram, so the file goes either way.
 """
 
 import logging
@@ -21,6 +24,7 @@ from retail_receipts_import.adapters.files.store import FileStore
 from retail_receipts_import.adapters.queue.sqlite import Queue
 from retail_receipts_import.adapters.telegram.download import FileTooLarge, FileUnavailable
 from retail_receipts_import.app import pipeline
+from retail_receipts_import.app.notify import Notifier
 from retail_receipts_import.app.pipeline import (
     ChainFound,
     ChainWithdrawn,
@@ -48,7 +52,6 @@ log = logging.getLogger(__name__)
 Download = Callable[[str, int], bytes]
 # Opened once per job and shared by its steps, e.g. around one PostgreSQL connection.
 OpenPipeline = Callable[[], AbstractContextManager[Ports]]
-React = Callable[[int, int], None]
 
 
 @dataclass(frozen=True)
@@ -57,8 +60,14 @@ class JobPorts:
     files: FileStore
     download: Download
     open_pipeline: OpenPipeline
-    react_stored: React
+    notify: Notifier
     clock: Callable[[], datetime]
+
+
+def sweep_files(ports: JobPorts) -> None:
+    """Deletes files a crash left behind after their job's final state, before the loop starts."""
+    for item in ports.queue.final_jobs():
+        ports.files.delete(ports.files.path_for(item.chat_id, item.message_id, item.mime))
 
 
 def advance(job: Job, ports: JobPorts, max_attempts: int, retry_delay: timedelta) -> None:
@@ -128,8 +137,8 @@ def _detect_chain(job: Job, ports: JobPorts, steps: Ports, max_attempts: int) ->
                 job.job_id, ports.clock(), pass1_json=pass1.model_dump_json()
             )
             log.info("job %s: %s (%s)", job.job_id, JobState.EXTRACT_PENDING, pass1.chain)
-        case Unsupported(chain_id):
-            _unsupported(job, ports, chain_id, max_attempts)
+        case Unsupported() as unsupported:
+            _unsupported(job, ports, unsupported, max_attempts)
         case Invalid() as invalid:
             _invalid(job, ports, invalid, max_attempts)
 
@@ -169,7 +178,6 @@ def _write(job: Job, ports: JobPorts, steps: Ports, max_attempts: int) -> None:
     match pipeline.store(uuid.UUID(job.receipt_id), receipt, source, steps):
         case Stored(receipt_id):
             _finish(job, ports, JobState.STORED, receipt_id=str(receipt_id))
-            _react(job, ports)
         case Duplicate(receipt_id):
             _finish(job, ports, JobState.DUPLICATE, receipt_id=str(receipt_id))
 
@@ -181,12 +189,14 @@ _STEPS = {
 }
 
 
-def _unsupported(job: Job, ports: JobPorts, chain_id: str, max_attempts: int) -> None:
+def _unsupported(job: Job, ports: JobPorts, result: Unsupported, max_attempts: int) -> None:
     attempts = job.attempts + 1
-    log.info("job %s: chain %s is not supported (attempt %d)", job.job_id, chain_id, attempts)
+    log.info(
+        "job %s: chain %s is not supported (attempt %d)", job.job_id, result.chain_id, attempts
+    )
     # Only a second unsupported result in a row is believed; one on the last attempt ends too.
     if job.unsupported or attempts >= max_attempts:
-        _finish(job, ports, JobState.UNSUPPORTED_CHAIN)
+        _finish(job, ports, JobState.UNSUPPORTED_CHAIN, store_name=result.store_name)
         return
     ports.queue.to_chain_pending(job.job_id, ports.clock(), attempts=attempts, unsupported=True)
     log.info("job %s: %s", job.job_id, JobState.CHAIN_PENDING)
@@ -221,6 +231,10 @@ def _wait(job: Job, ports: JobPorts, wait: ExtractionWait) -> None:
     )
     now = ports.clock()
     ports.queue.wait(job.job_id, now + wait.delay, now, waits=job.waits + 1)
+    # Only an outage tells the sender to wait; a blocked model is the admin's to fix. Once
+    # per stretch of waits: a later stretch repeats the same reaction, which nobody sees.
+    if wait.kind is ExtractionClass.UNAVAILABLE and job.waits == 0:
+        ports.notify.in_progress(job.job_id, job.accepted)
 
 
 def _kept_receipt(job: Job) -> NormalizedReceipt | None:
@@ -255,16 +269,19 @@ def _finish(
     *,
     failure_reason: FailureReason | None = None,
     receipt_id: str | None = None,
+    store_name: str | None = None,
 ) -> None:
     ports.queue.finish(
         job.job_id, state, ports.clock(), failure_reason=failure_reason, receipt_id=receipt_id
     )
     log.info("job %s: %s", job.job_id, state)
-
-
-def _react(job: Job, ports: JobPorts) -> None:
-    # Best effort: the receipt is stored whatever happens to the reaction.
-    try:
-        ports.react_stored(job.accepted.chat_id, job.accepted.message_id)
-    except Exception as exc:
-        log.error("job %s: success reaction failed: %s: %s", job.job_id, type(exc).__name__, exc)
+    path = _path(job, ports)
+    ports.notify.finished(
+        job.job_id,
+        job.accepted,
+        state,
+        path,
+        failure_reason=failure_reason,
+        store_name=store_name,
+    )
+    ports.files.delete(path)

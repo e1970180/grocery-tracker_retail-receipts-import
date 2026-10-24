@@ -1,5 +1,8 @@
 """Tests for TelegramClient transport, retry policy, and token redaction."""
 
+import json
+from collections.abc import Callable
+from pathlib import Path
 from typing import Any
 
 import httpx
@@ -190,3 +193,78 @@ def test_set_message_reaction_sends_correct_payload() -> None:
         "message_id": 42,
         "reaction": [{"type": "emoji", "emoji": "👍"}],
     }
+
+
+def recording_client(
+    handler: Callable[[httpx.Request], httpx.Response],
+) -> tuple[TelegramClient, list[httpx.Request]]:
+    requests: list[httpx.Request] = []
+
+    def record(request: httpx.Request) -> httpx.Response:
+        request.read()
+        requests.append(request)
+        return handler(request)
+
+    client = TelegramClient(SECRET, transport=httpx.MockTransport(record), sleep=SleepRecorder())
+    return client, requests
+
+
+def ok(request: httpx.Request) -> httpx.Response:
+    return httpx.Response(200, json={"ok": True, "result": True})
+
+
+def test_set_message_reaction_none_clears_it() -> None:
+    client, requests = recording_client(ok)
+    client.set_message_reaction(111, 42, None)
+    assert json.loads(requests[0].content)["reaction"] == []
+
+
+def test_send_message_replies_without_markup() -> None:
+    client, requests = recording_client(ok)
+    client.send_message(111, "Чек <b>KONZUM</b>", reply_to=42)
+    [request] = requests
+    assert request.url.path.endswith("/sendMessage")
+    assert json.loads(request.content) == {
+        "chat_id": 111,
+        "text": "Чек <b>KONZUM</b>",
+        "reply_parameters": {"message_id": 42, "allow_sending_without_reply": True},
+    }
+
+
+def test_send_message_to_the_admin_is_no_reply() -> None:
+    client, requests = recording_client(ok)
+    client.send_message(777, "notice")
+    assert json.loads(requests[0].content) == {"chat_id": 777, "text": "notice"}
+
+
+def test_send_document_uploads_the_file_and_cuts_the_caption(tmp_path: Path) -> None:
+    path = tmp_path / "111_42.pdf"
+    path.write_bytes(b"%PDF-1.7 receipt")
+    calls = iter([httpx.Response(429, json={"ok": False, "parameters": {"retry_after": 1}})])
+
+    def rate_limited_once(request: httpx.Request) -> httpx.Response:
+        return next(calls, ok(request))
+
+    client, requests = recording_client(rate_limited_once)
+    client.send_document(777, path, "x" * 1500)
+    # The retry carries the same upload as the first try.
+    assert len(requests) == 2
+    for request in requests:
+        assert request.url.path.endswith("/sendDocument")
+        body = request.content
+        assert b'name="chat_id"\r\n\r\n777\r\n' in body
+        assert b'name="caption"\r\n\r\n' + b"x" * 1024 + b"\r\n" in body
+        assert b'name="document"; filename="111_42.pdf"' in body
+        assert b"%PDF-1.7 receipt" in body
+
+
+def test_a_4xx_send_is_not_retried_and_hides_the_token() -> None:
+    def forbidden(request: httpx.Request) -> httpx.Response:
+        return httpx.Response(403, json={"ok": False, "description": f"bot {TOKEN} was blocked"})
+
+    client, requests = recording_client(forbidden)
+    with pytest.raises(TelegramAPIError) as exc_info:
+        client.send_message(111, "hi")
+    assert len(requests) == 1
+    assert exc_info.value.status_code == 403
+    assert TOKEN not in str(exc_info.value)

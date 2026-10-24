@@ -17,14 +17,14 @@ from retail_receipts_import.adapters.postgres.receipts import find_other_source,
 from retail_receipts_import.adapters.queue.sqlite import Queue
 from retail_receipts_import.adapters.telegram.client import TelegramClient
 from retail_receipts_import.adapters.telegram.download import download_file
-from retail_receipts_import.app import loop
+from retail_receipts_import.app import jobs, loop
 from retail_receipts_import.app.jobs import JobPorts
+from retail_receipts_import.app.notify import Notifier
 from retail_receipts_import.app.pipeline import Generate, Ports
 from retail_receipts_import.app.texts import Texts
 from retail_receipts_import.config import Settings
 from retail_receipts_import.domain.extraction import classify
 from retail_receipts_import.domain.intake import MAX_FILE_BYTES
-from retail_receipts_import.domain.outcomes import Outcome
 
 
 def pipeline_ports(
@@ -57,7 +57,6 @@ def loop_settings(settings: Settings) -> loop.LoopSettings:
 def serve(settings: Settings, texts: Texts, stop: threading.Event) -> None:
     gemini = GeminiClient.from_settings(settings)
     queue = Queue(settings.data_dir / "queue.sqlite3")
-    stored_emoji = texts.reactions[Outcome.STORED]
 
     @contextlib.contextmanager
     def open_pipeline() -> Iterator[Ports]:
@@ -75,11 +74,10 @@ def serve(settings: Settings, texts: Texts, stop: threading.Event) -> None:
                     telegram, file_id, size, MAX_FILE_BYTES
                 ),
                 open_pipeline=open_pipeline,
-                react_stored=lambda chat_id, message_id: telegram.set_message_reaction(
-                    chat_id, message_id, stored_emoji
-                ),
+                notify=Notifier(telegram, texts, settings.admin_chat_id),
                 clock=lambda: datetime.now(UTC),
             )
+            jobs.sweep_files(ports)
             loop.run(telegram, ports, loop_settings(settings), stop)
     finally:
         queue.close()

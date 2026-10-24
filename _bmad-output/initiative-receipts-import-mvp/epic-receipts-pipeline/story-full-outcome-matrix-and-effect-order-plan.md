@@ -3,14 +3,14 @@ title: 'Full outcome matrix and effect order'
 type: 'feature'
 ticket: '12'
 created: '2026-10-23'
-status: 'ready-for-dev'
+status: 'built'
 baseline_revision: 'ce462aacb18d1e2af7e7697c6e4f5ee19e5692c5'
 route: 'full'
 route_source: 'auto'
 risk: 'medium'
-review: ''
-review_source: ''
-lenses_ran: []
+review: 'quick'
+review_source: 'pinned'
+lenses_ran: ['quick']
 review_loop_iteration: 0
 context: []
 ---
@@ -74,10 +74,10 @@ context: []
 ## Tasks & Acceptance
 
 **Execution:**
-- [ ] `adapters/telegram/client.py`, `tests/test_telegram_client.py` -- the two sends, MockTransport tests of payload and of a 4xx not retried.
-- [ ] `config.py`, `domain/intake.py`, `adapters/files/store.py`, `adapters/queue/sqlite.py` -- setting, `NotAccepted`, `delete`, `final_jobs`, with unit tests.
-- [ ] `app/notify.py`, `app/jobs.py`, `app/loop.py`, `app/service.py` -- notify, effect order, sweep wiring.
-- [ ] `tests/test_notify.py`, `tests/test_loop.py` -- a recording fake Telegram and the real texts file: one test per matrix row, two consecutive unavailable waits giving one 👀, a raising send leaving state final and the file deleted, the sweep.
+- [x] `adapters/telegram/client.py`, `tests/test_telegram_client.py` -- the two sends, MockTransport tests of payload and of a 4xx not retried.
+- [x] `config.py`, `domain/intake.py`, `adapters/files/store.py`, `adapters/queue/sqlite.py` -- setting, `NotAccepted`, `delete`, `final_jobs`, with unit tests.
+- [x] `app/notify.py`, `app/jobs.py`, `app/loop.py`, `app/service.py` -- notify, effect order, sweep wiring.
+- [x] `tests/test_notify.py`, `tests/test_loop.py` -- a recording fake Telegram and the real texts file: one test per matrix row, two consecutive unavailable waits giving one 👀, a raising send leaving state final and the file deleted, the sweep.
 
 **Acceptance Criteria:**
 - Given each final state, when the job ends, then the sender and admin get exactly the matrix row's texts from the texts file, after the final state is persisted, and the local file is gone.
@@ -85,9 +85,24 @@ context: []
 
 ## Implementation Notes
 
+- Implemented directly in the main session on Opus 5.5, per the owner's decision recorded in Boundaries; the workflow's subagent handoff was skipped.
+- The sweep lives in `app/jobs.py` as `sweep_files(ports)`, called by `service.serve` before `loop.run`, so it is testable with the job fakes.
+- Admin notices are the texts-file string followed by plain data lines (buyer name, `#<job_id>`, store name when known), with no hard-coded labels, so the texts file stays the only wording and no key changes.
+- Tests that encoded the earlier silent behaviour were changed to the matrix: a stored job's file is now gone; duplicate, unsupported and last-attempt failure now send their texts; an allowlisted private text now gets 🙈; `test_intake` splits "not ours" (`None`) from "family content we do not take" (`NotAccepted`).
+- Order of effects is proven by the recording fake snapshotting (job state, file exists, committed offset) at every send.
+- Verification (WSL, uv): ruff check, ruff format --check, mypy strict clean; `pytest` 372 passed; `pytest -m integration` 33 passed against a throwaway `postgres:18.6` container on localhost:55432.
+- Deploy note: `RRI_ADMIN_CHAT_ID` is now required; the local and server `.env` must set it before the service starts.
+
 ## Plan Change Log
 
+- 2026-10-24: `Notifier.finished` takes `(job_id, item, state, path, failure_reason=, store_name=)` instead of `(job, path, store_name)`, because `Job` carries no failure reason and `_finish` already holds the state and reason.
+
 ## Review Triage Log
+
+- quick, iteration 0: low 2, maybe-false 1.
+  - low -- `README.md` settings table lacks the new required `RRI_ADMIN_CHAT_ID`; confirmed by reading the table -- patch: row added. (`RRI_ALLOWED_USER_IDS` missing there too is pre-existing -- deferred.)
+  - low -- the gitignored local `.env` (and the server's) has no `RRI_ADMIN_CHAT_ID`, so the next start fails validation; confirmed by `config.py` having no default -- not a code defect, the fix edits a secrets file the owner keeps; rejected here, reported to the owner as a deploy action.
+  - maybe-false -- clearing with an empty `reaction` list on a message that has no bot reaction might return 400 and log an ERROR per unsupported-chain job; needs a live dev-bot call to settle; if true only a log line, job state and other sends unaffected (`_send` catches) -- rejected as low-if-true, listed for the owner's optional dev-bot check.
 
 ## Design Notes
 

@@ -21,6 +21,7 @@ from retail_receipts_import.adapters.postgres.receipts import find_other_source
 from retail_receipts_import.adapters.queue.sqlite import Queue
 from retail_receipts_import.app import jobs, loop
 from retail_receipts_import.app.jobs import JobPorts
+from retail_receipts_import.app.notify import Notifier
 from retail_receipts_import.app.pipeline import Ports
 from retail_receipts_import.app.service import pipeline_ports
 from retail_receipts_import.config import Settings
@@ -31,6 +32,7 @@ from retail_receipts_import.domain.jobs import JobState
 from retail_receipts_import.domain.receipt import telegram_source
 from tests.conftest import TEST_DSN_VAR
 from tests.spar_samples import pass1_response, response
+from tests.test_notify import ADMIN, TEXTS, RecordingTelegram
 
 pytestmark = pytest.mark.integration
 
@@ -83,7 +85,7 @@ class Env:
             files=self.files,
             download=lambda file_id, size: PDF_BYTES,
             open_pipeline=self.open_pipeline,
-            react_stored=lambda chat_id, message_id: None,
+            notify=Notifier(RecordingTelegram(), TEXTS, ADMIN),
             clock=lambda: self.now,
         )
 

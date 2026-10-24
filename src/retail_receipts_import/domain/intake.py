@@ -42,19 +42,29 @@ class Accepted:
     declared_size: int
 
 
-def accept(update: Any, allowed_user_ids: Collection[int]) -> Accepted | None:
-    """The job to create for this update, or None when it is not a receipt we take."""
+@dataclass(frozen=True)
+class NotAccepted:
+    """A family member's own message that is not a receipt we take; it gets a reaction only."""
+
+    chat_id: int
+    message_id: int
+
+
+def accept(update: Any, allowed_user_ids: Collection[int]) -> Accepted | NotAccepted | None:
+    """The job to create for this update, NotAccepted for a family member's other content,
+    or None when the update is not ours to answer at all."""
     message = update.get("message") if isinstance(update, dict) else None
     if not isinstance(message, dict) or not _authorized(message, allowed_user_ids):
         return None
     if message.keys() & _THIRD_PARTY_FIELDS:
         return None
+    refused = NotAccepted(chat_id=message["chat"]["id"], message_id=message["message_id"])
     # Telegram also sets `document` on an animation, so an animation must not pass as one.
     if "animation" in message:
-        return None
+        return refused
     found = _photo(message.get("photo")) or _document(message.get("document"))
     if found is None:
-        return None
+        return refused
     file_id, kind, mime, size = found
     return Accepted(
         chat_id=message["chat"]["id"],

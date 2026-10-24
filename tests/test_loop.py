@@ -3,7 +3,7 @@ import dataclasses
 import logging
 import threading
 import uuid
-from collections.abc import Iterator, Sequence
+from collections.abc import Callable, Iterator, Sequence
 from dataclasses import dataclass, field
 from datetime import UTC, datetime, timedelta
 from pathlib import Path
@@ -29,12 +29,14 @@ from retail_receipts_import.adapters.telegram.download import (
 )
 from retail_receipts_import.app import jobs, loop
 from retail_receipts_import.app.jobs import JobPorts
+from retail_receipts_import.app.notify import Notifier
 from retail_receipts_import.app.pipeline import Ports
 from retail_receipts_import.domain.chains import KnownChain
 from retail_receipts_import.domain.chains.spar.schema import SparPass2
 from retail_receipts_import.domain.extraction import GeminiCallError, classify
-from retail_receipts_import.domain.intake import MAX_FILE_BYTES
+from retail_receipts_import.domain.intake import MAX_FILE_BYTES, Accepted, FileKind
 from retail_receipts_import.domain.jobs import Job, JobState
+from retail_receipts_import.domain.outcomes import FailureReason
 from retail_receipts_import.domain.receipt import (
     PAYLOAD_VERSION,
     NormalizedReceipt,
@@ -42,6 +44,7 @@ from retail_receipts_import.domain.receipt import (
     telegram_source,
 )
 from tests.spar_samples import pass1_response, response
+from tests.test_notify import ADMIN, TEXTS, RecordingTelegram
 from tests.test_queue import write_v1_queue
 
 FIXTURES = Path(__file__).parent / "fixtures"
@@ -109,15 +112,26 @@ class Fakes:
     stored_id: uuid.UUID | None = None
     reference: ChainReference = SPAR_ONLY
     download_error: Exception | None = None
-    react_error: Exception | None = None
+    telegram: RecordingTelegram = field(default_factory=RecordingTelegram)
     now: datetime = datetime(2026, 10, 23, 12, 0, tzinfo=UTC)
     downloads: list[str] = field(default_factory=list)
     generated: list[type[BaseModel]] = field(default_factory=list)
     step_starts_seen: list[int] = field(default_factory=list)
     written: list[tuple[uuid.UUID, NormalizedReceipt, ReceiptSource]] = field(default_factory=list)
     lookups: list[tuple[str, datetime, ReceiptSource]] = field(default_factory=list)
-    reactions: list[tuple[int, int]] = field(default_factory=list)
     pipelines_opened: int = 0
+
+    def __post_init__(self) -> None:
+        self.telegram.observe = self.snapshot
+
+    def snapshot(self) -> tuple[JobState | None, bool, int | None]:
+        """The job's state, whether its file exists, and the committed offset, at a send."""
+        rows = self.queue._conn.execute("SELECT state FROM jobs WHERE job_id = 1").fetchall()
+        state = JobState(rows[0][0]) if rows else None
+        return state, self.file().exists(), self.queue.read_offset()
+
+    def file(self) -> Path:
+        return self.files.path_for(ALLOWED, 3, "application/pdf")
 
     def download(self, file_id: str, declared_size: int) -> bytes:
         self.downloads.append(file_id)
@@ -151,13 +165,6 @@ class Fakes:
         self.lookups.append((chain_id, purchased_at, source))
         return self.stored_id
 
-    def react(self, chat_id: int, message_id: int) -> None:
-        # The reaction comes only after the final state is durable.
-        assert self.job().state is JobState.STORED
-        self.reactions.append((chat_id, message_id))
-        if self.react_error is not None:
-            raise self.react_error
-
     @contextlib.contextmanager
     def open_pipeline(self) -> Iterator[Ports]:
         self.pipelines_opened += 1
@@ -176,7 +183,7 @@ class Fakes:
             files=self.files,
             download=self.download,
             open_pipeline=self.open_pipeline,
-            react_stored=self.react,
+            notify=Notifier(self.telegram, TEXTS, ADMIN),
             clock=lambda: self.now,
         )
 
@@ -230,30 +237,41 @@ def restarted(fakes: Fakes, tmp_path: Path, answers: Sequence[str | Exception]) 
     return again
 
 
-def test_stored_receipt_gets_the_success_reaction(fakes: Fakes) -> None:
+DUPLICATE_SENDS = [
+    ("reaction", ALLOWED, 3, "🤝"),
+    ("message", ALLOWED, "Данный чек уже внесен в систему", 3),
+]
+
+
+def test_stored_receipt_gets_the_success_reaction_then_loses_its_file(fakes: Fakes) -> None:
     first_cycle(fakes)
     assert fakes.state() is JobState.STORED
-    assert fakes.reactions == [(ALLOWED, 3)]
+    assert fakes.telegram.calls == [("reaction", ALLOWED, 3, "👍")]
+    # Sent once the state was final, while the file was still there; deleted after.
+    assert fakes.telegram.seen == [(JobState.STORED, True, 101)]
+    assert not fakes.file().exists()
     [(receipt_id, receipt, source)] = fakes.written
     assert receipt.chain_id == "spar"
     assert source == telegram_source(ALLOWED, 3, buyer_name="Ana")
     assert fakes.job().receipt_id == str(receipt_id)
-    assert fakes.files.path_for(ALLOWED, 3, "application/pdf").read_bytes() == PDF_BYTES
 
 
 def test_failed_reaction_is_only_logged(fakes: Fakes, caplog: pytest.LogCaptureFixture) -> None:
-    fakes.react_error = RuntimeError("telegram down")
+    fakes.telegram.fail = True
     first_cycle(fakes)
     assert fakes.state() is JobState.STORED
-    assert "success reaction failed" in caplog.text
+    assert "job 1: reaction failed" in caplog.text
+    assert not fakes.file().exists()
 
 
-def test_duplicate_ends_the_job_without_a_reaction(fakes: Fakes) -> None:
+def test_duplicate_from_the_writer_gets_its_reaction_and_message(fakes: Fakes) -> None:
     fakes.write_result = WriteKind.DUPLICATE
     first_cycle(fakes)
     assert fakes.state() is JobState.DUPLICATE
     assert fakes.job().receipt_id == str(EXISTING_ID)
-    assert fakes.reactions == []
+    assert fakes.telegram.calls == DUPLICATE_SENDS
+    assert {seen[0] for seen in fakes.telegram.seen} == {JobState.DUPLICATE}
+    assert not fakes.file().exists()
 
 
 def test_own_earlier_write_is_stored(fakes: Fakes) -> None:
@@ -274,7 +292,9 @@ def test_resend_from_another_source_ends_after_pass1_without_pass2(
     # No attempt, nothing kept for pass 2, and no write.
     assert (job.attempts, job.pass1_json) == (0, None)
     assert fakes.generated != [] and fakes.pass2_calls() == 0
-    assert fakes.written == [] and fakes.reactions == []
+    assert fakes.written == []
+    assert fakes.telegram.calls == DUPLICATE_SENDS
+    assert not fakes.file().exists()
     # The printed 09:05 in Zagreb winter time is the key's 08:05 UTC.
     assert fakes.lookups == [
         ("spar", datetime(2030, 2, 1, 8, 5, tzinfo=UTC), telegram_source(ALLOWED, 3, "Ana"))
@@ -364,7 +384,8 @@ def test_invalid_on_the_last_attempt_fails_with_its_own_reason(tmp_path: Path) -
     first_cycle(fakes)
     assert fakes.state() is JobState.FAILED
     assert fakes.failure_reason() == "total_settlement_mismatch"
-    assert fakes.answers == [] and fakes.written == [] and fakes.reactions == []
+    assert fakes.answers == [] and fakes.written == []
+    assert fakes.telegram.calls[0] == ("reaction", ALLOWED, 3, "👎")
 
 
 def test_first_unsupported_consumes_an_attempt_and_sets_the_flag(tmp_path: Path) -> None:
@@ -374,13 +395,20 @@ def test_first_unsupported_consumes_an_attempt_and_sets_the_flag(tmp_path: Path)
     assert (job.state, job.attempts, job.unsupported) == (JobState.CHAIN_PENDING, 1, True)
 
 
-def test_second_unsupported_in_a_row_ends_the_job(tmp_path: Path) -> None:
+def test_second_unsupported_in_a_row_ends_the_job_and_tells_both(tmp_path: Path) -> None:
     other = pass1_response(chain="other", store_name="KONZUM")
     fakes = make_fakes(tmp_path, [other, other])
     first_cycle(fakes)
     assert fakes.state() is JobState.UNSUPPORTED_CHAIN
     assert len(fakes.generated) == 2
-    assert fakes.failure_reason() is None and fakes.reactions == []
+    assert fakes.failure_reason() is None
+    assert fakes.telegram.calls == [
+        ("reaction", ALLOWED, 3, None),
+        ("message", ALLOWED, "Чеки этой сети пока не поддерживаются.", 3),
+        ("message", ADMIN, "Чек неподдерживаемой сети.\nAna\n#1\nKONZUM", None),
+    ]
+    assert {seen[0] for seen in fakes.telegram.seen} == {JobState.UNSUPPORTED_CHAIN}
+    assert not fakes.file().exists()
 
 
 def test_unsupported_then_supported_is_not_a_run(tmp_path: Path) -> None:
@@ -752,20 +780,8 @@ def test_long_poll_is_full_with_no_waiting_job(fakes: Fakes) -> None:
 
 @pytest.mark.parametrize(
     "update",
-    [
-        pdf_update(100, 3, sender=99999),
-        pdf_update(100, 3, chat_type="group"),
-        {
-            "update_id": 100,
-            "message": {
-                "message_id": 3,
-                "chat": {"id": ALLOWED, "type": "private"},
-                "from": {"id": ALLOWED},
-                "text": "hi",
-            },
-        },
-    ],
-    ids=["not-allowlisted", "group-chat", "text"],
+    [pdf_update(100, 3, sender=99999), pdf_update(100, 3, chat_type="group")],
+    ids=["not-allowlisted", "group-chat"],
 )
 def test_filtered_update_makes_no_job_but_is_acknowledged(
     fakes: Fakes, update: dict[str, Any]
@@ -774,7 +790,50 @@ def test_filtered_update_makes_no_job_but_is_acknowledged(
     cycle(telegram, fakes)
     assert fakes.queue._conn.execute("SELECT count(*) FROM jobs").fetchone() == (0,)
     assert fakes.queue.read_offset() == 101
-    assert fakes.downloads == [] and fakes.reactions == []
+    assert fakes.downloads == [] and fakes.telegram.calls == []
+
+
+def with_message(**fields: Any) -> dict[str, Any]:
+    update = pdf_update(100, 3)
+    del update["message"]["document"]
+    update["message"].update(fields)
+    return update
+
+
+PDF_DOC = {"file_id": "f3", "file_size": 16, "mime_type": "application/pdf"}
+
+
+@pytest.mark.parametrize(
+    "update",
+    [
+        with_message(text="hi"),
+        with_message(sticker={"file_id": "s"}),
+        with_message(document={**PDF_DOC, "mime_type": "application/zip"}),
+        with_message(document={**PDF_DOC, "file_size": MAX_FILE_BYTES + 1}),
+        with_message(document={k: v for k, v in PDF_DOC.items() if k != "file_size"}),
+    ],
+    ids=["text", "sticker", "other-mime", "over-20-mb", "unknown-size"],
+)
+def test_refused_content_gets_only_the_not_accepted_reaction(
+    fakes: Fakes, update: dict[str, Any]
+) -> None:
+    cycle(FakeTelegram([[update]]), fakes)
+    assert fakes.queue._conn.execute("SELECT count(*) FROM jobs").fetchone() == (0,)
+    assert fakes.telegram.calls == [("reaction", ALLOWED, 3, "🙈")]
+    # Sent only once the batch was acknowledged.
+    assert fakes.telegram.seen == [(None, False, 101)]
+    assert fakes.downloads == []
+
+
+def test_failed_not_accepted_reaction_does_not_break_the_poll(
+    fakes: Fakes, caplog: pytest.LogCaptureFixture
+) -> None:
+    fakes.telegram.fail = True
+    batch = [with_message(text="hi"), pdf_update(101, 4)]
+    loop.poll(FakeTelegram([batch]), fakes.ports(), SETTINGS)
+    assert fakes.queue.read_offset() == 102
+    assert fakes.state() is JobState.RECEIVED
+    assert "message 3: reaction failed" in caplog.text
 
 
 def test_redelivered_update_is_not_processed_twice(fakes: Fakes) -> None:
@@ -868,3 +927,139 @@ def test_run_stops_and_survives_a_poll_failure(fakes: Fakes) -> None:
     telegram = Failing()
     loop.run(telegram, fakes.ports(), SETTINGS, stop)
     assert telegram.calls == 1
+
+
+ITEMS_MISMATCH = response(payments=[{"text": "PLAĆANJE MASTERCARD", "amount": "2,50"}])
+
+
+@pytest.mark.parametrize(
+    ("attempt", "reason"),
+    [
+        ([pass1_response(), ITEMS_MISMATCH], FailureReason.ITEMS_SETTLEMENT_MISMATCH),
+        ([pass1_response(), response(total="2,99")], FailureReason.TOTAL_SETTLEMENT_MISMATCH),
+        (["not json"], FailureReason.NO_VALID_RESULT),
+    ],
+    ids=["items-mismatch", "total-mismatch", "no-valid-result"],
+)
+def test_failure_sends_the_admin_the_file_before_it_is_deleted(
+    tmp_path: Path, attempt: list[str], reason: FailureReason
+) -> None:
+    fakes = make_fakes(tmp_path, attempt * SETTINGS.max_attempts)
+    first_cycle(fakes)
+    assert (fakes.state(), fakes.failure_reason()) == (JobState.FAILED, reason)
+    admin = f"{TEXTS.admin_messages[reason]}\nAna\n#1"
+    assert fakes.telegram.calls == [
+        ("reaction", ALLOWED, 3, "👎"),
+        ("message", ALLOWED, TEXTS.sender_messages[reason], 3),
+        ("document", ADMIN, fakes.file().name, admin),
+    ]
+    assert fakes.telegram.seen == [(JobState.FAILED, True, 101)] * 3
+    assert not fakes.file().exists()
+
+
+def test_oversize_after_getfile_tells_both_without_a_copy(fakes: Fakes) -> None:
+    fakes.download_error = FileTooLarge("too big")
+    first_cycle(fakes)
+    reason = FailureReason.FILE_TOO_LARGE
+    assert fakes.telegram.calls == [
+        ("reaction", ALLOWED, 3, "👎"),
+        ("message", ALLOWED, TEXTS.sender_messages[reason], 3),
+        ("message", ADMIN, f"{TEXTS.admin_messages[reason]}\nAna\n#1", None),
+    ]
+    assert fakes.telegram.seen == [(JobState.FAILED, False, 101)] * 3
+
+
+def test_unavailable_download_tells_both_without_a_copy(fakes: Fakes) -> None:
+    fakes.download_error = UNAVAILABLE_FILE
+    first_cycle(fakes)
+    for _ in range(2):
+        fakes.now = fakes.due_at()
+        rerun(fakes)
+    reason = FailureReason.FILE_UNAVAILABLE
+    assert fakes.telegram.calls == [
+        ("reaction", ALLOWED, 3, "👎"),
+        ("message", ALLOWED, TEXTS.sender_messages[reason], 3),
+        ("message", ADMIN, f"{TEXTS.admin_messages[reason]}\nAna\n#1", None),
+    ]
+    assert fakes.telegram.seen == [(JobState.FAILED, False, 101)] * 3
+
+
+def test_gemini_unavailable_shows_in_progress_once_per_stretch(tmp_path: Path) -> None:
+    fakes = make_fakes(tmp_path, [UNAVAILABLE])
+    first_cycle(fakes)
+    assert fakes.telegram.calls == [("reaction", ALLOWED, 3, "👀")]
+    # The wait was recorded before the reaction went out.
+    assert fakes.telegram.seen == [(JobState.CHAIN_PENDING, True, 101)]
+    assert fakes.job().waits == 1
+    wait_again(fakes, [UNAVAILABLE])
+    assert fakes.telegram.calls == [("reaction", ALLOWED, 3, "👀")]
+    wait_again(fakes, STORED_ANSWERS)
+    assert fakes.telegram.calls[-1] == ("reaction", ALLOWED, 3, "👍")
+
+
+def test_blocked_gemini_sends_no_reaction(tmp_path: Path) -> None:
+    fakes = make_fakes(tmp_path, [BLOCKED])
+    first_cycle(fakes)
+    wait_again(fakes, [UNAVAILABLE])
+    assert fakes.state() is JobState.CHAIN_PENDING
+    # The unavailable wait came second in its stretch, so it is not announced either.
+    assert fakes.telegram.calls == []
+
+
+def stored(fakes: Fakes) -> None:
+    pass
+
+
+def duplicate(fakes: Fakes) -> None:
+    fakes.write_result = WriteKind.DUPLICATE
+
+
+def unsupported(fakes: Fakes) -> None:
+    fakes.answers = [pass1_response(chain="other")] * 2
+
+
+def no_valid_result(fakes: Fakes) -> None:
+    fakes.answers = ["not json"] * 3
+
+
+def too_large(fakes: Fakes) -> None:
+    fakes.download_error = FileTooLarge("too big")
+
+
+@pytest.mark.parametrize("arrange", [stored, duplicate, unsupported, no_valid_result, too_large])
+def test_every_send_failing_leaves_the_same_final_state(
+    tmp_path: Path, arrange: Callable[[Fakes], None]
+) -> None:
+    outcomes = []
+    for fail in (False, True):
+        fakes = make_fakes(tmp_path / str(fail))
+        arrange(fakes)
+        fakes.telegram.fail = fail
+        first_cycle(fakes)
+        job = fakes.job()
+        outcomes.append((job.state, fakes.failure_reason(), job.receipt_id is None))
+        assert fakes.telegram.calls
+        assert not fakes.file().exists()
+        fakes.queue.close()
+    assert outcomes[0] == outcomes[1]
+
+
+PDF = "application/pdf"
+
+
+def queued(fakes: Fakes, message_id: int) -> Path:
+    item = Accepted(ALLOWED, message_id, "Ana", f"f{message_id}", FileKind.DOCUMENT, PDF, 16)
+    fakes.queue.enqueue([item], message_id + 100, fakes.now)
+    return fakes.files.path_for(ALLOWED, message_id, PDF)
+
+
+def test_sweep_deletes_files_of_finished_jobs_only(fakes: Fakes) -> None:
+    finished, finished_gone, waiting = (queued(fakes, n) for n in (3, 4, 5))
+    for path in (finished, waiting):
+        fakes.files.save(path, PDF_BYTES)
+    fakes.queue.finish(1, JobState.STORED, fakes.now)
+    fakes.queue.finish(2, JobState.FAILED, fakes.now, failure_reason=FailureReason.NO_VALID_RESULT)
+    jobs.sweep_files(fakes.ports())
+    assert not finished.exists() and not finished_gone.exists()
+    assert waiting.read_bytes() == PDF_BYTES
+    assert fakes.telegram.calls == []

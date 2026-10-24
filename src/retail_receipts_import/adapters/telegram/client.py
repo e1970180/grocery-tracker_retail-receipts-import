@@ -3,7 +3,7 @@
 Vendored from the telegram_core reference pack and owned here; it is the only Telegram client.
 
 Wraps synchronous httpx.Client and exposes getUpdates, getFile, downloadFile,
-and setMessageReaction through a shared retry helper.
+setMessageReaction, sendMessage and sendDocument through a shared retry helper.
 
 Key guarantees:
 1. Never calls httpx.Response.raise_for_status() because it embeds the full URL
@@ -19,6 +19,7 @@ from __future__ import annotations
 import logging
 import time
 from collections.abc import Callable, Sequence
+from pathlib import Path
 from types import TracebackType
 from typing import Any, cast
 
@@ -39,6 +40,8 @@ _DEFAULT_TIMEOUT_SECONDS = 30.0
 # download_file: payloads up to 20MB limit need more read budget.
 _DOWNLOAD_TIMEOUT_SECONDS = 60.0
 _REDACTED = "<redacted>"
+# The Bot API rejects a longer document caption.
+_MAX_CAPTION_CHARS = 1024
 
 
 class TelegramAPIError(Exception):
@@ -163,17 +166,40 @@ class TelegramClient:
         )
         return cast(bytes, result)
 
-    def set_message_reaction(self, chat_id: int, message_id: int, reaction: str) -> None:
-        """Send an emoji reaction to a message."""
+    def set_message_reaction(self, chat_id: int, message_id: int, reaction: str | None) -> None:
+        """Send an emoji reaction to a message; None clears the bot's reaction."""
         body = {
             "chat_id": chat_id,
             "message_id": message_id,
-            "reaction": [{"type": "emoji", "emoji": reaction}],
+            "reaction": [] if reaction is None else [{"type": "emoji", "emoji": reaction}],
         }
         self._call(
             "setMessageReaction",
             body=body,
             read_timeout=_DEFAULT_TIMEOUT_SECONDS,
+        )
+
+    def send_message(self, chat_id: int, text: str, reply_to: int | None = None) -> None:
+        """Send plain text; no parse_mode, so untrusted text is never read as markup."""
+        body: dict[str, Any] = {"chat_id": chat_id, "text": text}
+        if reply_to is not None:
+            # The sender may have deleted the receipt message meanwhile; the text still matters.
+            body["reply_parameters"] = {
+                "message_id": reply_to,
+                "allow_sending_without_reply": True,
+            }
+        self._call("sendMessage", body=body, read_timeout=_DEFAULT_TIMEOUT_SECONDS)
+
+    def send_document(self, chat_id: int, path: Path, caption: str) -> None:
+        """Upload a local file with a plain-text caption."""
+        # Read once, so every retry sends the same bytes.
+        files = {"document": (path.name, path.read_bytes())}
+        data = {"chat_id": str(chat_id), "caption": caption[:_MAX_CAPTION_CHARS]}
+        self._call(
+            "sendDocument",
+            data=data,
+            files=files,
+            read_timeout=_DOWNLOAD_TIMEOUT_SECONDS,
         )
 
     def _call(
@@ -182,6 +208,8 @@ class TelegramClient:
         *,
         read_timeout: float,
         body: dict[str, Any] | None = None,
+        data: dict[str, str] | None = None,
+        files: dict[str, tuple[str, bytes]] | None = None,
         url: str | None = None,
         raw: bool = False,
     ) -> Any:
@@ -202,7 +230,11 @@ class TelegramClient:
 
         for attempt in range(1, _MAX_ATTEMPTS + 1):
             try:
-                if body is not None:
+                if files is not None:
+                    response = self._client.post(
+                        request_url, data=data, files=files, timeout=timeout
+                    )
+                elif body is not None:
                     response = self._client.post(request_url, json=body, timeout=timeout)
                 else:
                     response = self._client.get(request_url, timeout=timeout)

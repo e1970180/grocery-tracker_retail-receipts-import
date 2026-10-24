@@ -42,6 +42,8 @@ class Settings(BaseSettings):
 
     # Telegram user ids whose private messages are taken as receipts, e.g. "111,222".
     allowed_user_ids: Annotated[list[int], NoDecode] = Field(min_length=1)
+    # The admin's chat, which gets failure notices and file copies.
+    admin_chat_id: int
     telegram_poll_timeout_s: int = Field(default=30, gt=0)
     # A job whose step raised, or whose download Telegram refused, waits this long before it
     # runs again; each run may be a paid call.

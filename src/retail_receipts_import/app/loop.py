@@ -9,7 +9,7 @@ from datetime import timedelta
 from typing import Any, Protocol
 
 from retail_receipts_import.app.jobs import JobPorts, advance
-from retail_receipts_import.domain.intake import accept
+from retail_receipts_import.domain.intake import Accepted, NotAccepted, accept
 
 log = logging.getLogger(__name__)
 
@@ -54,11 +54,16 @@ def poll(telegram: Updates, ports: JobPorts, settings: LoopSettings) -> None:
     )
     if not updates:
         return
-    accepted = [a for u in updates if (a := accept(u, settings.allowed_user_ids)) is not None]
+    results = [accept(u, settings.allowed_user_ids) for u in updates]
+    accepted = [r for r in results if isinstance(r, Accepted)]
+    refused = [r for r in results if isinstance(r, NotAccepted)]
     # Filtered updates are acknowledged too, in the same transaction as the accepted ones.
     next_offset = max(int(u["update_id"]) for u in updates) + 1
     ports.queue.enqueue(accepted, next_offset, ports.clock())
     log.info("polled %d update(s), %d job(s)", len(updates), len(accepted))
+    # After the commit, so a slow or failing reaction never holds back the batch.
+    for item in refused:
+        ports.notify.not_accepted(item.chat_id, item.message_id)
 
 
 def _poll_timeout(ports: JobPorts, settings: LoopSettings) -> int:

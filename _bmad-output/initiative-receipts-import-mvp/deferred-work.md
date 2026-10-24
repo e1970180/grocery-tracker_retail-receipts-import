@@ -60,3 +60,7 @@
 - source_plan: `_bmad-output/initiative-receipts-import-mvp/epic-receipts-pipeline/story-job-steps-attempts-and-resume-plan.md`
   summary: The build workflow runs only the quick review lens on risk-high plans, while AGENTS.md requires a thorough review for them.
   evidence: The rendered bmad-build step 4 defines only the quick lens and no _bmad/custom override pins a thorough one; 1.6 (risk high) was reviewed quick.
+
+- source_plan: `_bmad-output/initiative-receipts-import-mvp/epic-receipts-pipeline/story-full-outcome-matrix-and-effect-order-plan.md`
+  summary: The README settings table does not list the required `RRI_ALLOWED_USER_IDS`.
+  evidence: Found by the 1.12 quick review; the row has been missing since the setting was added, only `.env.example` documents it.

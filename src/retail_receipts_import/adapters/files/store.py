@@ -29,3 +29,7 @@ class FileStore:
             os.fsync(directory)
         finally:
             os.close(directory)
+
+    def delete(self, path: Path) -> None:
+        # A job that failed before its download, or a second sweep, has no file to delete.
+        path.unlink(missing_ok=True)

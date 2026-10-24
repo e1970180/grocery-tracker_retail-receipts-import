@@ -136,6 +136,15 @@ class Queue:
         ).fetchall()
         return [_job(row) for row in rows]
 
+    def final_jobs(self) -> list[Accepted]:
+        """Sources of finished jobs, whose local files may be left over from a crash."""
+        rows = self._conn.execute(
+            f"SELECT {_JOB_COLUMNS} FROM jobs"
+            f" WHERE state IN ({', '.join('?' * len(_FINAL))}) ORDER BY job_id",
+            _FINAL,
+        ).fetchall()
+        return [_job(row).accepted for row in rows]
+
     def job(self, job_id: int) -> Job:
         row = self._conn.execute(
             f"SELECT {_JOB_COLUMNS} FROM jobs WHERE job_id = ?", (job_id,)
