@@ -101,3 +101,7 @@
 - source_plan: `_bmad-output/initiative-receipts-import-mvp/epic-receipts-pipeline/story-kaufland-plug-in-plan.md`
   summary: The Lidl normalizer builds `ReceiptLine` and `Settlement` outside its `ValidationError` guard, so a malformed row raises a raw `ValidationError` carrying receipt content into the error log instead of `UnreadableReceipt`.
   evidence: Found by the 1.9 quick review on the Kaufland copy and reproduced there (`Otkup`-style zero deposit row, quantity `0`); `lidl/normalize.py` calls `_lines` and `_settlements` before its `try`, and `pipeline.py:217` catches only `UnreadableReceipt`. The Kaufland fix moves both calls inside the guard; Lidl was out of 1.9 scope.
+
+- source_plan: `_bmad-output/initiative-receipts-import-mvp/epic-receipts-pipeline/story-store-the-receipt-total-and-expose-it-in-resolver-v1-plan.md`
+  summary: CAP-4 success asks that recorded Müller bonus-point, coupon and negative-payout fixtures be read back through `resolver_v1` with their total; 1.21 proves the total path only with synthetic receipts.
+  evidence: Intent-alignment lens on 1.21; no Müller plug-in exists yet and the coupon and negative-payout fixtures are already missing (Kaufland entries above). Close when those fixtures exist: a writer-to-`resolver_v1.receipts` read of each total.

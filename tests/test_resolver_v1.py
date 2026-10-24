@@ -6,6 +6,7 @@ from collections.abc import Iterator
 from dataclasses import dataclass
 from datetime import UTC, datetime
 from decimal import Decimal
+from pathlib import Path
 from typing import Any
 
 import psycopg
@@ -279,7 +280,7 @@ def test_stored_receipt_read_back_field_by_field(resolver_session: ResolverSessi
 
     header = resolver_session.resolver_conn.execute(
         "SELECT receipt_id, chain_id, store_name, branch_number, receipt_number, store_address,"
-        " currency, purchased_at, purchased_at_local, buyer_name"
+        " currency, purchased_at, purchased_at_local, buyer_name, total"
         " FROM resolver_v1.receipts WHERE receipt_id = %s",
         (receipt_id,),
     ).fetchone()
@@ -294,6 +295,7 @@ def test_stored_receipt_read_back_field_by_field(resolver_session: ResolverSessi
         "2026-07-15T12:05:00Z",
         "2026-07-15T14:05:00+02:00",
         "Ana",
+        "2.80",
     )
 
     line = resolver_session.resolver_conn.execute(
@@ -370,3 +372,78 @@ def test_schema_comment_identifies_resolver_contract(
         " WHERE nspname = 'resolver_v1'"
     ).fetchone()
     assert row == ("Resolver feed contract resolver_v1",)
+
+
+def test_migration_0005_backfills_total_from_settlements(
+    migrate_conn: psycopg.Connection[tuple[object, ...]], tmp_path: Path
+) -> None:
+    role_name = f"test_resolver_{uuid.uuid4().hex[:12]}"
+    role = sql.Identifier(role_name)
+    password = uuid.uuid4().hex
+    schema = sql.Identifier(RESOLVER_SCHEMA)
+    migrate_conn.execute(
+        sql.SQL("CREATE ROLE {} LOGIN PASSWORD {}").format(role, sql.Literal(password))
+    )
+    try:
+        migrate_conn.execute(sql.SQL("GRANT USAGE ON SCHEMA {} TO {}").format(schema, role))
+        migrate_conn.execute(
+            sql.SQL("ALTER DEFAULT PRIVILEGES IN SCHEMA {} GRANT SELECT ON TABLES TO {}").format(
+                schema, role
+            )
+        )
+        for migration in sorted((REPO / "migrations").glob("000[1-4]_*.sql")):
+            (tmp_path / migration.name).write_bytes(migration.read_bytes())
+        apply_migrations(migrate_conn, tmp_path)
+
+        # A receipt whose 2.00 return was dropped (stored line 5.00, paid 3.00), and one with
+        # no return settled by card, coupon and deposit refund: both take the settlement sum.
+        returned, plain = uuid.uuid7(), uuid.uuid7()
+        cases = [
+            (returned, datetime(2026, 10, 24, 10, 34, tzinfo=UTC), "5.00", [("card", "3.00")]),
+            (
+                plain,
+                datetime(2026, 10, 24, 11, 0, tzinfo=UTC),
+                "2.00",
+                [("card", "1.00"), ("coupon", "0.50"), ("deposit_refund", "0.50")],
+            ),
+        ]
+        for receipt_id, purchased_at, line_amount, settlements in cases:
+            migrate_conn.execute(
+                "INSERT INTO retail_receipts_import.receipts (receipt_id, chain_id, store_name,"
+                " currency, purchased_at, buyer_name, source_kind, source_ref)"
+                " VALUES (%s, 'spar', 'SPAR', 'EUR', %s, 'Ana', 'telegram', %s)",
+                (receipt_id, purchased_at, str(receipt_id)),
+            )
+            migrate_conn.execute(
+                "INSERT INTO retail_receipts_import.receipt_lines (line_id, receipt_id, line_no,"
+                " printed_text, quantity, printed_amount, included_discount, separate_discount)"
+                " VALUES (%s, %s, 1, 'Kruh', 1.000, %s, 0, 0)",
+                (uuid.uuid7(), receipt_id, Decimal(line_amount)),
+            )
+            for settlement_no, (kind, amount) in enumerate(settlements, start=1):
+                migrate_conn.execute(
+                    "INSERT INTO retail_receipts_import.receipt_settlements (receipt_id,"
+                    " settlement_no, kind, printed_text, amount) VALUES (%s, %s, %s, 'X', %s)",
+                    (receipt_id, settlement_no, kind, Decimal(amount)),
+                )
+
+        applied = apply_migrations(migrate_conn, REPO / "migrations")
+        assert "0005_receipt_total.sql" in applied
+
+        stored = migrate_conn.execute(
+            "SELECT receipt_id, total FROM retail_receipts_import.receipts"
+        ).fetchall()
+        assert {row[0]: row[1] for row in stored} == {
+            returned: Decimal("3.00"),
+            plain: Decimal("2.00"),
+        }
+
+        dsn = make_conninfo(os.environ[TEST_DSN_VAR], user=role_name, password=password)
+        with psycopg.connect(dsn, autocommit=True, connect_timeout=10) as resolver_conn:
+            view_rows = resolver_conn.execute(
+                "SELECT receipt_id, total FROM resolver_v1.receipts"
+            ).fetchall()
+            assert {row[0]: row[1] for row in view_rows} == {returned: "3.00", plain: "2.00"}
+    finally:
+        migrate_conn.execute(sql.SQL("DROP OWNED BY {}").format(role))
+        migrate_conn.execute(sql.SQL("DROP ROLE {}").format(role))

@@ -235,8 +235,8 @@ def test_schema_enforces_both_unique_keys(receipts_conn: psycopg.Connection[Any]
     )
     insert = (
         "INSERT INTO retail_receipts_import.receipts (receipt_id, chain_id, store_name,"
-        " currency, purchased_at, buyer_name, source_kind, source_ref)"
-        " VALUES (%s, %s, 'SPAR', 'EUR', %s, 'Ana', %s, %s)"
+        " currency, purchased_at, total, buyer_name, source_kind, source_ref)"
+        " VALUES (%s, %s, 'SPAR', 'EUR', %s, 2.00, 'Ana', %s, %s)"
     )
     with pytest.raises(errors.UniqueViolation, match="receipts_chain_purchased_key"):
         receipts_conn.execute(insert, (uuid.uuid7(), "spar", PURCHASED, "telegram", "9:9"))
@@ -251,9 +251,19 @@ def test_schema_refuses_bad_chain_ids(
     with pytest.raises(errors.CheckViolation):
         receipts_conn.execute(
             "INSERT INTO retail_receipts_import.receipts (receipt_id, chain_id, store_name,"
-            " currency, purchased_at, buyer_name, source_kind, source_ref)"
-            " VALUES (%s, %s, 'SPAR', 'EUR', %s, 'Ana', 'telegram', %s)",
+            " currency, purchased_at, total, buyer_name, source_kind, source_ref)"
+            " VALUES (%s, %s, 'SPAR', 'EUR', %s, 1.00, 'Ana', 'telegram', %s)",
             (uuid.uuid7(), chain_id, PURCHASED, uuid.uuid4().hex),
+        )
+
+
+def test_schema_refuses_insert_without_total(receipts_conn: psycopg.Connection[Any]) -> None:
+    with pytest.raises(errors.NotNullViolation, match="total"):
+        receipts_conn.execute(
+            "INSERT INTO retail_receipts_import.receipts (receipt_id, chain_id, store_name,"
+            " currency, purchased_at, buyer_name, source_kind, source_ref)"
+            " VALUES (%s, 'spar', 'SPAR', 'EUR', %s, 'Ana', 'telegram', %s)",
+            (uuid.uuid7(), PURCHASED, uuid.uuid4().hex),
         )
 
 
@@ -320,7 +330,7 @@ def test_round_trip_keeps_every_field_and_reference(
 
     header = receipts_conn.execute(
         "SELECT receipt_id, chain_id, store_name, branch_number, receipt_number, store_address,"
-        " loyalty_card_number, currency, purchased_at, buyer_name, source_kind, source_ref"
+        " loyalty_card_number, currency, purchased_at, total, buyer_name, source_kind, source_ref"
         " FROM retail_receipts_import.receipts"
     ).fetchone()
     assert header == (
@@ -333,6 +343,7 @@ def test_round_trip_keeps_every_field_and_reference(
         "**** 1234",
         "EUR",
         PURCHASED,
+        Decimal("6.30"),
         "Ana",
         "telegram",
         "-100123:42",

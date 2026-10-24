@@ -2,7 +2,7 @@
 
 | | |
 | --- | --- |
-| Version | 1.0.0 |
+| Version | 1.1.0 |
 | Kind | Provider contract: this project provides the feed; the Resolver reads it |
 | Provider | `retail-receipts-import` (writes receipts and feed, publishes views) |
 | Consumer | Resolver, read-only |
@@ -46,9 +46,10 @@ Header information for stored receipts.
 | `purchased_at` | `text` | No | ISO-8601 UTC timestamp formatted with `Z`, e.g. `2026-07-15T12:05:00Z`. |
 | `purchased_at_local` | `text` | No | ISO-8601 local wall-clock timestamp with timezone offset (`Europe/Zagreb`), e.g. `2026-07-15T14:05:00+02:00` or `2026-01-15T14:05:00+01:00`. |
 | `buyer_name` | `text` | No | Name of the person who submitted the receipt. |
+| `total` | `text` | No | Value of goods as a decimal string with 2 decimal places, equal to the sum of the receipt's settlement amounts, deposit refunds included; so it exceeds the amount paid when deposits were refunded. Zero or negative when returns outweigh purchases. |
 
-*Left out of 1.0.0:* `loyalty_card_number` (may be introduced in a future minor release),
-`source_kind`, `source_ref`, `created_at`, and amount-paid aggregations.
+*Not exposed:* `loyalty_card_number` (may be introduced in a future minor release),
+`source_kind`, `source_ref`, `created_at`, and the amount paid.
 
 ### `resolver_v1.receipt_lines`
 
@@ -103,7 +104,8 @@ Payment tenders and settlement breakdowns recorded for the receipt.
    `receipt_lines` contains only purchase lines. A storno is netted into the line it cancels,
    and return lines are dropped. The service checks the printed lines, returns included,
    against the settlements, so the sum of `effective_amount` across `receipt_lines` exceeds
-   the sum of settlement amounts when the receipt had a return.
+   the sum of settlement amounts when the receipt had a return. The header `total` equals the
+   sum of the receipt's settlement amounts.
 4. **Ordering and deletion:**
    A `stored` event always precedes the `deleted` event of the same receipt. When a receipt is
    absent from `resolver_v1.receipts` for a `stored` event, a `deleted` event for it follows
@@ -141,9 +143,14 @@ succeed without exposing internal tables.
 
 Semantic versioning from 1.0.0.
 
-- **Minor changes (backward-compatible):** Adding optional or nullable columns to views retains
+- **Minor changes (backward-compatible):** Adding columns to views retains
   the schema name `resolver_v1`.
 - **Major changes (breaking):** Renaming, removing, or changing the type/semantics of a column,
   or a new value of `event`, settlement `kind` or `currency`, introduces a new schema
   `resolver_v2`, published alongside `resolver_v1` until the consumer completes migration.
 - Consumers name the columns they read, never `SELECT *`, so an added column breaks nothing.
+
+### Changes
+
+- **1.1.0**: Added `total` column to `resolver_v1.receipts` (value of goods, equal to the sum of settlement amounts). Minor changes definition updated to adding columns to views.
+- **1.0.0**: Initial release of the resolver feed contract.

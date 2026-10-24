@@ -37,8 +37,8 @@ FIND_BY_DEDUP_KEY = (
 INSERT_RECEIPT = (
     f"INSERT INTO {SCHEMA}.receipts (receipt_id, chain_id, store_name, branch_number,"
     " receipt_number, store_address, loyalty_card_number, currency, purchased_at,"
-    " buyer_name, source_kind, source_ref)"
-    " VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)"
+    " total, buyer_name, source_kind, source_ref)"
+    " VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)"
 )
 # The generated amount columns are left out on purpose: they cannot drift from their sources.
 INSERT_LINE = (
@@ -187,6 +187,7 @@ def _insert_receipt(
             receipt.loyalty_card_number,
             receipt.currency,
             receipt.purchased_at,
+            receipt.total,
             source.buyer_name,
             source.kind.value,
             source.ref,
