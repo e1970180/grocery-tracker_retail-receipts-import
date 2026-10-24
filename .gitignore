@@ -56,6 +56,8 @@ htmlcov/
 CLAUDE.local.md
 # Agent scratch scripts (AGENTS.md: no inline python -c, scripts go to scratch/).
 scratch/
+# BMad rendered templates
+_bmad/render/
 
 # Ingest data & archives
 doc-inbox/Arhive/
