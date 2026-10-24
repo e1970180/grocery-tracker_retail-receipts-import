@@ -86,6 +86,7 @@ context: []
 - Surprise: on Windows, `subprocess` text input sends CRLF and the remote `read` kept the CR, so the first `migrate` failed authentication; the helper now sends bytes.
 - Import of 50 samples (10 per chain, DM 9 plus one Kaufland), live Gemini, 2026-10-24: 44 stored, 5 duplicate, 1 failed. Duplicates are real: two Spar samples stored by earlier dev runs, `muller 6.jpeg` = `Attachment-3.png` and `muller 7.jpeg` = `Attachment-2.png` (same receipts), Kaufland `20250630_084443` = `20250625_185418` (same receipt, both checked by eye). All 44 are readable as `resolver_dev_reader` through `resolver_v1`.
 - Defect found: Kaufland `20260427_231253.pdf` (valid receipt) fails `no_valid_result` because the returned bottle line `Boca za pivo * 4 * 0,16 -0,64` becomes a sale line with a negative amount, which the model refuses; reproduced on a second run, pass-2 response kept in `scratch/diagnose-pass2.json`. Filed as bug 22 and deferred there; not fixed here and not a condition of this ticket (Decision 2026-10-24, owner).
+- Live bot run, 2026-10-24 16:29: the owner sent one Kaufland receipt to the bot; the srv22 service log shows job 1 go `chain_pending` → `extract_pending (kaufland)` → `write_pending` → `stored` in 10 s, two Gemini calls, no warnings. The Resolver reader then sees the feed at 52 rows (51 after the import).
 
 ## Plan Change Log
 
