@@ -28,10 +28,10 @@ A family shopping at Croatian grocery chains wants every purchase recorded as cl
   - **success:** For a shelf-promotion line and for a line with a separate discount line, the stored regular and effective amounts follow the addendum's pricing logic to the cent.
 - **CAP-4**
   - **intent:** Each receipt records how it was settled: card, cash, bonus points, receipt-level coupons and deposit refunds. Every settlement is a form of payment, deposit refunds included, and all settlements together equal the receipt total, which is the value of the goods (the lines' effective amounts), not the printed amount to pay. A settlement amount may be negative.
-  - **success:** These fixtures are each stored with their full settlement breakdown: a Müller receipt with bonus points, a receipt with a coupon, and a receipt whose deposit refund exceeds the purchase (negative payout). In each, the settlements sum to the total, the value of the goods.
+  - **success:** These fixtures are each stored with their full settlement breakdown and their total: a Müller receipt with bonus points, a receipt with a coupon, and a receipt whose deposit refund exceeds the purchase (negative payout). In each, the settlements sum to the total, the value of the goods. The stored total is readable through the Resolver contract.
 - **CAP-5**
   - **intent:** The service verifies that items and settlement agree before writing, to catch extraction errors.
-  - **success:** The tolerance is ±0.01 EUR. A receipt off by 0.02 EUR is not written and takes the failure path. A receipt off by 0.01 EUR is written.
+  - **success:** The match is exact: on a real receipt the lines, the total and the settlements always agree, so any difference is an extraction error. A receipt off by 0.01 EUR is not written and takes the failure path. A receipt that matches to the cent is written.
 - **CAP-6**
   - **intent:** The same purchase sent more than once is stored once, and the sender is told it was already recorded.
   - **success:** Sending the same receipt twice, including as a different photo of the same paper, leaves exactly one stored receipt. The second send gets the duplicate reaction and the configured duplicate message.

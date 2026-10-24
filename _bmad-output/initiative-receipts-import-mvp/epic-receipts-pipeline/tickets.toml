@@ -171,13 +171,37 @@ hitl = true
 risk = "medium"
 
 [[entry]]
+id = 20
+type = "bug"
+title = "Receipt total is the amount to pay instead of the value of goods"
+description = "On a receipt with deposit refunds the stored total is the printed amount to pay and the total check compares it with card plus cash only; per CAP-4 the total is the value of the goods and all settlements, deposit refunds included, sum to it; per CAP-5 both checks match exactly."
+verify = "The Lidl and Kaufland deposit fixtures hold the value of goods as total, every fixture's settlements sum to its total exactly, and a receipt off by 0.01 EUR in either check is refused with the new texts."
+covers = ["CAP-4", "CAP-5"]
+after = [9]
+hitl = false
+risk = "medium"
+
+[[entry]]
+id = 21
+type = "story"
+title = "Store the receipt total and expose it in resolver_v1"
+description = "Adds migration 0005 with a not-null receipts.total column, filled for receipts already stored from the sum of their lines' effective amounts, has the writer store NormalizedReceipt.total, adds total to the resolver_v1.receipts view as a decimal string, and publishes resolver_v1 1.1.0 (additive) in docs/contracts/ with its docs/api-versions.md entry."
+verify = "Integration tests show a written receipt's total stored and read as the Resolver role through resolver_v1.receipts, and migration 0005 backfilling an existing row; in dev after migrate, a receipt sent to the dev bot shows its value of goods as total in resolver_v1."
+covers = ["CAP-4", "CAP-11"]
+after = [20]
+hitl = false
+risk = "high"
+references = ["architecture-receipts-import/architecture-receipts-import.md#ad-12--the-resolver-reads-a-feed-not-tables-adopted", "../../../docs/contracts/resolver_v1.md"]
+notes = ["Decision: total is stored and part of resolver_v1 (owner, 2026-10-24).", "Decision: hitl false despite risk high; review thorough and the dev live run stay (owner, 2026-10-24).", "Can run in parallel with entry 10."]
+
+[[entry]]
 id = 10
 type = "story"
 title = "DM plug-in"
 description = "Adds the DM plug-in: STORNO RETKA drops both lines, branch from the receipt number; the owner supplies DM samples and approves the live recording."
 verify = "Fixture tests reproduce the hand-verified DM records, including a cancelled line, to the cent."
 covers = ["CAP-2", "CAP-3", "CAP-4"]
-after = [9]
+after = [9, 20]
 hitl = true
 risk = "medium"
 
@@ -235,7 +259,7 @@ title = "Refactor sweep"
 description = "Cleanup only, scoped at start from the other entries' plans and the review findings deferred during the epic."
 verify = "The standard check suite and integration tests pass with no behavior change."
 covers = []
-after = [11, 13, 14]
+after = [11, 13, 14, 21]
 hitl = false
 risk = "low"
 
