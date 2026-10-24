@@ -3,7 +3,7 @@ title: 'Receipt total is the value of goods; exact settlement checks'
 type: 'bugfix'
 ticket: '20'
 created: '2026-10-24'
-status: 'built'
+status: done
 baseline_revision: '612e2132d0d0db0238e2eec4a2068f254c0d197e'
 route: 'full'
 route_source: 'auto'
@@ -108,4 +108,4 @@ With total = amount to pay + refunds, `check_total` reduces to amount to pay = c
 - same with `uv run pytest -m integration` and `RRI_TEST_DATABASE_URL` set to the throwaway dev database -- expected: writer tests pass
 
 **Manual checks:**
-- Owner confirms totals 78.13, 16.39, 20.42 match the goods sum on the three receipts.
+- Owner confirms totals 78.13, 16.39, 20.42 match the goods sum on the three receipts. -- confirmed by the owner, 2026-10-24.
