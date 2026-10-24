@@ -3,7 +3,7 @@ title: 'Store the receipt total and expose it in resolver_v1'
 type: 'feature'
 ticket: '21'
 created: '2026-10-24'
-status: 'built'
+status: 'done'
 baseline_revision: '2ebe922ca46bae8d005158b004ad18840d0228fd'
 route: 'full'
 route_source: 'auto'
@@ -62,7 +62,7 @@ context: []
 - [x] `tests/test_receipts_writer.py`, `tests/test_resolver_v1.py` -- matrix rows; each new assertion fails on the baseline
 - [x] `docs/contracts/resolver_v1.md`, `docs/api-versions.md` -- 1.1.0
 - [x] Orchestrator: WSL check suite and `pytest -m integration` on a throwaway `postgres:18.6`
-- [ ] Orchestrator, owner approval: dev `migrate` as `rri_dev_owner`; a scratch script as `resolver_dev_reader` reads `total` of every dev receipt; then a dev-bot receipt (calls Gemini) shows its value of goods as `total`
+- [x] Orchestrator, owner approval: dev `migrate` as `rri_dev_owner`; a scratch script as `resolver_dev_reader` reads `total` of every dev receipt; then a dev-bot receipt (calls Gemini) shows its value of goods as `total`
 
 **Acceptance Criteria:**
 - Given a receipt written by the writer, when the Resolver role reads `resolver_v1.receipts`, then `total` is the value of goods as a 2-decimal string, and every pre-1.1.0 column reads as before.
@@ -74,6 +74,8 @@ context: []
 - Implemented by Antigravity (`gemini-3.8-flash-high`, accept-edits, no shell commands) from `scratch/agy-prompt.md`; it ran no checks. README needed no change.
 - Orchestrator: reworded the 0005 backfill comment (agy's said settlements are "what was actually paid"; they are the value of goods). Extended the backfill test with a no-return receipt paid by card + coupon (2.00), so the matrix row "existing row, no return" and multi-settlement summing are covered; dict comprehensions for mypy; ruff format.
 - Verification (WSL): ruff, format, mypy clean; `pytest` 503 passed; `pytest -m integration` 45 passed on a throwaway `postgres:18.6` (localhost:55432, container `rri-it-pg`).
+- After review: the contract's `total` row says every settlement kind counts (coupons and bonus points too, not only deposit refunds).
+- 2026-10-24 -- Dev live check passed on owner approval. `migrate` as `rri_dev_owner` applied `0005_receipt_total.sql` (a rerun applied 0). No dev service was running during the migrate; it was started from `59b69c1` afterwards. `scratch/verify_total_dev.py` as `resolver_dev_reader`: the 5 existing Spar receipts backfilled with `total` = settlement sum, none with a dropped return. The owner sent two receipts to the dev bot (two Gemini calls each); both stored and read through `resolver_v1.receipts`: Kaufland 2026-03-26 `total` "78.13" (cash 75.93 + deposit refunds 0.70, 0.10, 1.40) and Lidl 2026-06-26 `total` "20.42" (cash 16.82 + refund 3.60), the value of goods, matching recorded fixtures 17582 and 94695. All 7 dev receipts: total = settlement sum.
 
 ## Plan Change Log
 

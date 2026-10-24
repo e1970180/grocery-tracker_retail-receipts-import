@@ -46,7 +46,7 @@ Header information for stored receipts.
 | `purchased_at` | `text` | No | ISO-8601 UTC timestamp formatted with `Z`, e.g. `2026-07-15T12:05:00Z`. |
 | `purchased_at_local` | `text` | No | ISO-8601 local wall-clock timestamp with timezone offset (`Europe/Zagreb`), e.g. `2026-07-15T14:05:00+02:00` or `2026-01-15T14:05:00+01:00`. |
 | `buyer_name` | `text` | No | Name of the person who submitted the receipt. |
-| `total` | `text` | No | Value of goods as a decimal string with 2 decimal places, equal to the sum of the receipt's settlement amounts, deposit refunds included; so it exceeds the amount paid when deposits were refunded. Zero or negative when returns outweigh purchases. |
+| `total` | `text` | No | Value of goods as a decimal string with 2 decimal places, equal to the sum of the receipt's settlement amounts of every kind; so it exceeds the amount paid when coupons, bonus points or deposit refunds settled part of it. Zero or negative when returns outweigh purchases. |
 
 *Not exposed:* `loyalty_card_number` (may be introduced in a future minor release),
 `source_kind`, `source_ref`, `created_at`, and the amount paid.
