@@ -3,14 +3,14 @@ title: 'Resolver feed contract resolver_v1'
 type: 'feature'
 ticket: '14'
 created: '2026-10-24'
-status: 'ready-for-dev'
-baseline_revision: ''
+status: 'built'
+baseline_revision: '7b4144451c9efe0c9ff89324b9043077f523f623'
 route: 'full'
 route_source: 'auto'
 risk: 'high'
-review: ''
-review_source: ''
-lenses_ran: []
+review: 'thorough'
+review_source: 'pinned'
+lenses_ran: ['blind-hunter', 'edge-case-hunter', 'verification-gap', 'intent-alignment']
 review_loop_iteration: 0
 context: []
 ---
@@ -80,6 +80,36 @@ context: []
 **Acceptance Criteria:**
 - Given the dev database after migrate and provisioning, when `resolver_dev_reader` reads `resolver_v1.feed` with cursor 0, then it sees every stored dev receipt with `Z` timestamps and decimal-string money, and an internal table read is refused.
 - Given a push, when CI runs, then the standard suite and integration tests pass.
+
+## Implementation Notes
+
+- Implemented by agy (Gemini 3.8 Flash High, `scratch/agy-prompt-14.md`); two earlier agy runs produced nothing, because headless mode auto-denied a command and the agy settings file had a JSON syntax error.
+- Caller fixes after the agy run: the test fixture passed the role password as a bind parameter, which `CREATE ROLE` refuses (now `sql.Literal`); it now builds on `migrate_conn` and drops the role in `finally`; the field-by-field test had a total that failed `check_total`; two long lines; a mypy error. Contract reading rule 3 wrongly blamed deposit refunds for lines exceeding settlements; rule 6 (stored before deleted) was missing.
+- Verified in WSL: `ruff check`, `ruff format --check`, `mypy` (strict), `pytest` (466 passed), `pytest -m integration` (43 passed) against a throwaway `postgres:18.6` container.
+
+## Review Triage Log
+
+Thorough review, 2026-10-24 (blind-hunter, edge-case-hunter, verification-gap, intent-alignment): 6 patched, 1 deferred, 1 left to the dev live check, 9 rejected.
+
+| Finding | Verdict | Evidence / action |
+| --- | --- | --- |
+| Reading rules numbered 1, 2, 3, 6, 4, 5 | low | real; patch, renumbered |
+| Deleted test inserts `deleted` with no earlier `stored`, against rule 4 | low | real; patch, test stores, deletes in one transaction, asserts `stored` then `deleted` and all three views empty |
+| Rule 2 names only `resolver_v1.receipts` for a deleted receipt | low | real; patch, names lines and settlements views |
+| Internal-access test covers 2 of 5 tables | low | real; patch, adds lines, settlements, feed |
+| Contract silent on start cursor, repeated events, new enum values, `SELECT *` | medium | a consumer cannot process the feed safely without them; unique (receipt_id, event) exists in `0002`; patch, rules 1 and Versioning |
+| README "before the first migrate" wrong for dev, already migrated | low | real; patch, "before `migrate` applies `0004`" |
+| Overlapping writers can commit a lower `seq` after a higher one, skipped by `seq > cursor` | medium | real only with a second writer; AD-14 has one loop, but the deferred delete command is a second one; defer |
+| Privilege test runs grantor, owner and migrate as one superuser | medium | real gap; covered by the plan's dev live check with `rri_dev_owner` and `resolver_dev_reader`, which must pass before close |
+| `deleted` promised with no producer | false | the delete command is deferred by the owner (2026-10-23); the schema already allows the event |
+| Money and quantity scale relies on column scale | false | `numeric(12,2)` and `numeric(12,3)` in `0002` always print their scale |
+| Cursor test hard-codes `seq` 1..3 | false | identity is fresh in each test schema |
+| Teardown drops the role before the schemas | false | `DROP OWNED` removes its grants and default privileges; 43 integration tests pass with clean teardown |
+| Non-superuser CREATEROLE test user breaks `DROP OWNED` | low | CI and local both run as superuser; rejected |
+| Missing-schema error unclear | low | `migrate` fails loudly with "schema does not exist"; rejected |
+| No changelog in the contract | low | `chains_v1` has none either; versions live in `docs/api-versions.md`; rejected |
+| Net-purchase rule, NULL columns, negative amounts untested in the views | low | the views pass columns through; storno, return and negative amounts are tested at the writer; rejected |
+| Offset sign hard-coded `+` | false | Europe/Zagreb is always ahead of UTC |
 
 ## Design Notes
 

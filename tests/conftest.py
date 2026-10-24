@@ -10,6 +10,8 @@ import pytest
 
 from retail_receipts_import.migrate import SCHEMA, apply_migrations
 
+RESOLVER_SCHEMA = "resolver_v1"
+
 # A dedicated variable, never libpq's PG* defaults: those may point at the production database.
 TEST_DSN_VAR = "RRI_TEST_DATABASE_URL"
 REPO = Path(__file__).resolve().parents[1]
@@ -84,9 +86,12 @@ def migrate_conn() -> Iterator[psycopg.Connection[tuple[object, ...]]]:
         # The fixture drops the real service schema; never let it near a project database.
         if "grocery-tracker" in conn.info.dbname:
             pytest.fail(f"{TEST_DSN_VAR} points at {conn.info.dbname!r}, not a throwaway database")
+        conn.execute(f"DROP SCHEMA IF EXISTS {RESOLVER_SCHEMA} CASCADE")
         conn.execute(f"DROP SCHEMA IF EXISTS {SCHEMA} CASCADE")
         conn.execute(f"CREATE SCHEMA {SCHEMA}")
+        conn.execute(f"CREATE SCHEMA {RESOLVER_SCHEMA}")
         yield conn
+        conn.execute(f"DROP SCHEMA IF EXISTS {RESOLVER_SCHEMA} CASCADE")
         conn.execute(f"DROP SCHEMA IF EXISTS {SCHEMA} CASCADE")
 
 

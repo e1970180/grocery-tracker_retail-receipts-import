@@ -36,6 +36,13 @@ The shape the service relies on is the consumer contract
 [`docs/contracts/chains_v1.md`](docs/contracts/chains_v1.md); versions are listed in
 [`docs/api-versions.md`](docs/api-versions.md).
 
+## Resolver feed contract
+
+Stored receipts and a feed of stored and deleted events are exposed to the Resolver through views in
+schema `resolver_v1`. The consumer reads only those views. The contract is
+[`docs/contracts/resolver_v1.md`](docs/contracts/resolver_v1.md); versions are listed in
+[`docs/api-versions.md`](docs/api-versions.md).
+
 ## Commands
 
 ```bash
@@ -48,8 +55,9 @@ uv run python -m retail_receipts_import run
 
 `migrate` applies the numbered SQL files in `migrations/` that are not yet recorded in
 `retail_receipts_import.schema_migrations`, each in its own transaction, as the schema owner.
-The schema and the three roles (schema owner, writer, Resolver read-only) are provisioned with
-the database, not by migrations.
+Both schemas (`retail_receipts_import` and `resolver_v1`) and the three roles (schema owner,
+writer, Resolver read-only) are provisioned with the database, not by migrations;
+`resolver_v1` must exist before `migrate` applies `0004_resolver_v1.sql`.
 
 ## Deployment
 

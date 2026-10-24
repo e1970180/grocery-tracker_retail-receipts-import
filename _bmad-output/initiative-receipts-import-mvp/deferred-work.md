@@ -85,3 +85,7 @@
 - source_plan: `_bmad-output/initiative-receipts-import-mvp/epic-receipts-pipeline/story-lidl-plug-in-plan.md`
   summary: Pass 1 misread the year of Lidl case 2003 (`23.05.2023` against the printed `23.05.2026`), so the early duplicate check would look in the wrong place for that receipt.
   evidence: Recorded live in `tests/fixtures/lidl/2003/pass1.json`; pass 2 read the date right. The write-time duplicate check still holds, so the cost is one extra pass-2 call per resend; worth watching whether pass-1 year misreads recur across chains.
+
+- source_plan: `_bmad-output/initiative-receipts-import-mvp/epic-receipts-pipeline/story-resolver-feed-contract-resolver-v1-plan.md`
+  summary: The admin delete command must serialize its feed insert with the service writer (for example `LOCK TABLE retail_receipts_import.receipt_feed IN EXCLUSIVE MODE` in both transactions), or `resolver_v1` readers can skip an event.
+  evidence: `seq` is taken at insert, not at commit; with two overlapping writers a lower `seq` can commit after a Resolver has read a higher one with `seq > cursor`, and is never read. `resolver_v1` 1.0.0 promises commit order of a single writer; today only the service loop writes (AD-14). Found by the 1.14 thorough review.
