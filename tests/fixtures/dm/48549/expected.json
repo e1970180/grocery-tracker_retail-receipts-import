@@ -1,0 +1,50 @@
+{
+  "payload_version": 1,
+  "chain_id": "dm",
+  "store_name": null,
+  "branch_number": "K05F",
+  "receipt_number": "48549/K05F/4",
+  "store_address": "Ulica Vice Vukova 6, 10000 ZAGREB",
+  "loyalty_card_number": null,
+  "purchased_at": "2025-12-15T13:28:00Z",
+  "total": "4.40",
+  "lines": [
+    {
+      "printed_text": "Balea Med gel za tuš.300ml",
+      "quantity": "1",
+      "unit": null,
+      "unit_price": "1.10",
+      "printed_amount": "1.10"
+    },
+    {
+      "printed_text": "Balea Med gel za tuš.300ml",
+      "quantity": "1",
+      "unit": null,
+      "unit_price": "1.10",
+      "printed_amount": "1.10"
+    },
+    {
+      "kind": "storno",
+      "cancels_line": 2,
+      "printed_text": "Balea Med gel za tuš.300ml",
+      "quantity": "-1",
+      "unit": null,
+      "unit_price": "-1.10",
+      "printed_amount": "-1.10"
+    },
+    {
+      "printed_text": "Balea Pr.krema/kovrče150ml",
+      "quantity": "1",
+      "unit": null,
+      "unit_price": "3.30",
+      "printed_amount": "3.30"
+    }
+  ],
+  "settlements": [
+    {
+      "kind": "card",
+      "printed_text": "MASTERCARD EUR",
+      "amount": "4.40"
+    }
+  ]
+}

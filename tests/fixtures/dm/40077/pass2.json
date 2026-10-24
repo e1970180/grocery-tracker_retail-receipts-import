@@ -1,0 +1,46 @@
+{
+  "seller_oib": "94124811986",
+  "store_address": "Ulica Vice Vukova 6, 10000 ZAGREB",
+  "receipt_number": "40077/K05F/4",
+  "purchase_date": "15.11.2025",
+  "purchase_time": "11:27",
+  "total": "13,10",
+  "lines": [
+    {
+      "text": "Balea Med Sen. kr./ruke 100",
+      "quantity": "1",
+      "unit_price": "1,45",
+      "amount": "1,45"
+    },
+    {
+      "text": "Mamina mast za njegu bra.15m",
+      "quantity": "1",
+      "unit_price": "3,90",
+      "amount": "3,90"
+    },
+    {
+      "text": "Mamina mast za njegu bra.15m",
+      "quantity": "1",
+      "unit_price": "3,90",
+      "amount": "3,90"
+    },
+    {
+      "text": "Balea krema za ruke100ml",
+      "quantity": "1",
+      "unit_price": "0,95",
+      "amount": "0,95"
+    },
+    {
+      "text": "Balea Med Ultr.S. mic.ot.200",
+      "quantity": "1",
+      "unit_price": "2,90",
+      "amount": "2,90"
+    }
+  ],
+  "payments": [
+    {
+      "text": "MASTERCARD EUR",
+      "amount": "-13,10"
+    }
+  ]
+}

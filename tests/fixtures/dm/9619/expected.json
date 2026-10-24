@@ -1,0 +1,27 @@
+{
+  "payload_version": 1,
+  "chain_id": "dm",
+  "store_name": null,
+  "branch_number": "K05F",
+  "receipt_number": "9619/K05F/5",
+  "store_address": "Ulica Vice Vukova 6, 10000 ZAGREB",
+  "loyalty_card_number": null,
+  "purchased_at": "2026-03-03T17:45:00Z",
+  "total": "1.65",
+  "lines": [
+    {
+      "printed_text": "Denkmit sprej za dez. 250 ml",
+      "quantity": "1",
+      "unit": null,
+      "unit_price": "1.65",
+      "printed_amount": "1.65"
+    }
+  ],
+  "settlements": [
+    {
+      "kind": "card",
+      "printed_text": "MASTERCARD EUR",
+      "amount": "1.65"
+    }
+  ]
+}

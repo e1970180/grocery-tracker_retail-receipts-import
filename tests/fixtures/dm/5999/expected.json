@@ -1,0 +1,34 @@
+{
+  "payload_version": 1,
+  "chain_id": "dm",
+  "store_name": null,
+  "branch_number": "K05F",
+  "receipt_number": "5999/K05F/2",
+  "store_address": "Ulica Vice Vukova 6, 10000 ZAGREB",
+  "loyalty_card_number": null,
+  "purchased_at": "2026-03-05T15:18:00Z",
+  "total": "4.70",
+  "lines": [
+    {
+      "printed_text": "Prof.odstranjivač mrlja 6kom",
+      "quantity": "1",
+      "unit": null,
+      "unit_price": "2.35",
+      "printed_amount": "2.35"
+    },
+    {
+      "printed_text": "Prof.odstranjivač mrlja 6kom",
+      "quantity": "1",
+      "unit": null,
+      "unit_price": "2.35",
+      "printed_amount": "2.35"
+    }
+  ],
+  "settlements": [
+    {
+      "kind": "card",
+      "printed_text": "MASTERCARD EUR",
+      "amount": "4.70"
+    }
+  ]
+}

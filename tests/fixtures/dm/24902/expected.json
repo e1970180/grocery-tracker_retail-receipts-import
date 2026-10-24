@@ -1,0 +1,34 @@
+{
+  "payload_version": 1,
+  "chain_id": "dm",
+  "store_name": null,
+  "branch_number": "K05F",
+  "receipt_number": "24902/K05F/3",
+  "store_address": "Ulica Vice Vukova 6, 10000 ZAGREB",
+  "loyalty_card_number": null,
+  "purchased_at": "2024-10-04T15:30:00Z",
+  "total": "3.25",
+  "lines": [
+    {
+      "printed_text": "Balea krema za ruke 100 ml",
+      "quantity": "1",
+      "unit": null,
+      "unit_price": "1.10",
+      "printed_amount": "1.10"
+    },
+    {
+      "printed_text": "Balea krema pr. prištića 50",
+      "quantity": "1",
+      "unit": null,
+      "unit_price": "2.15",
+      "printed_amount": "2.15"
+    }
+  ],
+  "settlements": [
+    {
+      "kind": "cash",
+      "printed_text": "GOTOVINA EUR",
+      "amount": "3.25"
+    }
+  ]
+}

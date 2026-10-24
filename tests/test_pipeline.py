@@ -273,8 +273,8 @@ def test_deposit_info_is_not_a_settlement(pdf: Path) -> None:
 
 
 def test_chain_without_plugin_is_unsupported(pdf: Path) -> None:
-    fake = FakePorts(answers=[pass1_response(chain="dm", store_name="DM ZAGREB")])
-    assert run(pdf, fake) == Unsupported("dm", "DM ZAGREB")
+    fake = FakePorts(answers=[pass1_response(chain="mueller", store_name="MÜLLER ZAGREB")])
+    assert run(pdf, fake) == Unsupported("mueller", "MÜLLER ZAGREB")
     assert len(fake.calls) == 1
     assert fake.written == []
 

@@ -1,0 +1,34 @@
+{
+  "payload_version": 1,
+  "chain_id": "dm",
+  "store_name": null,
+  "branch_number": "K05F",
+  "receipt_number": "212915/K05F/2",
+  "store_address": "Ulica Vice Vukova 6, 10000 ZAGREB",
+  "loyalty_card_number": null,
+  "purchased_at": "2024-09-21T16:42:00Z",
+  "total": "15.80",
+  "lines": [
+    {
+      "printed_text": "Maybelline korekt /podočnjak",
+      "quantity": "1",
+      "unit": null,
+      "unit_price": "7.90",
+      "printed_amount": "7.90"
+    },
+    {
+      "printed_text": "Maybelline kor. za podočnjak",
+      "quantity": "1",
+      "unit": null,
+      "unit_price": "7.90",
+      "printed_amount": "7.90"
+    }
+  ],
+  "settlements": [
+    {
+      "kind": "card",
+      "printed_text": "MASTERCARD EUR",
+      "amount": "15.80"
+    }
+  ]
+}

@@ -1,0 +1,32 @@
+{
+  "seller_oib": "94124811986",
+  "store_address": "Ulica Vice Vukova 6\n10000 ZAGREB",
+  "receipt_number": "24902/K05F/3",
+  "purchase_date": "04.10.2024",
+  "purchase_time": "17:30",
+  "total": "3,25",
+  "lines": [
+    {
+      "text": "Balea krema za ruke 100 ml",
+      "quantity": "1",
+      "unit_price": "1,10",
+      "amount": "1,10"
+    },
+    {
+      "text": "Balea krema pr. prištića 50",
+      "quantity": "1",
+      "unit_price": "2,15",
+      "amount": "2,15"
+    }
+  ],
+  "payments": [
+    {
+      "text": "GOTOVINA EUR",
+      "amount": "-4,00"
+    },
+    {
+      "text": "Povrat novaca EUR",
+      "amount": "0,75"
+    }
+  ]
+}

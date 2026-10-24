@@ -1,0 +1,22 @@
+{
+  "seller_oib": "94124811986",
+  "store_address": "Trg A.Starčevića 7\n10000 ZAGREB",
+  "receipt_number": "214478/K01M/1",
+  "purchase_date": "12.12.2025",
+  "purchase_time": "09:29",
+  "total": "3,95",
+  "lines": [
+    {
+      "text": "Balea Med dnevna krema50ml",
+      "quantity": "1",
+      "unit_price": "3,95",
+      "amount": "3,95"
+    }
+  ],
+  "payments": [
+    {
+      "text": "MASTERCARD EUR",
+      "amount": "-3,95"
+    }
+  ]
+}

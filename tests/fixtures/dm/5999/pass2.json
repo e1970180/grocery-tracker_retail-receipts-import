@@ -1,0 +1,28 @@
+{
+  "seller_oib": "94124811986",
+  "store_address": "Ulica Vice Vukova 6\n10000 ZAGREB",
+  "receipt_number": "5999/K05F/2",
+  "purchase_date": "05.03.2026",
+  "purchase_time": "16:18",
+  "total": "4,70",
+  "lines": [
+    {
+      "text": "Prof.odstranjivač mrlja 6kom",
+      "quantity": "1",
+      "unit_price": "2,35",
+      "amount": "2,35"
+    },
+    {
+      "text": "Prof.odstranjivač mrlja 6kom",
+      "quantity": "1",
+      "unit_price": "2,35",
+      "amount": "2,35"
+    }
+  ],
+  "payments": [
+    {
+      "text": "MASTERCARD EUR",
+      "amount": "-4,70"
+    }
+  ]
+}

@@ -1,0 +1,34 @@
+{
+  "seller_oib": "94124811986",
+  "store_address": "Av. Dubrovnik 16\n10000 ZAGREB",
+  "receipt_number": "14008/K044/4",
+  "purchase_date": "16.06.2025",
+  "purchase_time": "15:22",
+  "total": "9,55",
+  "lines": [
+    {
+      "text": "Balea Hautrein pjena/pr. 150",
+      "quantity": "1",
+      "unit_price": "2,25",
+      "amount": "2,25"
+    },
+    {
+      "text": "tIU sjajilo/usne Glam Star 1",
+      "quantity": "1",
+      "unit_price": "3,25",
+      "amount": "3,25"
+    },
+    {
+      "text": "Eveline hij.mic.voda 3u1 400",
+      "quantity": "1",
+      "unit_price": "4,05",
+      "amount": "4,05"
+    }
+  ],
+  "payments": [
+    {
+      "text": "MASTERCARD EUR",
+      "amount": "-9,55"
+    }
+  ]
+}

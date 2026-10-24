@@ -1,0 +1,27 @@
+{
+  "payload_version": 1,
+  "chain_id": "dm",
+  "store_name": null,
+  "branch_number": "K01M",
+  "receipt_number": "214478/K01M/1",
+  "store_address": "Trg A.Starčevića 7, 10000 ZAGREB",
+  "loyalty_card_number": null,
+  "purchased_at": "2025-12-12T08:29:00Z",
+  "total": "3.95",
+  "lines": [
+    {
+      "printed_text": "Balea Med dnevna krema50ml",
+      "quantity": "1",
+      "unit": null,
+      "unit_price": "3.95",
+      "printed_amount": "3.95"
+    }
+  ],
+  "settlements": [
+    {
+      "kind": "card",
+      "printed_text": "MASTERCARD EUR",
+      "amount": "3.95"
+    }
+  ]
+}

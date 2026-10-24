@@ -1,0 +1,52 @@
+{
+  "seller_oib": "94124811986",
+  "store_address": "Slavonska av. 11d, 10000 ZAGREB",
+  "receipt_number": "38588/K08H/1",
+  "purchase_date": "21.02.2026",
+  "purchase_time": "14:40",
+  "total": "7,15",
+  "lines": [
+    {
+      "text": "Jessa dn.uloš.class. dugi 40",
+      "quantity": "1",
+      "unit_price": "0,95",
+      "amount": "0,95"
+    },
+    {
+      "text": "Jessa dn.uloš.class. dugi 40",
+      "quantity": "1",
+      "unit_price": "0,95",
+      "amount": "0,95"
+    },
+    {
+      "text": "Balea Med gel za tuš.300ml",
+      "quantity": "1",
+      "unit_price": "1,10",
+      "amount": "1,10"
+    },
+    {
+      "text": "Jessa los. za intim.sens.300",
+      "quantity": "1",
+      "unit_price": "2,10",
+      "amount": "2,10"
+    },
+    {
+      "text": "Balea Med gel za tuš.300ml",
+      "quantity": "1",
+      "unit_price": "1,10",
+      "amount": "1,10"
+    },
+    {
+      "text": "Balea krema za ruke100ml",
+      "quantity": "1",
+      "unit_price": "0,95",
+      "amount": "0,95"
+    }
+  ],
+  "payments": [
+    {
+      "text": "MASTERCARD EUR",
+      "amount": "-7,15"
+    }
+  ]
+}

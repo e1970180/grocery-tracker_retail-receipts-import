@@ -1,0 +1,22 @@
+{
+  "seller_oib": "94124811986",
+  "store_address": "Ulica Vice Vukova 6\n10000 ZAGREB",
+  "receipt_number": "9619/K05F/5",
+  "purchase_date": "03.03.2026",
+  "purchase_time": "18:45",
+  "total": "1,65",
+  "lines": [
+    {
+      "text": "Denkmit sprej za dez. 250 ml",
+      "quantity": "1",
+      "unit_price": "1,65",
+      "amount": "1,65"
+    }
+  ],
+  "payments": [
+    {
+      "text": "MASTERCARD EUR",
+      "amount": "-1,65"
+    }
+  ]
+}

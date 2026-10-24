@@ -1,0 +1,28 @@
+{
+  "seller_oib": "94124811986",
+  "store_address": "Ulica Vice Vukova 6\n10000 ZAGREB",
+  "receipt_number": "212915/K05F/2",
+  "purchase_date": "21.09.2024",
+  "purchase_time": "18:42",
+  "total": "15,80",
+  "lines": [
+    {
+      "text": "Maybelline korekt /podočnjak",
+      "quantity": "1",
+      "unit_price": "7,90",
+      "amount": "7,90"
+    },
+    {
+      "text": "Maybelline kor. za podočnjak",
+      "quantity": "1",
+      "unit_price": "7,90",
+      "amount": "7,90"
+    }
+  ],
+  "payments": [
+    {
+      "text": "MASTERCARD EUR",
+      "amount": "-15,80"
+    }
+  ]
+}

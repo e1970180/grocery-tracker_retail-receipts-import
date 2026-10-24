@@ -1,0 +1,55 @@
+{
+  "payload_version": 1,
+  "chain_id": "dm",
+  "store_name": null,
+  "branch_number": "K05F",
+  "receipt_number": "40077/K05F/4",
+  "store_address": "Ulica Vice Vukova 6, 10000 ZAGREB",
+  "loyalty_card_number": null,
+  "purchased_at": "2025-11-15T10:27:00Z",
+  "total": "13.10",
+  "lines": [
+    {
+      "printed_text": "Balea Med Sen. kr./ruke 100",
+      "quantity": "1",
+      "unit": null,
+      "unit_price": "1.45",
+      "printed_amount": "1.45"
+    },
+    {
+      "printed_text": "Mamina mast za njegu bra.15m",
+      "quantity": "1",
+      "unit": null,
+      "unit_price": "3.90",
+      "printed_amount": "3.90"
+    },
+    {
+      "printed_text": "Mamina mast za njegu bra.15m",
+      "quantity": "1",
+      "unit": null,
+      "unit_price": "3.90",
+      "printed_amount": "3.90"
+    },
+    {
+      "printed_text": "Balea krema za ruke100ml",
+      "quantity": "1",
+      "unit": null,
+      "unit_price": "0.95",
+      "printed_amount": "0.95"
+    },
+    {
+      "printed_text": "Balea Med Ultr.S. mic.ot.200",
+      "quantity": "1",
+      "unit": null,
+      "unit_price": "2.90",
+      "printed_amount": "2.90"
+    }
+  ],
+  "settlements": [
+    {
+      "kind": "card",
+      "printed_text": "MASTERCARD EUR",
+      "amount": "13.10"
+    }
+  ]
+}
