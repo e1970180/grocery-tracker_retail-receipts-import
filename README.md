@@ -69,7 +69,8 @@ writer, Resolver read-only) are provisioned with the database, not by migrations
 
 ## Deployment
 
-On the server, from a sparse checkout:
+Provisioning, the sparse checkout and the role rights are in
+[`docs/deployment.md`](docs/deployment.md). On the server:
 
 ```bash
 docker compose build
