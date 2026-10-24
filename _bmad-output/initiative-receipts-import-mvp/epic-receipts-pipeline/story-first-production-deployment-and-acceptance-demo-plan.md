@@ -3,7 +3,7 @@ title: 'First production deployment and acceptance demo'
 type: 'chore'
 ticket: '16'
 created: '2026-10-24'
-status: 'built'
+status: 'in-progress'
 baseline_revision: 'b295de207540daa3db89e644f97bc77c7e85bf8a'
 route: 'full'
 route_source: 'auto'
@@ -67,15 +67,21 @@ context: []
 ## Tasks & Acceptance
 
 **Execution:**
-- [ ] `scratch/narrow_dev_roles.py` -- one transaction as the temporary admin: the grants above, then a privilege matrix of the three roles over every database, schema and service table.
-- [ ] `docs/deployment.md` -- provisioning SQL (roles, database, schemas, minimal grants, closing PUBLIC on other databases), sparse clone, `.env`, build, migrate, start, update; `README.md` links to it.
-- [ ] `scratch/import_samples.py` -- takes a list of sample files, runs each through `process_file` with the real Gemini client and the writer; a per-file report to `scratch/import-report.md`.
-- [ ] Live, with the owner: push `main`; on `srv22` sparse clone, `.env` with `RRI_ENV=dev`, build, `migrate` twice, start; one receipt sent through the bot; the 50-file import.
+- [x] `scratch/narrow_dev_roles.py` -- one transaction as the temporary admin: the grants above, then a privilege matrix of the three roles over every database, schema and service table.
+- [x] `docs/deployment.md` -- provisioning SQL (roles, database, schemas, minimal grants, closing PUBLIC on other databases), sparse clone, `.env`, build, migrate, start, update; `README.md` links to it.
+- [x] `scratch/import_samples.py` -- takes a list of sample files, runs each through `process_file` with the real Gemini client and the writer; a per-file report to `scratch/import-report.md`.
+- [x] Live, with the owner: push `main`; on `srv22` sparse clone, `.env` with `RRI_ENV=dev`, build, `migrate` twice, start; one receipt sent through the bot; the 50-file import.
+- [ ] Format and comment `.env` files; create/update `.env.example` with documented environment variables and defaults.
+- [ ] Code documentation audit: verify docstrings and comments across `src/` following repository rules (plain English explaining why).
+- [ ] Write a detailed README in Russian covering architecture, configuration, deployment runbook, DB roles, and operations.
 
 **Acceptance Criteria:**
 - Given the narrowed roles, when the service stores a receipt and `migrate` reruns, then both succeed, and each overreach in the matrix is refused.
 - Given the home server, when the runbook is followed, then the service starts in dev and stores a receipt sent through the bot.
 - Given 50 samples, when the import finishes, then every file has a reported outcome and stored receipts are readable as the Resolver reader.
+- Given `.env` and `.env.example`, all settings are formatted and clearly commented, with safe defaults in `.env.example` and no secrets committed.
+- Given `src/`, all modules and functions have accurate English docstrings explaining intent and rationale without restating specs.
+- Given the project documentation, a comprehensive README in Russian is written and accessible.
 
 ## Implementation Notes
 
@@ -91,6 +97,8 @@ context: []
 - Development split from the service, 2026-10-24 (owner decision): `scratch/dev_role_split.py` generated two passwords without printing them, put a new writer password only into the srv22 `.env` (mode 600) and a new `rri_dev_developer` into the local `.env`; the owner ran `scratch/admin_dev_role.sql` (SCRAM verifiers only) as `postgres`. The developer is a member of `rri_dev_owner`, with CONNECT, CREATE, TEMPORARY on the dev database and SELECT on `public.chains_v1`. `scratch/check_developer.py`: reads, updates, deletes, DDL, new schemas and TEMP work; the other project's schema, `public` DDL and the other databases are refused. The srv22 container was recreated; logging in from it as the writer with the new password succeeds and stops at `permission denied for schema retail_receipts_import`, as the narrowed role should.
 
 ## Plan Change Log
+
+- 2026-10-24, owner: added tasks to ticket 16 scope: format and comment .env files, create/update .env.example, audit codebase docstrings, and write a detailed README in Russian.
 
 - 2026-10-24, owner: the workstation gets its own broad developer role in the dev database; the writer's password lives only on srv22.
 
