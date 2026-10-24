@@ -1,0 +1,34 @@
+{
+  "payload_version": 1,
+  "chain_id": "kaufland",
+  "store_name": "Zagreb Blato",
+  "branch_number": "5230",
+  "receipt_number": "42126/5230/4",
+  "store_address": "Jaruščica 6",
+  "loyalty_card_number": "xxxxx8265",
+  "purchased_at": "2026-02-23T11:36:00Z",
+  "total": "51.46",
+  "lines": [
+    {"printed_text": "Jam.4x1,5l", "quantity": "2", "unit": null, "unit_price": "3.49", "printed_amount": "6.98"},
+    {"printed_text": "Vrećica meso", "quantity": "1", "unit": null, "unit_price": null, "printed_amount": "0.01"},
+    {"printed_text": "Pileći file", "quantity": "1.092", "unit": "kg", "unit_price": "5.49", "printed_amount": "6.00"},
+    {"printed_text": "Jamnica gaz.0,5 l", "quantity": "3", "unit": null, "unit_price": "0.85", "printed_amount": "2.55"},
+    {"printed_text": "Bodul e.d.m.ulje 1l", "quantity": "1", "unit": null, "unit_price": null, "printed_amount": "4.99"},
+    {"printed_text": "Cetina gaz. 0,5l", "quantity": "2", "unit": null, "unit_price": "0.68", "printed_amount": "1.36"},
+    {"printed_text": "z bregov čv.jog 900g", "quantity": "1", "unit": null, "unit_price": null, "printed_amount": "2.29"},
+    {"printed_text": "Giana Tuna ital.185g", "quantity": "1", "unit": null, "unit_price": null, "printed_amount": "1.49", "separate_discount": "0.15", "discount_text": "Kaufland Card %"},
+    {"printed_text": "K.kamilica2x70", "quantity": "1", "unit": null, "unit_price": null, "printed_amount": "1.65"},
+    {"printed_text": "Dobro Pršut", "quantity": "0.443", "unit": "kg", "unit_price": "17.90", "printed_amount": "7.93"},
+    {"printed_text": "Mortadela PIK", "quantity": "0.361", "unit": "kg", "unit_price": "7.90", "printed_amount": "2.85"},
+    {"printed_text": "K.maramice100kom", "quantity": "2", "unit": null, "unit_price": "1.39", "printed_amount": "2.78"},
+    {"printed_text": "KFav.Masline čil350g", "quantity": "1", "unit": null, "unit_price": null, "printed_amount": "2.69"},
+    {"printed_text": "Rajč roma 500g", "quantity": "1", "unit": null, "unit_price": null, "printed_amount": "1.69"},
+    {"printed_text": "Paprika crvena", "quantity": "0.338", "unit": "kg", "unit_price": "4.49", "printed_amount": "1.52"},
+    {"printed_text": "Pecivo Kajzerica", "quantity": "1", "unit": null, "unit_price": null, "printed_amount": "0.09"},
+    {"printed_text": "KLC. Jaja M 10/1", "quantity": "1", "unit": null, "unit_price": null, "printed_amount": "2.45"},
+    {"printed_text": "Avokado RTE", "quantity": "1", "unit": null, "unit_price": null, "printed_amount": "2.29"}
+  ],
+  "settlements": [
+    {"kind": "card", "printed_text": "Kartica", "amount": "51.46"}
+  ]
+}

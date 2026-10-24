@@ -1,0 +1,120 @@
+{
+  "seller_oib": "47432874968",
+  "pj_line": "PJ5230,Zagreb Blato",
+  "store_address": "Jaruščica 6",
+  "receipt_number": "17582/5230/7",
+  "purchase_date": "26.03.26",
+  "purchase_time": "10:00:03",
+  "total": "75,93",
+  "lines": [
+    {
+      "text": "Violeta neven 240kom",
+      "quantity": "8",
+      "unit": null,
+      "unit_price": "3,99",
+      "amount": "31,92"
+    },
+    {
+      "text": "K.Jagode 750g",
+      "quantity": "6",
+      "unit": null,
+      "unit_price": "2,79",
+      "amount": "16,74"
+    },
+    {
+      "text": "Medven Buđola",
+      "quantity": "0,329",
+      "unit": "kg",
+      "unit_price": "13,90",
+      "amount": "4,57"
+    },
+    {
+      "text": "Barilla spaghetti",
+      "quantity": "9",
+      "unit": null,
+      "unit_price": "0,94",
+      "amount": "8,46"
+    },
+    {
+      "text": "Vrećica meso",
+      "quantity": "2",
+      "unit": null,
+      "unit_price": "0,01",
+      "amount": "0,02"
+    },
+    {
+      "text": "Pileći zabatak",
+      "quantity": "1,130",
+      "unit": "kg",
+      "unit_price": "2,59",
+      "amount": "2,93"
+    },
+    {
+      "text": "Pileći batak",
+      "quantity": "1,125",
+      "unit": "kg",
+      "unit_price": "2,59",
+      "amount": "2,91"
+    },
+    {
+      "text": "Jabuka Cripps P.",
+      "quantity": "1,110",
+      "unit": "kg",
+      "unit_price": "1,25",
+      "amount": "1,39"
+    },
+    {
+      "text": "Vrećica Vip",
+      "quantity": "1",
+      "unit": null,
+      "unit_price": null,
+      "amount": "0,01"
+    },
+    {
+      "text": "Krast sal kom",
+      "quantity": "1",
+      "unit": null,
+      "unit_price": null,
+      "amount": "1,19"
+    },
+    {
+      "text": "Jagoda 900g",
+      "quantity": "1",
+      "unit": null,
+      "unit_price": null,
+      "amount": "7,99"
+    },
+    {
+      "text": "amb.- staklo *",
+      "quantity": null,
+      "unit": null,
+      "unit_price": null,
+      "amount": "-0,70"
+    },
+    {
+      "text": "ambalaža - ALU *",
+      "quantity": null,
+      "unit": null,
+      "unit_price": null,
+      "amount": "-0,10"
+    },
+    {
+      "text": "ambalaža - PET *",
+      "quantity": null,
+      "unit": null,
+      "unit_price": null,
+      "amount": "-1,40"
+    }
+  ],
+  "payments": [
+    {
+      "text": "Euro EUR",
+      "amount": "76,00"
+    },
+    {
+      "text": "Za vratiti",
+      "amount": "0,07"
+    }
+  ],
+  "loyalty_card": "xxxxx8265"
+}

@@ -1,0 +1,29 @@
+{
+  "payload_version": 1,
+  "chain_id": "kaufland",
+  "store_name": "Zagreb Blato",
+  "branch_number": "5230",
+  "receipt_number": "67409/5230/4",
+  "store_address": "Jaruščica 6",
+  "loyalty_card_number": "xxxxx8265",
+  "purchased_at": "2026-03-24T10:51:00Z",
+  "total": "44.37",
+  "lines": [
+    {"printed_text": "Jamnica gaz.0,5 l", "quantity": "4", "unit": null, "unit_price": "0.85", "printed_amount": "3.40"},
+    {"printed_text": "K.folija svjež.30,", "quantity": "1", "unit": null, "unit_price": null, "printed_amount": "1.15"},
+    {"printed_text": "Jamnica gaz.1,5 l", "quantity": "6", "unit": null, "unit_price": "0.99", "printed_amount": "5.94"},
+    {"printed_text": "Reb.Dornfelder 0,75L", "quantity": "1", "unit": null, "unit_price": null, "printed_amount": "4.49"},
+    {"printed_text": "Benita pap.peč.680g", "quantity": "8", "unit": null, "unit_price": "1.99", "printed_amount": "15.92"},
+    {"printed_text": "Luk crveni", "quantity": "0.896", "unit": "kg", "unit_price": "0.39", "printed_amount": "0.35"},
+    {"printed_text": "Vrećica Vip", "quantity": "2", "unit": null, "unit_price": "0.01", "printed_amount": "0.02"},
+    {"printed_text": "Benita pap.fi.680g", "quantity": "1", "unit": null, "unit_price": null, "printed_amount": "1.65"},
+    {"printed_text": "Klementina Mandarina", "quantity": "1.984", "unit": "kg", "unit_price": "0.99", "printed_amount": "1.96"},
+    {"printed_text": "Špinat mini 125g", "quantity": "1", "unit": null, "unit_price": null, "printed_amount": "1.29"},
+    {"printed_text": "Kiselo mlijeko 900g", "quantity": "1", "unit": null, "unit_price": null, "printed_amount": "2.39"},
+    {"printed_text": "K.Svježi sir 200", "quantity": "3", "unit": null, "unit_price": "1.49", "printed_amount": "4.47"},
+    {"printed_text": "Giana Tuna ital.185g", "quantity": "1", "unit": null, "unit_price": null, "printed_amount": "1.49", "separate_discount": "0.15", "discount_text": "Kaufland Card %"}
+  ],
+  "settlements": [
+    {"kind": "cash", "printed_text": "Euro EUR", "amount": "44.37"}
+  ]
+}

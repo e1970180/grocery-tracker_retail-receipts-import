@@ -1,0 +1,85 @@
+{
+  "seller_oib": "47432874968",
+  "pj_line": "PJ5230,Zagreb Blato",
+  "store_address": "Jaruščica 6",
+  "receipt_number": "21833/5230/6",
+  "purchase_date": "25.02.26",
+  "purchase_time": "12:33:51",
+  "total": "21,32",
+  "lines": [
+    {
+      "text": "K.Voda 7L",
+      "quantity": "2",
+      "unit": null,
+      "unit_price": "1,45",
+      "amount": "2,90"
+    },
+    {
+      "text": "Kaufland Card%",
+      "quantity": null,
+      "unit": null,
+      "unit_price": null,
+      "amount": "-0,88"
+    },
+    {
+      "text": "K.Slad.Sandw.180ml",
+      "quantity": "1",
+      "unit": null,
+      "unit_price": null,
+      "amount": "0,47"
+    },
+    {
+      "text": "Balticovo Jaja10/1",
+      "quantity": "3",
+      "unit": null,
+      "unit_price": "1,79",
+      "amount": "5,37"
+    },
+    {
+      "text": "Vrećica meso",
+      "quantity": "1",
+      "unit": null,
+      "unit_price": null,
+      "amount": "0,01"
+    },
+    {
+      "text": "Pileće zadnja četvrt",
+      "quantity": "0,774",
+      "unit": "kg",
+      "unit_price": "1,40",
+      "amount": "1,08"
+    },
+    {
+      "text": "Štedite 30% ili 0,46 EUR!",
+      "quantity": null,
+      "unit": null,
+      "unit_price": null,
+      "amount": "0,46"
+    },
+    {
+      "text": "Rio Mare InsTuna mex",
+      "quantity": "1",
+      "unit": null,
+      "unit_price": null,
+      "amount": "4,25"
+    },
+    {
+      "text": "K.rajčica koncentrat",
+      "quantity": "14",
+      "unit": null,
+      "unit_price": "0,58",
+      "amount": "8,12"
+    }
+  ],
+  "payments": [
+    {
+      "text": "Kartica",
+      "amount": "21,32"
+    },
+    {
+      "text": "Za vratiti",
+      "amount": "0,00"
+    }
+  ],
+  "loyalty_card": "xxxxx8265"
+}

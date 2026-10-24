@@ -1,0 +1,155 @@
+{
+  "seller_oib": "47432874968",
+  "pj_line": "PJ5230,Zagreb Blato",
+  "store_address": "Jaruščica 6",
+  "receipt_number": "42126/5230/4",
+  "purchase_date": "23.02.26",
+  "purchase_time": "12:36:25",
+  "total": "51,46",
+  "lines": [
+    {
+      "text": "Jam.4x1,5l",
+      "quantity": "2",
+      "unit": null,
+      "unit_price": "3,49",
+      "amount": "6,98"
+    },
+    {
+      "text": "Vrećica meso",
+      "quantity": "1",
+      "unit": null,
+      "unit_price": null,
+      "amount": "0,01"
+    },
+    {
+      "text": "Pileći file",
+      "quantity": "1,092",
+      "unit": "kg",
+      "unit_price": "5,49",
+      "amount": "6,00"
+    },
+    {
+      "text": "Jamnica gaz.0,5 l",
+      "quantity": "3",
+      "unit": null,
+      "unit_price": "0,85",
+      "amount": "2,55"
+    },
+    {
+      "text": "Bodul e.d.m.ulje 1l",
+      "quantity": "1",
+      "unit": null,
+      "unit_price": null,
+      "amount": "4,99"
+    },
+    {
+      "text": "Cetina gaz. 0,5l",
+      "quantity": "2",
+      "unit": null,
+      "unit_price": "0,68",
+      "amount": "1,36"
+    },
+    {
+      "text": "z bregov čv.jog 900g",
+      "quantity": "1",
+      "unit": null,
+      "unit_price": null,
+      "amount": "2,29"
+    },
+    {
+      "text": "Giana Tuna ital.185g",
+      "quantity": "1",
+      "unit": null,
+      "unit_price": null,
+      "amount": "1,49"
+    },
+    {
+      "text": "Kaufland Card %",
+      "quantity": null,
+      "unit": null,
+      "unit_price": null,
+      "amount": "-0,15"
+    },
+    {
+      "text": "K.kamilica2x70",
+      "quantity": "1",
+      "unit": null,
+      "unit_price": null,
+      "amount": "1,65"
+    },
+    {
+      "text": "Dobro Pršut",
+      "quantity": "0,443",
+      "unit": "kg",
+      "unit_price": "17,90",
+      "amount": "7,93"
+    },
+    {
+      "text": "Mortadela PIK",
+      "quantity": "0,361",
+      "unit": "kg",
+      "unit_price": "7,90",
+      "amount": "2,85"
+    },
+    {
+      "text": "K.maramice100kom",
+      "quantity": "2",
+      "unit": null,
+      "unit_price": "1,39",
+      "amount": "2,78"
+    },
+    {
+      "text": "KFav.Masline čil350g",
+      "quantity": "1",
+      "unit": null,
+      "unit_price": null,
+      "amount": "2,69"
+    },
+    {
+      "text": "Rajč roma 500g",
+      "quantity": "1",
+      "unit": null,
+      "unit_price": null,
+      "amount": "1,69"
+    },
+    {
+      "text": "Paprika crvena",
+      "quantity": "0,338",
+      "unit": "kg",
+      "unit_price": "4,49",
+      "amount": "1,52"
+    },
+    {
+      "text": "Pecivo Kajzerica",
+      "quantity": "1",
+      "unit": null,
+      "unit_price": null,
+      "amount": "0,09"
+    },
+    {
+      "text": "KLC. Jaja M 10/1",
+      "quantity": "1",
+      "unit": null,
+      "unit_price": null,
+      "amount": "2,45"
+    },
+    {
+      "text": "Avokado RTE",
+      "quantity": "1",
+      "unit": null,
+      "unit_price": null,
+      "amount": "2,29"
+    }
+  ],
+  "payments": [
+    {
+      "text": "Kartica",
+      "amount": "51,46"
+    },
+    {
+      "text": "Za vratiti",
+      "amount": "0,00"
+    }
+  ],
+  "loyalty_card": "xxxxx8265"
+}

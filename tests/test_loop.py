@@ -61,8 +61,9 @@ SETTINGS = loop.LoopSettings(
 PDF_BYTES = b"%PDF-1.7 receipt"
 SPAR = KnownChain("spar", "Spar", ("SPAR", "Spar", "INTERSPAR"), ("46108893754",))
 LIDL = KnownChain("lidl", "Lidl", ("LIDL", "Lidl"), ("66089976432",))
-SPAR_AND_LIDL = ChainReference(chains=(SPAR, LIDL), inactive_ids=(), rejected=())
-SPAR_WITHDRAWN = ChainReference(chains=(LIDL,), inactive_ids=("spar",), rejected=())
+KAUFLAND = KnownChain("kaufland", "Kaufland", ("KAUFLAND", "Kaufland"), ("47432874968",))
+SPAR_AND_LIDL = ChainReference(chains=(SPAR, LIDL, KAUFLAND), inactive_ids=(), rejected=())
+SPAR_WITHDRAWN = ChainReference(chains=(LIDL, KAUFLAND), inactive_ids=("spar",), rejected=())
 # Answers that make a receipt stored: pass 1 finds Spar, pass 2 adds up.
 STORED_ANSWERS = (pass1_response(), response())
 # Raised by a fake to stop the job mid-way, as a crash or connection outage would.

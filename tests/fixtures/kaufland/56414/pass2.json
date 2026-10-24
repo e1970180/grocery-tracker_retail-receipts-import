@@ -1,0 +1,197 @@
+{
+  "seller_oib": "47432874968",
+  "pj_line": "PJ5230,Zagreb Blato",
+  "store_address": "Jaruščica 6",
+  "receipt_number": "56414/5230/4",
+  "purchase_date": "11.03.26",
+  "purchase_time": "16:25:19",
+  "total": "43,67",
+  "lines": [
+    {
+      "text": "Radenska Vo.1,5Lx6/1",
+      "quantity": "2",
+      "unit": null,
+      "unit_price": "3,99",
+      "amount": "7,98"
+    },
+    {
+      "text": "Drveni ugljen 2,5kg",
+      "quantity": "1",
+      "unit": null,
+      "unit_price": null,
+      "amount": "3,49"
+    },
+    {
+      "text": "Wickies Mar.sen.72/1",
+      "quantity": "6",
+      "unit": null,
+      "unit_price": "0,65",
+      "amount": "3,90"
+    },
+    {
+      "text": "Kalodont zp.he.125ml",
+      "quantity": "1",
+      "unit": null,
+      "unit_price": null,
+      "amount": "1,72"
+    },
+    {
+      "text": "Kalod.zub.pas.125ml",
+      "quantity": "1",
+      "unit": null,
+      "unit_price": null,
+      "amount": "1,52"
+    },
+    {
+      "text": "Parod.zub.pas. 75 ml",
+      "quantity": "2",
+      "unit": null,
+      "unit_price": "3,19",
+      "amount": "6,38"
+    },
+    {
+      "text": "KBB Kozice 200g",
+      "quantity": "1",
+      "unit": null,
+      "unit_price": null,
+      "amount": "1,15"
+    },
+    {
+      "text": "Štedite 60% ili 1,72 EUR!",
+      "quantity": null,
+      "unit": null,
+      "unit_price": null,
+      "amount": "1,72"
+    },
+    {
+      "text": "KBB Kozice 200g",
+      "quantity": "1",
+      "unit": null,
+      "unit_price": null,
+      "amount": "1,15"
+    },
+    {
+      "text": "Štedite 60% ili 1,72 EUR!",
+      "quantity": null,
+      "unit": null,
+      "unit_price": null,
+      "amount": "1,72"
+    },
+    {
+      "text": "KBB Kozice 200g",
+      "quantity": "1",
+      "unit": null,
+      "unit_price": null,
+      "amount": "1,15"
+    },
+    {
+      "text": "Štedite 60% ili 1,72 EUR!",
+      "quantity": null,
+      "unit": null,
+      "unit_price": null,
+      "amount": "1,72"
+    },
+    {
+      "text": "KBB Kozice 200g",
+      "quantity": "1",
+      "unit": null,
+      "unit_price": null,
+      "amount": "1,15"
+    },
+    {
+      "text": "Štedite 60% ili 1,72 EUR!",
+      "quantity": null,
+      "unit": null,
+      "unit_price": null,
+      "amount": "1,72"
+    },
+    {
+      "text": "K.wc limun4x40",
+      "quantity": "1",
+      "unit": null,
+      "unit_price": null,
+      "amount": "0,95"
+    },
+    {
+      "text": "KBB Kozice 200g",
+      "quantity": "1",
+      "unit": null,
+      "unit_price": null,
+      "amount": "1,15"
+    },
+    {
+      "text": "Štedite 60% ili 1,72 EUR!",
+      "quantity": null,
+      "unit": null,
+      "unit_price": null,
+      "amount": "1,72"
+    },
+    {
+      "text": "KBB Kozice 200g",
+      "quantity": "1",
+      "unit": null,
+      "unit_price": null,
+      "amount": "1,15"
+    },
+    {
+      "text": "Štedite 60% ili 1,72 EUR!",
+      "quantity": null,
+      "unit": null,
+      "unit_price": null,
+      "amount": "1,72"
+    },
+    {
+      "text": "Heinz Ketch.XXL 1kg",
+      "quantity": "1",
+      "unit": null,
+      "unit_price": null,
+      "amount": "4,19"
+    },
+    {
+      "text": "Krast sal kom",
+      "quantity": "2",
+      "unit": null,
+      "unit_price": "1,29",
+      "amount": "2,58"
+    },
+    {
+      "text": "Matovilac 125g",
+      "quantity": "1",
+      "unit": null,
+      "unit_price": null,
+      "amount": "0,79"
+    },
+    {
+      "text": "Rajč roma 500g",
+      "quantity": "1",
+      "unit": null,
+      "unit_price": null,
+      "amount": "1,69"
+    },
+    {
+      "text": "Paprika babura",
+      "quantity": "0,632",
+      "unit": "kg",
+      "unit_price": "2,49",
+      "amount": "1,57"
+    },
+    {
+      "text": "Vrećica Vip",
+      "quantity": "1",
+      "unit": null,
+      "unit_price": null,
+      "amount": "0,01"
+    }
+  ],
+  "payments": [
+    {
+      "text": "Euro EUR",
+      "amount": "50,00"
+    },
+    {
+      "text": "Za vratiti",
+      "amount": "6,33"
+    }
+  ],
+  "loyalty_card": "xxxxx8265"
+}

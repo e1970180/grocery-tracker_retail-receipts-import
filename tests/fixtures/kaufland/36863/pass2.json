@@ -1,0 +1,117 @@
+{
+  "seller_oib": "47432874968",
+  "pj_line": "PJ5230,Zagreb Blato",
+  "store_address": "Jaruščica 6",
+  "receipt_number": "36863/5230/2",
+  "purchase_date": "10.04.26",
+  "purchase_time": "14:09:57",
+  "total": "14,99",
+  "lines": [
+    {
+      "text": "Amer. Tost 750g",
+      "quantity": "1",
+      "unit": null,
+      "unit_price": null,
+      "amount": "1,69"
+    },
+    {
+      "text": "Šljiva okrugla",
+      "quantity": "1,054",
+      "unit": "kg",
+      "unit_price": "1,79",
+      "amount": "1,89"
+    },
+    {
+      "text": "Vrećica Vip",
+      "quantity": "2",
+      "unit": null,
+      "unit_price": "0,01",
+      "amount": "0,02"
+    },
+    {
+      "text": "K.Kiselo vrh.12%180g",
+      "quantity": "1",
+      "unit": null,
+      "unit_price": null,
+      "amount": "0,65"
+    },
+    {
+      "text": "Monteverdi Šunka DEL",
+      "quantity": "0,499",
+      "unit": "kg",
+      "unit_price": "9,90",
+      "amount": "4,94"
+    },
+    {
+      "text": "Rajčica grapolo",
+      "quantity": "1,316",
+      "unit": "kg",
+      "unit_price": "2,44",
+      "amount": "3,21"
+    },
+    {
+      "text": "Banane",
+      "quantity": "1,518",
+      "unit": "kg",
+      "unit_price": "1,44",
+      "amount": "2,19"
+    },
+    {
+      "text": "Šampinjon pak.250g",
+      "quantity": "1",
+      "unit": null,
+      "unit_price": null,
+      "amount": "0,90"
+    },
+    {
+      "text": "Štedite 30% ili 0,39 EUR!",
+      "quantity": null,
+      "unit": null,
+      "unit_price": null,
+      "amount": "0,39"
+    },
+    {
+      "text": "Šampinjon pak.250g",
+      "quantity": "1",
+      "unit": null,
+      "unit_price": null,
+      "amount": "0,90"
+    },
+    {
+      "text": "Štedite 30% ili 0,39 EUR!",
+      "quantity": null,
+      "unit": null,
+      "unit_price": null,
+      "amount": "0,39"
+    },
+    {
+      "text": "ambalaža - PET *",
+      "quantity": null,
+      "unit": null,
+      "unit_price": null,
+      "amount": "-1,10"
+    },
+    {
+      "text": "amb.- staklo *",
+      "quantity": null,
+      "unit": null,
+      "unit_price": null,
+      "amount": "-0,30"
+    }
+  ],
+  "payments": [
+    {
+      "text": "Kartica",
+      "amount": "4,99"
+    },
+    {
+      "text": "Euro EUR",
+      "amount": "10,00"
+    },
+    {
+      "text": "Za vratiti",
+      "amount": "0,00"
+    }
+  ],
+  "loyalty_card": "xxxxx8265"
+}

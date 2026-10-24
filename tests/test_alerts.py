@@ -20,7 +20,8 @@ from tests.test_notify import ADMIN, TEXTS, RecordingTelegram
 
 SPAR = KnownChain("spar", "Spar", ("SPAR", "Spar", "INTERSPAR"), ("46108893754",))
 LIDL = KnownChain("lidl", "Lidl", ("LIDL", "Lidl"), ("66089976432",))
-CLEAN_REFERENCE = ChainReference(chains=(SPAR, LIDL), inactive_ids=(), rejected=())
+KAUFLAND = KnownChain("kaufland", "Kaufland", ("KAUFLAND", "Kaufland"), ("47432874968",))
+CLEAN_REFERENCE = ChainReference(chains=(SPAR, LIDL, KAUFLAND), inactive_ids=(), rejected=())
 
 
 @pytest.fixture
@@ -123,7 +124,7 @@ def test_check_reference_detects_missing_plugin(
 def test_check_reference_detects_inactive_plugin(
     telegram: RecordingTelegram, alerts: Alerts
 ) -> None:
-    ref = ChainReference(chains=(LIDL,), inactive_ids=("spar",), rejected=())
+    ref = ChainReference(chains=(LIDL, KAUFLAND), inactive_ids=("spar",), rejected=())
     returned = alerts.check_reference(ref)
 
     assert returned is ref
@@ -136,7 +137,7 @@ def test_check_reference_detects_rejected_rows(telegram: RecordingTelegram, aler
         RejectedRow("spar", RejectReason.DUPLICATE_ID),
         RejectedRow(None, RejectReason.NULL_FIELD),
     )
-    ref = ChainReference(chains=(SPAR, LIDL), inactive_ids=(), rejected=rejected)
+    ref = ChainReference(chains=(SPAR, LIDL, KAUFLAND), inactive_ids=(), rejected=rejected)
     returned = alerts.check_reference(ref)
 
     assert returned is ref
@@ -145,7 +146,7 @@ def test_check_reference_detects_rejected_rows(telegram: RecordingTelegram, aler
 
 
 def test_check_reference_recovers_when_clean(telegram: RecordingTelegram, alerts: Alerts) -> None:
-    bad_ref = ChainReference(chains=(LIDL,), inactive_ids=("spar",), rejected=())
+    bad_ref = ChainReference(chains=(LIDL, KAUFLAND), inactive_ids=("spar",), rejected=())
     alerts.check_reference(bad_ref)
     assert alerts.is_active(AlertKind.CHAIN_REFERENCE)
 

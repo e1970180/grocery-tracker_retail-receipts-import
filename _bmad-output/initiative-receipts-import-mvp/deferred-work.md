@@ -89,3 +89,15 @@
 - source_plan: `_bmad-output/initiative-receipts-import-mvp/epic-receipts-pipeline/story-resolver-feed-contract-resolver-v1-plan.md`
   summary: The admin delete command must serialize its feed insert with the service writer (for example `LOCK TABLE retail_receipts_import.receipt_feed IN EXCLUSIVE MODE` in both transactions), or `resolver_v1` readers can skip an event.
   evidence: `seq` is taken at insert, not at commit; with two overlapping writers a lower `seq` can commit after a Resolver has read a higher one with `seq > cursor`, and is never read. `resolver_v1` 1.0.0 promises commit order of a single writer; today only the service loop writes (AD-14). Found by the 1.14 thorough review.
+
+- source_plan: `_bmad-output/initiative-receipts-import-mvp/epic-receipts-pipeline/story-kaufland-plug-in-plan.md`
+  summary: A recorded fixture of a receipt whose deposit refund exceeds the purchase (negative payout), as the spec's CAP-4 success asks.
+  evidence: None of the 208 Kaufland sample PDFs has a negative `Za platiti`; the owner chose a synthetic test for 1.9 and a real fixture when such a receipt appears (2026-10-24).
+
+- source_plan: `_bmad-output/initiative-receipts-import-mvp/epic-receipts-pipeline/story-kaufland-plug-in-plan.md`
+  summary: A recorded fixture of a receipt settled partly by a receipt-level coupon, as the spec's CAP-4 success asks.
+  evidence: The only Kaufland candidate, `Popust na kupnju -0,37`, is a discount on the item above by the owner's decision for 1.9 (2026-10-24); no other Kaufland sample prints a coupon.
+
+- source_plan: `_bmad-output/initiative-receipts-import-mvp/epic-receipts-pipeline/story-kaufland-plug-in-plan.md`
+  summary: The Lidl normalizer builds `ReceiptLine` and `Settlement` outside its `ValidationError` guard, so a malformed row raises a raw `ValidationError` carrying receipt content into the error log instead of `UnreadableReceipt`.
+  evidence: Found by the 1.9 quick review on the Kaufland copy and reproduced there (`Otkup`-style zero deposit row, quantity `0`); `lidl/normalize.py` calls `_lines` and `_settlements` before its `try`, and `pipeline.py:217` catches only `UnreadableReceipt`. The Kaufland fix moves both calls inside the guard; Lidl was out of 1.9 scope.

@@ -1,0 +1,23 @@
+{
+  "payload_version": 1,
+  "chain_id": "kaufland",
+  "store_name": "Zagreb Blato",
+  "branch_number": "5230",
+  "receipt_number": "21833/5230/6",
+  "store_address": "Jaruščica 6",
+  "loyalty_card_number": "xxxxx8265",
+  "purchased_at": "2026-02-25T11:33:00Z",
+  "total": "21.32",
+  "lines": [
+    {"printed_text": "K.Voda 7L", "quantity": "2", "unit": null, "unit_price": "1.45", "printed_amount": "2.90", "separate_discount": "0.88", "discount_text": "Kaufland Card%"},
+    {"printed_text": "K.Slad.Sandw.180ml", "quantity": "1", "unit": null, "unit_price": null, "printed_amount": "0.47"},
+    {"printed_text": "Balticovo Jaja10/1", "quantity": "3", "unit": null, "unit_price": "1.79", "printed_amount": "5.37"},
+    {"printed_text": "Vrećica meso", "quantity": "1", "unit": null, "unit_price": null, "printed_amount": "0.01"},
+    {"printed_text": "Pileće zadnja četvrt", "quantity": "0.774", "unit": "kg", "unit_price": "1.40", "printed_amount": "1.08", "included_discount": "0.46"},
+    {"printed_text": "Rio Mare InsTuna mex", "quantity": "1", "unit": null, "unit_price": null, "printed_amount": "4.25"},
+    {"printed_text": "K.rajčica koncentrat", "quantity": "14", "unit": null, "unit_price": "0.58", "printed_amount": "8.12"}
+  ],
+  "settlements": [
+    {"kind": "card", "printed_text": "Kartica", "amount": "21.32"}
+  ]
+}

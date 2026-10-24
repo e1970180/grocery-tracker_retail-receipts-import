@@ -1,0 +1,26 @@
+{
+  "payload_version": 1,
+  "chain_id": "kaufland",
+  "store_name": "Zagreb Blato",
+  "branch_number": "5230",
+  "receipt_number": "13882/5230/2",
+  "store_address": "Jaruščica 6",
+  "loyalty_card_number": "xxxxx8265",
+  "purchased_at": "2025-02-13T11:52:00Z",
+  "total": "28.40",
+  "lines": [
+    {"printed_text": "Tikvica", "quantity": "2.840", "unit": "kg", "unit_price": "1.49", "printed_amount": "4.23"},
+    {"printed_text": "Vrećica Vip", "quantity": "1", "unit": null, "unit_price": null, "printed_amount": "0.01"},
+    {"printed_text": "Bev.Vlaž.maram.80/1", "quantity": "4", "unit": null, "unit_price": "0.93", "printed_amount": "3.72"},
+    {"printed_text": "K.kamilica2x70", "quantity": "1", "unit": null, "unit_price": null, "printed_amount": "1.84", "separate_discount": "0.37", "discount_text": "Popust na kupnju"},
+    {"printed_text": "SO.Adapter za utič.", "quantity": "1", "unit": null, "unit_price": null, "printed_amount": "2.99"},
+    {"printed_text": "Tuzla sol 1 kg", "quantity": "1", "unit": null, "unit_price": null, "printed_amount": "0.74"},
+    {"printed_text": "K.Posni sir 500g", "quantity": "1", "unit": null, "unit_price": null, "printed_amount": "1.71"},
+    {"printed_text": "KFav.Masline pap350g", "quantity": "4", "unit": null, "unit_price": "2.65", "printed_amount": "10.60"},
+    {"printed_text": "Zbregov mlijeko", "quantity": "1", "unit": null, "unit_price": null, "printed_amount": "0.93"},
+    {"printed_text": "Harmony ručnik 1/1", "quantity": "1", "unit": null, "unit_price": null, "printed_amount": "2.00"}
+  ],
+  "settlements": [
+    {"kind": "card", "printed_text": "Kartica", "amount": "28.40"}
+  ]
+}

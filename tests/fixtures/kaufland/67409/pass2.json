@@ -1,0 +1,120 @@
+{
+  "seller_oib": "47432874968",
+  "pj_line": "PJ5230,Zagreb Blato",
+  "store_address": "Jaruščica 6",
+  "receipt_number": "67409/5230/4",
+  "purchase_date": "24.03.26",
+  "purchase_time": "11:51:03",
+  "total": "44,37",
+  "lines": [
+    {
+      "text": "Jamnica gaz.0,5 l",
+      "quantity": "4",
+      "unit": null,
+      "unit_price": "0,85",
+      "amount": "3,40"
+    },
+    {
+      "text": "K.folija svjež.30,",
+      "quantity": "1",
+      "unit": null,
+      "unit_price": null,
+      "amount": "1,15"
+    },
+    {
+      "text": "Jamnica gaz.1,5 l",
+      "quantity": "6",
+      "unit": null,
+      "unit_price": "0,99",
+      "amount": "5,94"
+    },
+    {
+      "text": "Reb.Dornfelder 0,75L",
+      "quantity": "1",
+      "unit": null,
+      "unit_price": null,
+      "amount": "4,49"
+    },
+    {
+      "text": "Benita pap.peč.680g",
+      "quantity": "8",
+      "unit": null,
+      "unit_price": "1,99",
+      "amount": "15,92"
+    },
+    {
+      "text": "Luk crveni",
+      "quantity": "0,896",
+      "unit": "kg",
+      "unit_price": "0,39",
+      "amount": "0,35"
+    },
+    {
+      "text": "Vrećica Vip",
+      "quantity": "2",
+      "unit": null,
+      "unit_price": "0,01",
+      "amount": "0,02"
+    },
+    {
+      "text": "Benita pap.fi.680g",
+      "quantity": "1",
+      "unit": null,
+      "unit_price": null,
+      "amount": "1,65"
+    },
+    {
+      "text": "Klementina Mandarina",
+      "quantity": "1,984",
+      "unit": "kg",
+      "unit_price": "0,99",
+      "amount": "1,96"
+    },
+    {
+      "text": "Špinat mini 125g",
+      "quantity": "1",
+      "unit": null,
+      "unit_price": null,
+      "amount": "1,29"
+    },
+    {
+      "text": "Kiselo mlijeko 900g",
+      "quantity": "1",
+      "unit": null,
+      "unit_price": null,
+      "amount": "2,39"
+    },
+    {
+      "text": "K.Svježi sir 200",
+      "quantity": "3",
+      "unit": null,
+      "unit_price": "1,49",
+      "amount": "4,47"
+    },
+    {
+      "text": "Giana Tuna ital.185g",
+      "quantity": "1",
+      "unit": null,
+      "unit_price": null,
+      "amount": "1,49"
+    },
+    {
+      "text": "Kaufland Card %",
+      "quantity": null,
+      "unit": null,
+      "unit_price": null,
+      "amount": "-0,15"
+    }
+  ],
+  "payments": [
+    {
+      "text": "Euro EUR",
+      "amount": "50,02"
+    },
+    {
+      "text": "Za vratiti",
+      "amount": "5,65"
+    }
+  ],
+  "loyalty_card": "xxxxx8265"
+}

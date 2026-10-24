@@ -1,0 +1,28 @@
+{
+  "payload_version": 1,
+  "chain_id": "kaufland",
+  "store_name": "Zagreb Blato",
+  "branch_number": "5230",
+  "receipt_number": "36863/5230/2",
+  "store_address": "Jaruščica 6",
+  "loyalty_card_number": "xxxxx8265",
+  "purchased_at": "2026-04-10T12:09:00Z",
+  "total": "14.99",
+  "lines": [
+    {"printed_text": "Amer. Tost 750g", "quantity": "1", "unit": null, "unit_price": null, "printed_amount": "1.69"},
+    {"printed_text": "Šljiva okrugla", "quantity": "1.054", "unit": "kg", "unit_price": "1.79", "printed_amount": "1.89"},
+    {"printed_text": "Vrećica Vip", "quantity": "2", "unit": null, "unit_price": "0.01", "printed_amount": "0.02"},
+    {"printed_text": "K.Kiselo vrh.12%180g", "quantity": "1", "unit": null, "unit_price": null, "printed_amount": "0.65"},
+    {"printed_text": "Monteverdi Šunka DEL", "quantity": "0.499", "unit": "kg", "unit_price": "9.90", "printed_amount": "4.94"},
+    {"printed_text": "Rajčica grapolo", "quantity": "1.316", "unit": "kg", "unit_price": "2.44", "printed_amount": "3.21"},
+    {"printed_text": "Banane", "quantity": "1.518", "unit": "kg", "unit_price": "1.44", "printed_amount": "2.19"},
+    {"printed_text": "Šampinjon pak.250g", "quantity": "1", "unit": null, "unit_price": null, "printed_amount": "0.90", "included_discount": "0.39"},
+    {"printed_text": "Šampinjon pak.250g", "quantity": "1", "unit": null, "unit_price": null, "printed_amount": "0.90", "included_discount": "0.39"}
+  ],
+  "settlements": [
+    {"kind": "card", "printed_text": "Kartica", "amount": "4.99"},
+    {"kind": "cash", "printed_text": "Euro EUR", "amount": "10.00"},
+    {"kind": "deposit_refund", "printed_text": "ambalaža - PET *", "amount": "1.10"},
+    {"kind": "deposit_refund", "printed_text": "amb.- staklo *", "amount": "0.30"}
+  ]
+}

@@ -1,0 +1,29 @@
+{
+  "seller_oib": "47432874968",
+  "pj_line": "PJ4430,Zagreb Središće",
+  "store_address": "Julija Knifera 1",
+  "receipt_number": "19996/4430/32",
+  "purchase_date": "07.04.26",
+  "purchase_time": "18:37:46",
+  "total": "2,69",
+  "lines": [
+    {
+      "text": "King kornet Malina",
+      "quantity": "1",
+      "unit": null,
+      "unit_price": null,
+      "amount": "2,69"
+    }
+  ],
+  "payments": [
+    {
+      "text": "Kartica",
+      "amount": "2,69"
+    },
+    {
+      "text": "Za vratiti",
+      "amount": "0,00"
+    }
+  ],
+  "loyalty_card": "xxxxx8265"
+}

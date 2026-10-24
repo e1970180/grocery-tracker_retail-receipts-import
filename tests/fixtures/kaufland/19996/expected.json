@@ -1,0 +1,17 @@
+{
+  "payload_version": 1,
+  "chain_id": "kaufland",
+  "store_name": "Zagreb Središće",
+  "branch_number": "4430",
+  "receipt_number": "19996/4430/32",
+  "store_address": "Julija Knifera 1",
+  "loyalty_card_number": "xxxxx8265",
+  "purchased_at": "2026-04-07T16:37:00Z",
+  "total": "2.69",
+  "lines": [
+    {"printed_text": "King kornet Malina", "quantity": "1", "unit": null, "unit_price": null, "printed_amount": "2.69"}
+  ],
+  "settlements": [
+    {"kind": "card", "printed_text": "Kartica", "amount": "2.69"}
+  ]
+}

@@ -1,0 +1,99 @@
+{
+  "seller_oib": "47432874968",
+  "pj_line": "PJ5230,Zagreb Blato",
+  "store_address": "Jaruščica 6",
+  "receipt_number": "13882/5230/2",
+  "purchase_date": "13.02.25",
+  "purchase_time": "12:52:19",
+  "total": "28,40",
+  "lines": [
+    {
+      "text": "Tikvica",
+      "quantity": "2,840",
+      "unit": "kg",
+      "unit_price": "1,49",
+      "amount": "4,23"
+    },
+    {
+      "text": "Vrećica Vip",
+      "quantity": "1",
+      "unit": null,
+      "unit_price": null,
+      "amount": "0,01"
+    },
+    {
+      "text": "Bev.Vlaž.maram.80/1",
+      "quantity": "4",
+      "unit": null,
+      "unit_price": "0,93",
+      "amount": "3,72"
+    },
+    {
+      "text": "K.kamilica2x70",
+      "quantity": "1",
+      "unit": null,
+      "unit_price": null,
+      "amount": "1,84"
+    },
+    {
+      "text": "Popust na kupnju",
+      "quantity": null,
+      "unit": null,
+      "unit_price": null,
+      "amount": "-0,37"
+    },
+    {
+      "text": "SO.Adapter za utič.",
+      "quantity": "1",
+      "unit": null,
+      "unit_price": null,
+      "amount": "2,99"
+    },
+    {
+      "text": "Tuzla sol 1 kg",
+      "quantity": "1",
+      "unit": null,
+      "unit_price": null,
+      "amount": "0,74"
+    },
+    {
+      "text": "K.Posni sir 500g",
+      "quantity": "1",
+      "unit": null,
+      "unit_price": null,
+      "amount": "1,71"
+    },
+    {
+      "text": "KFav.Masline pap350g",
+      "quantity": "4",
+      "unit": null,
+      "unit_price": "2,65",
+      "amount": "10,60"
+    },
+    {
+      "text": "Zbregov mlijeko",
+      "quantity": "1",
+      "unit": null,
+      "unit_price": null,
+      "amount": "0,93"
+    },
+    {
+      "text": "Harmony ručnik 1/1",
+      "quantity": "1",
+      "unit": null,
+      "unit_price": null,
+      "amount": "2,00"
+    }
+  ],
+  "payments": [
+    {
+      "text": "Kartica",
+      "amount": "28,40"
+    },
+    {
+      "text": "Za vratiti",
+      "amount": "0,00"
+    }
+  ],
+  "loyalty_card": "xxxxx8265"
+}
