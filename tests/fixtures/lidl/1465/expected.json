@@ -1,0 +1,20 @@
+{
+  "payload_version": 1,
+  "chain_id": "lidl",
+  "store_name": null,
+  "branch_number": "0198",
+  "receipt_number": "1465/POSL0198/18213",
+  "store_address": "Ulica Ive Robića 4, Zagreb",
+  "purchased_at": "2025-02-11T13:31:00Z",
+  "total": "6.32",
+  "lines": [
+    {"printed_text": "Mozzarella class", "quantity": "3", "unit": null, "unit_price": "1.09", "printed_amount": "3.27", "separate_discount": "1.09", "discount_text": "Lidl akcija"},
+    {"printed_text": "Bio rajčica grappo", "quantity": "1", "unit": null, "unit_price": null, "printed_amount": "1.99"},
+    {"printed_text": "Mješavina pahuljica", "quantity": "1", "unit": null, "unit_price": null, "printed_amount": "0.75"},
+    {"printed_text": "Zobene pahuljice", "quantity": "1", "unit": null, "unit_price": null, "printed_amount": "0.75"},
+    {"printed_text": "Zob.pahulj. mekane", "quantity": "1", "unit": null, "unit_price": null, "printed_amount": "0.65"}
+  ],
+  "settlements": [
+    {"kind": "card", "printed_text": "Kartica", "amount": "6.32"}
+  ]
+}

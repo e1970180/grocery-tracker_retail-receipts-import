@@ -1,0 +1,22 @@
+{
+  "payload_version": 1,
+  "chain_id": "lidl",
+  "store_name": null,
+  "branch_number": "0205",
+  "receipt_number": "94695/POSL0205/10520",
+  "store_address": "Omladinska 1A, Mali Lošinj",
+  "purchased_at": "2026-06-26T12:04:00Z",
+  "total": "16.82",
+  "lines": [
+    {"printed_text": "Svježi sok jabuka", "quantity": "1", "unit": null, "unit_price": null, "printed_amount": "2.39", "separate_discount": "0.60", "discount_text": "Lidl Plus popust"},
+    {"printed_text": "Bitter Lemon", "quantity": "2", "unit": null, "unit_price": "2.23", "printed_amount": "4.46"},
+    {"printed_text": "Jamnica, 1,5l", "quantity": "6", "unit": null, "unit_price": "0.99", "printed_amount": "5.94"},
+    {"printed_text": "Bavarsko pivo", "quantity": "2", "unit": null, "unit_price": "0.89", "printed_amount": "1.78"},
+    {"printed_text": "Sladoled Tricolore", "quantity": "1", "unit": null, "unit_price": null, "printed_amount": "4.15"},
+    {"printed_text": "Čips slani", "quantity": "2", "unit": null, "unit_price": "1.15", "printed_amount": "2.30"}
+  ],
+  "settlements": [
+    {"kind": "cash", "printed_text": "Novčanice", "amount": "16.82"},
+    {"kind": "deposit_refund", "printed_text": "Otkup ambalaže", "amount": "3.60"}
+  ]
+}

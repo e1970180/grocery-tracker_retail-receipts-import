@@ -81,3 +81,7 @@
 - source_plan: `_bmad-output/initiative-receipts-import-mvp/epic-receipts-pipeline/story-lidl-plug-in-plan.md`
   summary: A Lidl paper-receipt photo fixture for the Lidl plug-in, as AD-6 asks where a chain issues both paper and digital receipts.
   evidence: All Lidl samples are Lidl Plus app screenshots; no paper receipt is at hand, and the owner chose screenshots only for 1.8 (2026-10-24).
+
+- source_plan: `_bmad-output/initiative-receipts-import-mvp/epic-receipts-pipeline/story-lidl-plug-in-plan.md`
+  summary: Pass 1 misread the year of Lidl case 2003 (`23.05.2023` against the printed `23.05.2026`), so the early duplicate check would look in the wrong place for that receipt.
+  evidence: Recorded live in `tests/fixtures/lidl/2003/pass1.json`; pass 2 read the date right. The write-time duplicate check still holds, so the cost is one extra pass-2 call per resend; worth watching whether pass-1 year misreads recur across chains.

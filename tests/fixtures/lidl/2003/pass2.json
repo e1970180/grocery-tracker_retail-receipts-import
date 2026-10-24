@@ -1,0 +1,81 @@
+{
+  "seller_oib": "66089976432",
+  "pj": "0269",
+  "ibr": "0269/024832/05",
+  "store_address": "Julija Knifera 10, Zagreb",
+  "receipt_number": "2003/POSL0269/10502",
+  "purchase_date": "23.05.2026",
+  "purchase_time": "15:54:37",
+  "total": "19,75",
+  "lines": [
+    {
+      "text": "Kremšnita",
+      "quantity": "1",
+      "unit": null,
+      "unit_price": null,
+      "amount": "3,29"
+    },
+    {
+      "text": "POPUST 25%",
+      "quantity": null,
+      "unit": null,
+      "unit_price": null,
+      "amount": "-0,83"
+    },
+    {
+      "text": "Hugo",
+      "quantity": "2",
+      "unit": null,
+      "unit_price": "2,99",
+      "amount": "5,98"
+    },
+    {
+      "text": "Peršin korijen 250g",
+      "quantity": "1",
+      "unit": null,
+      "unit_price": null,
+      "amount": "1,29"
+    },
+    {
+      "text": "Kiselo vrhnje 12%",
+      "quantity": "1",
+      "unit": null,
+      "unit_price": null,
+      "amount": "0,85"
+    },
+    {
+      "text": "Štapić vanil.-čok.",
+      "quantity": "1",
+      "unit": null,
+      "unit_price": null,
+      "amount": "0,89"
+    },
+    {
+      "text": "Svježi posni sir",
+      "quantity": "2",
+      "unit": null,
+      "unit_price": "1,85",
+      "amount": "3,70"
+    },
+    {
+      "text": "Meki kravlji sir",
+      "quantity": "1",
+      "unit": null,
+      "unit_price": null,
+      "amount": "2,29"
+    },
+    {
+      "text": "Kravlja skuta",
+      "quantity": "1",
+      "unit": null,
+      "unit_price": null,
+      "amount": "2,29"
+    }
+  ],
+  "payments": [
+    {
+      "text": "Kartica",
+      "amount": "19,75"
+    }
+  ]
+}

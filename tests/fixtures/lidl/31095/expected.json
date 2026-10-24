@@ -1,0 +1,28 @@
+{
+  "payload_version": 1,
+  "chain_id": "lidl",
+  "store_name": null,
+  "branch_number": "0269",
+  "receipt_number": "31095/POSL0269/10102",
+  "store_address": "Julija Knifera 10, Zagreb",
+  "purchased_at": "2026-04-30T15:10:00Z",
+  "total": "32.45",
+  "lines": [
+    {"printed_text": "Luk crveni rinfuza", "quantity": "0.412", "unit": "kg", "unit_price": "0.84", "printed_amount": "0.35", "separate_discount": "0.19", "discount_text": "Lidl Plus popust"},
+    {"printed_text": "Malvazija Istarska", "quantity": "1", "unit": null, "unit_price": null, "printed_amount": "5.99"},
+    {"printed_text": "Zob.pahulj. mekane", "quantity": "1", "unit": null, "unit_price": null, "printed_amount": "0.79"},
+    {"printed_text": "Čips od jabuke", "quantity": "2", "unit": null, "unit_price": "0.89", "printed_amount": "1.78"},
+    {"printed_text": "Sjemenke suncokreta", "quantity": "1", "unit": null, "unit_price": null, "printed_amount": "0.89"},
+    {"printed_text": "Riža dugozrnata XXL", "quantity": "1", "unit": null, "unit_price": null, "printed_amount": "3.49"},
+    {"printed_text": "Hren", "quantity": "1", "unit": null, "unit_price": null, "printed_amount": "1.19"},
+    {"printed_text": "Svježi posni sir", "quantity": "3", "unit": null, "unit_price": "1.85", "printed_amount": "5.55"},
+    {"printed_text": "Mozzarela Classi", "quantity": "2", "unit": null, "unit_price": "1.49", "printed_amount": "2.98"},
+    {"printed_text": "Vrećica za v&p", "quantity": "2", "unit": null, "unit_price": "0.01", "printed_amount": "0.02"},
+    {"printed_text": "Mladi krumpir", "quantity": "1.644", "unit": "kg", "unit_price": "0.69", "printed_amount": "1.13"},
+    {"printed_text": "Sladoled", "quantity": "1", "unit": null, "unit_price": null, "printed_amount": "3.49"},
+    {"printed_text": "Sla. šta. jag-crisp", "quantity": "1", "unit": null, "unit_price": null, "printed_amount": "4.99"}
+  ],
+  "settlements": [
+    {"kind": "card", "printed_text": "Kartica", "amount": "32.45"}
+  ]
+}

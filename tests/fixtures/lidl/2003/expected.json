@@ -1,0 +1,23 @@
+{
+  "payload_version": 1,
+  "chain_id": "lidl",
+  "store_name": null,
+  "branch_number": "0269",
+  "receipt_number": "2003/POSL0269/10502",
+  "store_address": "Julija Knifera 10, Zagreb",
+  "purchased_at": "2026-05-23T13:54:00Z",
+  "total": "19.75",
+  "lines": [
+    {"printed_text": "Kremšnita", "quantity": "1", "unit": null, "unit_price": null, "printed_amount": "3.29", "separate_discount": "0.83", "discount_text": "POPUST 25%"},
+    {"printed_text": "Hugo", "quantity": "2", "unit": null, "unit_price": "2.99", "printed_amount": "5.98"},
+    {"printed_text": "Peršin korijen 250g", "quantity": "1", "unit": null, "unit_price": null, "printed_amount": "1.29"},
+    {"printed_text": "Kiselo vrhnje 12%", "quantity": "1", "unit": null, "unit_price": null, "printed_amount": "0.85"},
+    {"printed_text": "Štapić vanil.-čok.", "quantity": "1", "unit": null, "unit_price": null, "printed_amount": "0.89"},
+    {"printed_text": "Svježi posni sir", "quantity": "2", "unit": null, "unit_price": "1.85", "printed_amount": "3.70"},
+    {"printed_text": "Meki kravlji sir", "quantity": "1", "unit": null, "unit_price": null, "printed_amount": "2.29"},
+    {"printed_text": "Kravlja skuta", "quantity": "1", "unit": null, "unit_price": null, "printed_amount": "2.29"}
+  ],
+  "settlements": [
+    {"kind": "card", "printed_text": "Kartica", "amount": "19.75"}
+  ]
+}

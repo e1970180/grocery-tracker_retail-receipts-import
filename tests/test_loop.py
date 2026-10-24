@@ -60,8 +60,9 @@ SETTINGS = loop.LoopSettings(
 )
 PDF_BYTES = b"%PDF-1.7 receipt"
 SPAR = KnownChain("spar", "Spar", ("SPAR", "Spar", "INTERSPAR"), ("46108893754",))
-SPAR_ONLY = ChainReference(chains=(SPAR,), inactive_ids=(), rejected=())
-SPAR_WITHDRAWN = ChainReference(chains=(), inactive_ids=("spar",), rejected=())
+LIDL = KnownChain("lidl", "Lidl", ("LIDL", "Lidl"), ("66089976432",))
+SPAR_AND_LIDL = ChainReference(chains=(SPAR, LIDL), inactive_ids=(), rejected=())
+SPAR_WITHDRAWN = ChainReference(chains=(LIDL,), inactive_ids=("spar",), rejected=())
 # Answers that make a receipt stored: pass 1 finds Spar, pass 2 adds up.
 STORED_ANSWERS = (pass1_response(), response())
 # Raised by a fake to stop the job mid-way, as a crash or connection outage would.
@@ -116,7 +117,7 @@ class Fakes:
     write_result: WriteKind | Exception = WriteKind.STORED
     # The receipt another source already stored under the key pass 1 names; None for a new one.
     stored_id: uuid.UUID | None = None
-    reference: ChainReference = SPAR_ONLY
+    reference: ChainReference = SPAR_AND_LIDL
     download_error: Exception | None = None
     telegram: RecordingTelegram = field(default_factory=RecordingTelegram)
     now: datetime = datetime(2026, 10, 23, 12, 0, tzinfo=UTC)
@@ -1221,7 +1222,7 @@ def test_withdrawn_plugin_alerts_once_and_leaves_the_job_path_unchanged(tmp_path
         f"{TEXTS.alerts[AlertKind.CHAIN_REFERENCE]}\nchain_reference\ninactive plug-in: spar"
     ]
 
-    fakes.reference = SPAR_ONLY
+    fakes.reference = SPAR_AND_LIDL
     jobs.check_reference(fakes.ports())
     assert chain_reference_messages(fakes)[1:] == [
         f"{TEXTS.recoveries[AlertKind.CHAIN_REFERENCE]}\nchain_reference"

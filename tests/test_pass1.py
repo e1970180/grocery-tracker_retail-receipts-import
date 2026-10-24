@@ -37,6 +37,6 @@ def test_is_supported_chain() -> None:
     active = {"spar", "kaufland"}
     assert is_supported_chain("spar", active, PLUGINS) is True
     assert is_supported_chain("kaufland", active, PLUGINS) is False
-    assert is_supported_chain("lidl", active, PLUGINS) is False
+    assert is_supported_chain("dm", active, PLUGINS) is False
     assert is_supported_chain(OTHER, active, PLUGINS) is False
     assert is_supported_chain(UNREADABLE, active, PLUGINS) is False

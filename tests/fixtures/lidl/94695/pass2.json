@@ -1,0 +1,78 @@
+{
+  "seller_oib": "66089976432",
+  "pj": "0205",
+  "ibr": "0205/526614/05",
+  "store_address": "Omladinska 1A, Mali Lošinj",
+  "receipt_number": "94695/POSL0205/10520",
+  "purchase_date": "26.06.2026",
+  "purchase_time": "14:04:21",
+  "total": "16,82",
+  "lines": [
+    {
+      "text": "Svježi sok jabuka",
+      "quantity": "1",
+      "unit": null,
+      "unit_price": null,
+      "amount": "2,39"
+    },
+    {
+      "text": "Lidl Plus popust",
+      "quantity": null,
+      "unit": null,
+      "unit_price": null,
+      "amount": "-0,60"
+    },
+    {
+      "text": "Bitter Lemon",
+      "quantity": "2",
+      "unit": null,
+      "unit_price": "2,23",
+      "amount": "4,46"
+    },
+    {
+      "text": "Jamnica, 1,5l",
+      "quantity": "6",
+      "unit": null,
+      "unit_price": "0,99",
+      "amount": "5,94"
+    },
+    {
+      "text": "Otkup ambalaže",
+      "quantity": null,
+      "unit": null,
+      "unit_price": null,
+      "amount": "-3,60"
+    },
+    {
+      "text": "Bavarsko pivo",
+      "quantity": "2",
+      "unit": null,
+      "unit_price": "0,89",
+      "amount": "1,78"
+    },
+    {
+      "text": "Sladoled Tricolore",
+      "quantity": "1",
+      "unit": null,
+      "unit_price": null,
+      "amount": "4,15"
+    },
+    {
+      "text": "Čips slani",
+      "quantity": "2",
+      "unit": null,
+      "unit_price": "1,15",
+      "amount": "2,30"
+    }
+  ],
+  "payments": [
+    {
+      "text": "Novčanice",
+      "amount": "100,00"
+    },
+    {
+      "text": "Ostatak novčanice",
+      "amount": "-83,18"
+    }
+  ]
+}

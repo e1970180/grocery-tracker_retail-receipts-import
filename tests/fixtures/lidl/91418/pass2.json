@@ -1,0 +1,113 @@
+{
+  "seller_oib": "66089976432",
+  "pj": "0205",
+  "ibr": "0205/523085/05",
+  "store_address": "Omladinska 1A, Mali Lošinj",
+  "receipt_number": "91418/POSL0205/10520",
+  "purchase_date": "21.06.2026",
+  "purchase_time": "15:08:20",
+  "total": "42,97",
+  "lines": [
+    {
+      "text": "Jamnica, 1,5l",
+      "quantity": "6",
+      "unit": null,
+      "unit_price": "0,99",
+      "amount": "5,94"
+    },
+    {
+      "text": "Tempranillo",
+      "quantity": "1",
+      "unit": null,
+      "unit_price": null,
+      "amount": "2,49"
+    },
+    {
+      "text": "Laško Zlatorog",
+      "quantity": "1",
+      "unit": null,
+      "unit_price": null,
+      "amount": "5,29"
+    },
+    {
+      "text": "ESL Svježe mlijeko",
+      "quantity": "1",
+      "unit": null,
+      "unit_price": null,
+      "amount": "0,84"
+    },
+    {
+      "text": "Mozzarella za pizzu",
+      "quantity": "1",
+      "unit": null,
+      "unit_price": null,
+      "amount": "3,49"
+    },
+    {
+      "text": "Hummus Natur",
+      "quantity": "1",
+      "unit": null,
+      "unit_price": null,
+      "amount": "1,59"
+    },
+    {
+      "text": "Kozel Pivo 4,8%",
+      "quantity": "1",
+      "unit": null,
+      "unit_price": null,
+      "amount": "5,89"
+    },
+    {
+      "text": "Vrećica za v&p",
+      "quantity": "2",
+      "unit": null,
+      "unit_price": "0,01",
+      "amount": "0,02"
+    },
+    {
+      "text": "Šljiva okrugla",
+      "quantity": "0,946",
+      "unit": "kg",
+      "unit_price": "3,99",
+      "amount": "3,77"
+    },
+    {
+      "text": "Kuhane kozice",
+      "quantity": "2",
+      "unit": null,
+      "unit_price": "3,59",
+      "amount": "7,18"
+    },
+    {
+      "text": "Čips slani",
+      "quantity": "2",
+      "unit": null,
+      "unit_price": "0,59",
+      "amount": "1,18"
+    },
+    {
+      "text": "Čips slani",
+      "quantity": "2",
+      "unit": null,
+      "unit_price": "1,69",
+      "amount": "3,38"
+    },
+    {
+      "text": "Patlidžan",
+      "quantity": "0,960",
+      "unit": "kg",
+      "unit_price": "1,99",
+      "amount": "1,91"
+    }
+  ],
+  "payments": [
+    {
+      "text": "Novčanice",
+      "amount": "100,00"
+    },
+    {
+      "text": "Ostatak novčanice",
+      "amount": "-57,03"
+    }
+  ]
+}

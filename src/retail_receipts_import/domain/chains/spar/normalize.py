@@ -1,7 +1,6 @@
 """Turns a Spar pass-2 response into a `NormalizedReceipt`, applying Spar's printing rules."""
 
 import re
-import unicodedata
 from dataclasses import dataclass
 from datetime import datetime
 from decimal import Decimal
@@ -9,6 +8,11 @@ from decimal import Decimal
 from pydantic import ValidationError
 
 from retail_receipts_import.domain.chains.errors import UnreadableReceipt
+from retail_receipts_import.domain.chains.printed import DATE
+from retail_receipts_import.domain.chains.printed import fold as _fold
+from retail_receipts_import.domain.chains.printed import money as _money
+from retail_receipts_import.domain.chains.printed import quantity as _quantity
+from retail_receipts_import.domain.chains.printed import stripped as _stripped
 from retail_receipts_import.domain.chains.spar.schema import SparLine, SparPass2, SparPayment
 from retail_receipts_import.domain.receipt import (
     NormalizedReceipt,
@@ -19,9 +23,6 @@ from retail_receipts_import.domain.receipt import (
 )
 
 # Strict on purpose: a value in any other shape is a misread, and guessing would store it.
-MONEY = re.compile(r"-?\d+,\d{2}")
-QUANTITY = re.compile(r"\d+(?:,\d{1,3})?")
-DATE = re.compile(r"(\d{2})\.(\d{2})\.(\d{4})\.?")
 TIME = re.compile(r"(\d{1,2}):(\d{2})")
 
 
@@ -63,12 +64,6 @@ def normalize_pass1_time(purchase_date: str, purchase_time: str) -> datetime | N
         return None
 
 
-def _stripped(value: str | None) -> str | None:
-    if value is None:
-        return None
-    return value.strip() or None
-
-
 def _branch(receipt_number: str | None) -> str | None:
     # Spar prints `sequence/branch/till`; the branch is the middle segment.
     number = _stripped(receipt_number)
@@ -91,20 +86,6 @@ def _purchase_time(date_text: str, time_text: str) -> datetime:
         return datetime(year, month, day, hour, minute)
     except ValueError:
         raise UnreadableReceipt(f"purchase time {date_text!r} {time_text!r} is no date") from None
-
-
-def _money(text: str, field: str) -> Decimal:
-    value = text.strip()
-    if MONEY.fullmatch(value) is None:
-        raise UnreadableReceipt(f"{field} {text!r} is not a printed amount")
-    return Decimal(value.replace(",", "."))
-
-
-def _quantity(text: str) -> Decimal:
-    value = text.strip()
-    if QUANTITY.fullmatch(value) is None:
-        raise UnreadableReceipt(f"quantity {text!r} is not a printed quantity")
-    return Decimal(value.replace(",", "."))
 
 
 @dataclass
@@ -152,12 +133,6 @@ def _line(item: _Item) -> ReceiptLine:
         separate_discount=item.discount,
         discount_text=item.discount_text,
     )
-
-
-def _fold(text: str) -> str:
-    # The model may keep or drop diacritics (PLAĆANJE, PLACANJE); compare without them.
-    decomposed = unicodedata.normalize("NFKD", text)
-    return "".join(c for c in decomposed if not unicodedata.combining(c)).upper()
 
 
 def _is_info(text: str) -> bool:

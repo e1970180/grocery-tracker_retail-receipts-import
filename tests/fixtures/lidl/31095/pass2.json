@@ -1,0 +1,116 @@
+{
+  "seller_oib": "66089976432",
+  "pj": "0269",
+  "ibr": "0269/106122/01",
+  "store_address": "Julija Knifera 10, Zagreb",
+  "receipt_number": "31095/POSL0269/10102",
+  "purchase_date": "30.04.2026",
+  "purchase_time": "17:10:53",
+  "total": "32,45",
+  "lines": [
+    {
+      "text": "Luk crveni rinfuza",
+      "quantity": "0,412",
+      "unit": "kg",
+      "unit_price": "0,84",
+      "amount": "0,35"
+    },
+    {
+      "text": "Lidl Plus popust",
+      "quantity": null,
+      "unit": null,
+      "unit_price": null,
+      "amount": "-0,19"
+    },
+    {
+      "text": "Malvazija Istarska",
+      "quantity": "1",
+      "unit": null,
+      "unit_price": null,
+      "amount": "5,99"
+    },
+    {
+      "text": "Zob.pahulj. mekane",
+      "quantity": "1",
+      "unit": null,
+      "unit_price": null,
+      "amount": "0,79"
+    },
+    {
+      "text": "Čips od jabuke",
+      "quantity": "2",
+      "unit": null,
+      "unit_price": "0,89",
+      "amount": "1,78"
+    },
+    {
+      "text": "Sjemenke suncokreta",
+      "quantity": "1",
+      "unit": null,
+      "unit_price": null,
+      "amount": "0,89"
+    },
+    {
+      "text": "Riža dugozrnata XXL",
+      "quantity": "1",
+      "unit": null,
+      "unit_price": null,
+      "amount": "3,49"
+    },
+    {
+      "text": "Hren",
+      "quantity": "1",
+      "unit": null,
+      "unit_price": null,
+      "amount": "1,19"
+    },
+    {
+      "text": "Svježi posni sir",
+      "quantity": "3",
+      "unit": null,
+      "unit_price": "1,85",
+      "amount": "5,55"
+    },
+    {
+      "text": "Mozzarela Classi",
+      "quantity": "2",
+      "unit": null,
+      "unit_price": "1,49",
+      "amount": "2,98"
+    },
+    {
+      "text": "Vrećica za v&p",
+      "quantity": "2",
+      "unit": null,
+      "unit_price": "0,01",
+      "amount": "0,02"
+    },
+    {
+      "text": "Mladi krumpir",
+      "quantity": "1,644",
+      "unit": "kg",
+      "unit_price": "0,69",
+      "amount": "1,13"
+    },
+    {
+      "text": "Sladoled",
+      "quantity": "1",
+      "unit": null,
+      "unit_price": null,
+      "amount": "3,49"
+    },
+    {
+      "text": "Sla. šta. jag-crisp",
+      "quantity": "1",
+      "unit": null,
+      "unit_price": null,
+      "amount": "4,99"
+    }
+  ],
+  "payments": [
+    {
+      "text": "Kartica",
+      "amount": "32,45"
+    }
+  ]
+}

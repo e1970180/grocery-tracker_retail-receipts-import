@@ -1,0 +1,28 @@
+{
+  "payload_version": 1,
+  "chain_id": "lidl",
+  "store_name": null,
+  "branch_number": "0205",
+  "receipt_number": "91418/POSL0205/10520",
+  "store_address": "Omladinska 1A, Mali Lošinj",
+  "purchased_at": "2026-06-21T13:08:00Z",
+  "total": "42.97",
+  "lines": [
+    {"printed_text": "Jamnica, 1,5l", "quantity": "6", "unit": null, "unit_price": "0.99", "printed_amount": "5.94"},
+    {"printed_text": "Tempranillo", "quantity": "1", "unit": null, "unit_price": null, "printed_amount": "2.49"},
+    {"printed_text": "Laško Zlatorog", "quantity": "1", "unit": null, "unit_price": null, "printed_amount": "5.29"},
+    {"printed_text": "ESL Svježe mlijeko", "quantity": "1", "unit": null, "unit_price": null, "printed_amount": "0.84"},
+    {"printed_text": "Mozzarella za pizzu", "quantity": "1", "unit": null, "unit_price": null, "printed_amount": "3.49"},
+    {"printed_text": "Hummus Natur", "quantity": "1", "unit": null, "unit_price": null, "printed_amount": "1.59"},
+    {"printed_text": "Kozel Pivo 4,8%", "quantity": "1", "unit": null, "unit_price": null, "printed_amount": "5.89"},
+    {"printed_text": "Vrećica za v&p", "quantity": "2", "unit": null, "unit_price": "0.01", "printed_amount": "0.02"},
+    {"printed_text": "Šljiva okrugla", "quantity": "0.946", "unit": "kg", "unit_price": "3.99", "printed_amount": "3.77"},
+    {"printed_text": "Kuhane kozice", "quantity": "2", "unit": null, "unit_price": "3.59", "printed_amount": "7.18"},
+    {"printed_text": "Čips slani", "quantity": "2", "unit": null, "unit_price": "0.59", "printed_amount": "1.18"},
+    {"printed_text": "Čips slani", "quantity": "2", "unit": null, "unit_price": "1.69", "printed_amount": "3.38"},
+    {"printed_text": "Patlidžan", "quantity": "0.960", "unit": "kg", "unit_price": "1.99", "printed_amount": "1.91"}
+  ],
+  "settlements": [
+    {"kind": "cash", "printed_text": "Novčanice", "amount": "42.97"}
+  ]
+}

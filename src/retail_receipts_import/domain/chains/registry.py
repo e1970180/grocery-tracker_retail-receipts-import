@@ -8,6 +8,7 @@ from typing import Protocol
 
 from pydantic import BaseModel
 
+from retail_receipts_import.domain.chains.lidl import LIDL
 from retail_receipts_import.domain.chains.spar import SPAR
 from retail_receipts_import.domain.receipt import NormalizedReceipt
 
@@ -38,4 +39,4 @@ class ChainPlugin(Protocol):
         ...
 
 
-PLUGINS: dict[str, ChainPlugin] = {plugin.chain_id: plugin for plugin in (SPAR,)}
+PLUGINS: dict[str, ChainPlugin] = {plugin.chain_id: plugin for plugin in (SPAR, LIDL)}

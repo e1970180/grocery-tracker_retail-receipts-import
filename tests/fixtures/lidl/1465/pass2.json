@@ -1,0 +1,60 @@
+{
+  "seller_oib": "66089976432",
+  "pj": "0198",
+  "ibr": "0198/038977/82",
+  "store_address": "Ulica Ive Robića 4, Zagreb",
+  "receipt_number": "1465/POSL0198/18213",
+  "purchase_date": "11.02.2025",
+  "purchase_time": "14:31:24",
+  "total": "6,32",
+  "lines": [
+    {
+      "text": "Mozzarella class",
+      "quantity": "3",
+      "unit": null,
+      "unit_price": "1,09",
+      "amount": "3,27"
+    },
+    {
+      "text": "Lidl akcija",
+      "quantity": null,
+      "unit": null,
+      "unit_price": null,
+      "amount": "-1,09"
+    },
+    {
+      "text": "Bio rajčica grappo",
+      "quantity": "1",
+      "unit": null,
+      "unit_price": null,
+      "amount": "1,99"
+    },
+    {
+      "text": "Mješavina pahuljica",
+      "quantity": "1",
+      "unit": null,
+      "unit_price": null,
+      "amount": "0,75"
+    },
+    {
+      "text": "Zobene pahuljice",
+      "quantity": "1",
+      "unit": null,
+      "unit_price": null,
+      "amount": "0,75"
+    },
+    {
+      "text": "Zob.pahulj. mekane",
+      "quantity": "1",
+      "unit": null,
+      "unit_price": null,
+      "amount": "0,65"
+    }
+  ],
+  "payments": [
+    {
+      "text": "Kartica",
+      "amount": "6,32"
+    }
+  ]
+}

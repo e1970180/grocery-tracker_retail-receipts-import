@@ -1,0 +1,30 @@
+{
+  "payload_version": 1,
+  "chain_id": "lidl",
+  "store_name": null,
+  "branch_number": "0269",
+  "receipt_number": "297/POSL0269/18215",
+  "store_address": "Julija Knifera 10, Zagreb",
+  "purchased_at": "2026-07-22T16:03:00Z",
+  "total": "33.91",
+  "lines": [
+    {"printed_text": "Sla. šta. jag-crisp", "quantity": "1", "unit": null, "unit_price": null, "printed_amount": "4.99"},
+    {"printed_text": "Štapić čok.-vanilij", "quantity": "1", "unit": null, "unit_price": null, "printed_amount": "4.99"},
+    {"printed_text": "Mješ. crvenog voća", "quantity": "1", "unit": null, "unit_price": null, "printed_amount": "4.99"},
+    {"printed_text": "Svježi posni sir", "quantity": "2", "unit": null, "unit_price": "1.69", "printed_amount": "3.38"},
+    {"printed_text": "Mladi sir", "quantity": "1", "unit": null, "unit_price": null, "printed_amount": "2.19"},
+    {"printed_text": "Prutići od sv. s", "quantity": "3", "unit": null, "unit_price": "0.39", "printed_amount": "1.17"},
+    {"printed_text": "Meki kravlji sir", "quantity": "1", "unit": null, "unit_price": null, "printed_amount": "2.23"},
+    {"printed_text": "Zob.pahulj. mekane", "quantity": "1", "unit": null, "unit_price": null, "printed_amount": "0.49"},
+    {"printed_text": "Piko Parizer, 400g", "quantity": "1", "unit": null, "unit_price": null, "printed_amount": "3.99"},
+    {"printed_text": "Breskva plosnata", "quantity": "1.208", "unit": "kg", "unit_price": "2.49", "printed_amount": "3.01"},
+    {"printed_text": "Mladi krumpir", "quantity": "1.392", "unit": "kg", "unit_price": "0.89", "printed_amount": "1.24"},
+    {"printed_text": "Vrećica za v&p", "quantity": "1", "unit": null, "unit_price": null, "printed_amount": "0.01"},
+    {"printed_text": "Mrkva", "quantity": "1.722", "unit": "kg", "unit_price": "0.59", "printed_amount": "1.02"},
+    {"printed_text": "Vrećica za v&p", "quantity": "1", "unit": null, "unit_price": null, "printed_amount": "0.01"},
+    {"printed_text": "Vrećica mala", "quantity": "2", "unit": null, "unit_price": "0.10", "printed_amount": "0.20"}
+  ],
+  "settlements": [
+    {"kind": "card", "printed_text": "Kartica", "amount": "33.91"}
+  ]
+}
