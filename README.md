@@ -1,88 +1,278 @@
 # retail-receipts-import
 
-Import pipeline for retail grocery receipts into PostgreSQL over LAN.
+Сервис автоматизированного импорта кассовых чеков розничных продуктовых сетей в PostgreSQL по локальной сети (LAN).
 
-## Configuration
+Проект принимает фотографии и PDF-документы чеков через Telegram-бота от членов семьи, выполняет двухпроходное извлечение и нормализацию данных с помощью мультимодальной нейросети Google Gemini, валидирует арифметический баланс и сохраняет структурированные чеки в PostgreSQL, предоставляя витрины и ленту изменений для аналитического сервиса Resolver.
 
-All settings come from `RRI_*` environment variables, or from a gitignored `.env` in the
-working directory. `.env.example` lists them. The service refuses to start on an invalid value.
+---
 
-| Variable | Meaning |
-| --- | --- |
-| `RRI_ENV` | `dev` or `prod`. `dev` needs a database name ending in `-dev`; `prod` needs one that does not. |
-| `RRI_TELEGRAM_BOT_TOKEN` | Telegram bot token. |
-| `RRI_GEMINI_API_KEY` | Gemini API key. |
-| `RRI_GEMINI_MODEL` | Gemini model id (default `gemini-3.8-flash`). |
-| `RRI_GEMINI_TIMEOUT_S` | Timeout of one Gemini request in seconds (default 120). |
-| `RRI_GEMINI_THINKING_LEVEL` | `minimal`, `low`, `medium` or `high` (default `low`; `gemini-3.8-flash` has no `minimal`). |
-| `RRI_GEMINI_BACKOFF_INITIAL_S` | First wait in seconds after an unavailable or misconfigured Gemini that names no delay of its own; each further wait in a row doubles (default 600). |
-| `RRI_GEMINI_BACKOFF_CAP_S` | Cap on that doubling wait in seconds (default 1800). |
-| `RRI_IMAGE_MAX_PIXELS` | Maximum image pixels before downscaling (default 16000000). |
-| `RRI_DB_HOST`, `RRI_DB_PORT`, `RRI_DB_NAME` | PostgreSQL server and database. |
-| `RRI_DB_USER`, `RRI_DB_PASSWORD` | Writer role, used by the service. |
-| `RRI_DB_CONNECT_TIMEOUT_S` | Connect timeout in seconds (default 10). |
-| `RRI_DB_STATEMENT_TIMEOUT_MS` | Server-side cap on one statement in milliseconds (default 30000). |
-| `RRI_MIGRATE_DB_USER`, `RRI_MIGRATE_DB_PASSWORD` | Schema owner role, used only by `migrate`. |
-| `RRI_ALLOWED_USER_IDS` | Required. Telegram user ids whose private messages are taken as receipts, comma-separated. |
-| `RRI_ADMIN_CHAT_ID` | Required. Chat that gets failure notices and file copies; the admin must have started the bot. |
-| `RRI_TELEGRAM_POLL_TIMEOUT_S` | Telegram long-polling timeout in seconds (default 30). |
-| `RRI_JOB_RETRY_DELAY_S` | Wait in seconds before retrying a failed job step (default 600). |
-| `RRI_JOB_MAX_ATTEMPTS` | Refused downloads or Gemini attempts before a job fails (default 3). |
-| `RRI_DATA_DIR` | Directory for the SQLite queue and downloaded receipt files (default `/data`). |
-| `RRI_TEXTS_PATH` | Texts file (default `texts/messages.toml`). |
-| `RRI_LOG_LEVEL` | `DEBUG`, `INFO`, `WARNING` or `ERROR` (default `INFO`). |
+## Содержание
 
-User- and admin-facing texts and reaction emoji live in `texts/messages.toml`. Every key must be
-present and every reaction must be an emoji Telegram allows, or the service refuses to start.
+- [Назначение и ключевые возможности](#назначение-и-ключевые-возможности)
+- [Архитектура системы](#архитектура-системы)
+  - [Конвейер обработки чека](#конвейер-обработки-чека)
+  - [Поддерживаемые торговые сети](#поддерживаемые-торговые-сети)
+  - [Правила валидации и нормализации](#правила-валидации-и-нормализации)
+- [Модель безопасности и роли PostgreSQL](#модель-безопасности-и-роли-postgresql)
+  - [Принцип наименьших привилегий](#принцип-наименьших-привилегий)
+  - [Роли базы данных](#роли-базы-данных)
+  - [Изоляция сред (dev / prod)](#изоляция-сред-dev--prod)
+- [Конфигурация](#конфигурация)
+  - [Переменные окружения](#переменные-окружения)
+  - [Тексты и эмодзи-реакции Telegram](#тексты-и-эмодзи-реакции-telegram)
+- [Развертывание и запуск (Runbook)](#развертывание-и-запуск-runbook)
+  - [1. Подготовка базы данных (однократно на кластере)](#1-подготовка-базы-данных-однократно-на-кластере)
+  - [2. Клонирование через sparse-checkout](#2-клонирование-через-sparse-checkout)
+  - [3. Сборка Docker-образа](#3-сборка-docker-образа)
+  - [4. Применение миграций](#4-применение-миграций)
+  - [5. Запуск сервиса](#5-запуск-сервиса)
+  - [6. Обновление сервиса](#6-обновление-сервиса)
+- [Эксплуатация, мониторинг и алерты](#эксплуатация-мониторинг-и-алерты)
+  - [Система алертов](#система-алертов)
+  - [Повторные попытки и экспоненциальный бэкофф](#повторные-попытки-и-экспоненциальный-бэкофф)
+  - [Логирование и безопасность секретов](#логирование-и-безопасность-секретов)
 
-## Chain reference
+---
 
-The service learns the known retail chains from an admin-owned reference, the view
-`public.chains_v1`, which the writer role must be able to `SELECT`. This project never creates
-or writes it; the admin sets it up from [`docs/contracts/chains_v1.sql`](docs/contracts/chains_v1.sql).
-The shape the service relies on is the consumer contract
-[`docs/contracts/chains_v1.md`](docs/contracts/chains_v1.md); versions are listed in
-[`docs/api-versions.md`](docs/api-versions.md).
+## Назначение и ключевые возможности
 
-## Resolver feed contract
+- **Удобный прием чеков**: члены семьи отправляют фото или PDF-файлы чеков напрямую в приватный чат Telegram-бота.
+- **Отказоустойчивость**: состояние конвейера и очередь задач ведутся в локальной базе данных SQLite на примонтированном томе. Сервер может перезагружаться или терять связь с внешними API в любой момент: незавершенные шаги возобновятся без потери данных и без дублирования списаний по API.
+- **Двухпроходное извлечение через Gemini Vision (gemini-3.8-flash)**:
+  - *Проход 1*: быстрая классификация торговой сети, извлечение заголовка (дата, время, название магазина). Выполняется ранняя проверка на дубликат по дате/времени и сети до дорогостоящего детального прохода.
+  - *Проход 2*: детальное извлечение строк покупок, скидок, сторно, возвратов бутылок и способов оплаты по специализированной JSON-схеме конкретной сети.
+- **Строгий финансовый контроль**: чек считается валидным только при нулевом балансе:
+  `Сумма(Строки) = Сумма(Оплаты)` и `Итого = Сумма(Оплаты)`.
+- **Интеграция с Resolver**: чеки публикуются в защищенной схеме `retail_receipts_import`, а для внешнего сервиса Resolver предоставляются витрины и последовательная лента событий в схеме `resolver_v1`.
 
-Stored receipts and a feed of stored and deleted events are exposed to the Resolver through views in
-schema `resolver_v1`. The consumer reads only those views. The contract is
-[`docs/contracts/resolver_v1.md`](docs/contracts/resolver_v1.md); versions are listed in
-[`docs/api-versions.md`](docs/api-versions.md).
+---
 
-## Commands
+## Архитектура системы
 
-```bash
-uv run python -m retail_receipts_import migrate
+Сервис спроектирован по принципам чистой/гексагональной архитектуры (Clean Architecture / Ports & Adapters) с разделением на слои:
+- `domain`: чистые структуры данных (чеки, строки, оплаты, статусы), математические проверки баланса и плагины сетей. Не зависит от внешних библиотек и БД.
+- `adapters`: конкретные реализации портов — Telegram Bot API (`httpx`), Google Gemini API (`google-genai`), PostgreSQL (`psycopg`), хранилище файлов на диске (`FileStore`), очередь (`Queue` на SQLite).
+- `app`: координация конвейера (`pipeline`), управление жизненным циклом фоновых задач (`jobs`), главный цикл опроса (`loop`), уведомления (`notify`) и мониторинг (`alerts`).
+
+### Конвейер обработки чека
+
+```
+Telegram -> Очередь SQLite -> Загрузка файла -> Проход 1 (Сеть) -> Проверка дубликата -> Проход 2 (Строки) -> Проверка баланса -> Запись в PostgreSQL -> Реакция в Telegram
 ```
 
+1. **Intake & Filter**: опрос обновлений Telegram (`getUpdates`). Сообщения от неавторизованных пользователей или не содержащие фото/PDF отклоняются с установкой соответствующей реакции или уведомлением.
+2. **Enqueue**: принятые сообщения атомарно записываются в SQLite-очередь в состоянии `received`, после чего подтверждается смещение (offset) Telegram.
+3. **Download**: файл скачивается через Telegram Bot API на локальный диск (`/data/files`) с проверкой лимита размера (до 20 МБ) и контролем целостности. Задача переходит в `chain_pending`.
+4. **Pass 1 (Детекция сети)**: изображение/PDF передается в Gemini с динамической схемой, включающей только активные на данный момент сети из БД. Модель возвращает идентификатор сети и время покупки.
+5. **Early Dedup Check**: если время и сеть успешно распознаны, проверяется наличие чека в базе данных. Если такой чек уже есть, обработка завершается как `duplicate` без запуска второго прохода (экономия токенов и времени).
+6. **Pass 2 (Детальное распознавание)**: специализированный промпт и схема плагина сети извлекают каждую позицию, скидки, номер чека, адрес магазина, способы оплаты и залоговые возвраты.
+7. **Normalizer & Balancing**: плагин преобразует сырой JSON в каноническую модель `NormalizedReceipt`. Проверяются знаки строк (продажи положительные, сторно/возвраты отрицательные) и совпадение суммы строк и суммы оплат. При расхождении хотя бы на 1 цент чек бракуется (`failed`) с указанием точной причины.
+8. **PostgreSQL Write**: в одной транзакции в базу данных вставляются запись чека, все его строки, оплаты и событие в ленту `receipt_feed`.
+9. **Finalize**: пользователю выставляется эмодзи-реакция (успех 👍, дубликат 🤝, ошибка 🤷), временный файл удаляется с диска.
+
+### Поддерживаемые торговые сети
+
+Система поддерживает пять ключевых продуктовых сетей Хорватии:
+- **Spar / Interspar** (`spar`)
+- **Lidl** (`lidl`)
+- **Kaufland** (`kaufland`)
+- **dm-drogerie markt** (`dm`)
+- **Müller** (`mueller`)
+
+Список активных сетей динамически запрашивается из системного представления `public.chains_v1`. Если на чеке обнаружена неизвестная сеть, чек помечается как `unsupported_chain`, а администратор получает копию файла для анализа.
+
+### Правила валидации и нормализации
+
+- **Валюта**: строго `EUR` (Евро).
+- **Временные зоны**: чеки печатаются по загребскому местному времени (`Europe/Zagreb`); при записи в БД время переводится в UTC с точностью до минуты.
+- **Скидки**: скидки в чеках делятся на включенные в цену (`included_discount`, например акционная цена на полке) и отдельные строчные скидки (`separate_discount`, например купоны или скидка по карте лояльности).
+- **Возврат тары**: строки возврата бутылок (`Povratna naknada` / `Boca za pivo`) нормализуются как возвратные строки либо залоговые взаимозачеты (`deposit_refund`).
+
+---
+
+## Модель безопасности и роли PostgreSQL
+
+Сервис ориентирован на PostgreSQL 18.6+ по локальной сети и реализует строгую модель изоляции прав.
+
+### Принцип наименьших привилегий
+
+- Сервис **никогда не работает под суперпользователем** (`postgres`).
+- У сервиса **отозваны любые права на удаление и модификацию** существующих чеков (`UPDATE`, `DELETE`, `TRUNCATE` запрещены).
+- Сервис **не имеет доступа к системным базам данных** (`postgres`, `template1`) и базам других сервисов (`data`).
+- Общедоступные права роли `PUBLIC` на подключение и создание временных таблиц в базе данных отозваны.
+
+### Роли базы данных
+
+| Роль | Назначение | Разрешенные операции |
+| --- | --- | --- |
+| **Владелец схем** (`rri_dev_owner` / `rri_prod_owner`) | Применение миграций (`migrate`) | Подключение к своей базе данных; владение схемами `retail_receipts_import` и `resolver_v1`; выполнение DDL. Не имеет прав в схеме `public`. |
+| **Писатель сервиса** (`rri_dev_writer` / `rri_prod_writer`) | Основной сервис импорта чеков | Подключение к своей БД; `SELECT` на `public.chains_v1`; `SELECT`, `INSERT` на `retail_receipts_import.receipts`; `INSERT` на строки, оплаты и ленту `receipt_feed`; `USAGE` на последовательность ленты. |
+| **Читатель Resolver** (`resolver_dev_reader` / `resolver_prod_reader`) | Потребитель чеков (сервис Resolver) | Подключение к своей БД; `USAGE` на схему `resolver_v1`; только `SELECT` на представления `resolver_v1.receipts`, `resolver_v1.receipt_lines`, `resolver_v1.receipt_settlements`, `resolver_v1.feed`. |
+| **Разработчик** (`rri_dev_developer`) *(только в dev)* | Локальная отладка и аудит с рабочей станции | Член роли `rri_dev_owner`, права `CREATE`, `TEMPORARY`, `SELECT` на `public.chains_v1`. Пароль писателя `rri_dev_writer` при этом хранится исключительно на сервере. |
+
+### Изоляция сред (dev / prod)
+
+Один и тот же Telegram-бот может использоваться для тестирования и продуктовой эксплуатации, поэтому имя базы данных строго связано с переменной `RRI_ENV`:
+- При `RRI_ENV=dev` имя базы данных **обязано** оканчиваться на `-dev` (например, `grocery-tracker-dev`).
+- При `RRI_ENV=prod` имя базы данных **не может** оканчиваться на `-dev` (например, `grocery-tracker`).
+
+При несовпадении сервис аварийно завершает работу при старте, гарантируя, что тестовые данные не попадут в продуктивную среду.
+
+---
+
+## Конфигурация
+
+Конфигурация считывается из переменных окружения с префиксом `RRI_` либо из файла `.env` в корне проекта (через Pydantic Settings).
+
+### Переменные окружения
+
+| Переменная | Тип | По умолчанию | Описание |
+| --- | --- | --- | --- |
+| `RRI_ENV` | `dev` \| `prod` | *Обязательно* | Целевое окружение. |
+| `RRI_TELEGRAM_BOT_TOKEN` | Секретная строка | *Обязательно* | Токен бота Telegram от `@BotFather`. |
+| `RRI_ALLOWED_USER_IDS` | Список чисел (через запятую) | *Обязательно* | ID пользователей Telegram, от которых принимаются чеки. |
+| `RRI_ADMIN_CHAT_ID` | Число | *Обязательно* | Chat ID администратора для алертов и копий проблемных чеков. |
+| `RRI_GEMINI_API_KEY` | Секретная строка | *Обязательно* | Ключ доступа Google Gemini API. |
+| `RRI_GEMINI_MODEL` | Строка | `gemini-3.8-flash` | Идентификатор модели Google Gemini. |
+| `RRI_GEMINI_TIMEOUT_S` | Число (секунды) | `120` | Таймаут одного запроса к Gemini API. |
+| `RRI_GEMINI_THINKING_LEVEL` | `minimal` \| `low` \| `medium` \| `high` | `low` | Уровень рассуждений Gemini (для flash используется `low`). |
+| `RRI_GEMINI_BACKOFF_INITIAL_S` | Число (секунды) | `600` | Начальная задержка при временной недоступности Gemini (503 / 429). |
+| `RRI_GEMINI_BACKOFF_CAP_S` | Число (секунды) | `1800` | Максимальный потолок экспоненциальной задержки (30 минут). |
+| `RRI_IMAGE_MAX_PIXELS` | Число (пиксели) | `16000000` | Лимит разрешения (16 МП). Большие фото пропорционально сжимаются. |
+| `RRI_DB_HOST` | Строка | *Обязательно* | IP-адрес или хост сервера PostgreSQL в локальной сети. |
+| `RRI_DB_PORT` | Число | `5432` | Порт PostgreSQL. |
+| `RRI_DB_NAME` | Строка | *Обязательно* | Имя базы данных (`grocery-tracker-dev` или `grocery-tracker`). |
+| `RRI_DB_USER` | Строка | *Обязательно* | Имя пользователя базы данных (писатель: `rri_dev_writer`). |
+| `RRI_DB_PASSWORD` | Секретная строка | *Обязательно* | Пароль пользователя базы данных. |
+| `RRI_DB_CONNECT_TIMEOUT_S` | Число (секунды) | `10` | Таймаут подключения к PostgreSQL. |
+| `RRI_DB_STATEMENT_TIMEOUT_MS` | Число (миллисекунды) | `30000` | Серверный лимит выполнения одного SQL-запроса (30 секунд). |
+| `RRI_MIGRATE_DB_USER` | Строка | `None` | Логин владельца схем (используется только командой `migrate`). |
+| `RRI_MIGRATE_DB_PASSWORD` | Секретная строка | `None` | Пароль владельца схем. |
+| `RRI_TELEGRAM_POLL_TIMEOUT_S` | Число (секунды) | `30` | Таймаут long-polling запросов `getUpdates`. |
+| `RRI_JOB_RETRY_DELAY_S` | Число (секунды) | `600` | Задержка перед повторной попыткой при сбое шага задачи. |
+| `RRI_JOB_MAX_ATTEMPTS` | Число | `3` | Максимальное число попыток обработки перед окончательным сбоем. |
+| `RRI_DATA_DIR` | Путь | `/data` | Директория SQLite-очереди и файлов чеков (том Compose). |
+| `RRI_TEXTS_PATH` | Путь | `texts/messages.toml` | Путь к файлу локализации текстов и реакций. |
+| `RRI_LOG_LEVEL` | `DEBUG` \| `INFO` \| `WARNING` \| `ERROR` | `INFO` | Уровень детализации консольного логирования. |
+
+Шаблон файла конфигурации с комментариями доступен в [`.env.example`](.env.example).
+
+### Тексты и эмодзи-реакции Telegram
+
+Все пользовательские тексты, системные сообщения и эмодзи-реакции вынесены в файл [`texts/messages.toml`](texts/messages.toml).
+При запуске сервис проверяет наличие всех обязательных ключей и соответствие эмодзи официальному списку поддерживаемых реакций Telegram Bot API.
+
+---
+
+## Развертывание и запуск (Runbook)
+
+Развертывание выполняется на домашнем Linux-сервере в Docker-контейнере через `docker compose`.
+PostgreSQL 18.6+ работает на отдельном хосте в локальной сети и не входит в Compose-стек.
+
+Подробное руководство по развертыванию приведено в [`docs/deployment.md`](docs/deployment.md).
+
+### 1. Подготовка базы данных (однократно на кластере)
+
+Под учетной записью суперпользователя `postgres`:
+1. Закройте публичный доступ к остальным базам кластера (см. `docs/deployment.md#1`).
+2. Запустите скрипт инициализации окружения [`docs/deploy/provision.sql`](docs/deploy/provision.sql):
+   ```bash
+   psql -h <host> -p <port> -U postgres -d postgres \
+     -v ON_ERROR_STOP=1 \
+     -v db=grocery-tracker-dev \
+     -v owner=rri_dev_owner \
+     -v writer=rri_dev_writer \
+     -v reader=resolver_dev_reader \
+     -f docs/deploy/provision.sql
+   ```
+
+### 2. Клонирование через sparse-checkout
+
+На сервере checkout настраивается в режиме разреженного дерева (sparse-checkout), чтобы не выгружать историю, фикстуры и документацию:
+
 ```bash
-uv run python -m retail_receipts_import run
+git clone --no-checkout --filter=blob:none https://github.com/e1970180/grocery-tracker_retail-receipts-import ~/grocery-tracker/retail-receipts-import
+cd ~/grocery-tracker/retail-receipts-import
+git sparse-checkout set --no-cone /Dockerfile /compose.yaml /.dockerignore /.env.example /pyproject.toml /uv.lock /README.md /src/ /migrations/ /texts/ /docs/deploy/ /docs/contracts/
+git checkout main
 ```
 
-`migrate` applies the numbered SQL files in `migrations/` that are not yet recorded in
-`retail_receipts_import.schema_migrations`, each in its own transaction, as the schema owner.
-Both schemas (`retail_receipts_import` and `resolver_v1`) and the three roles (schema owner,
-writer, Resolver read-only) are provisioned with the database, not by migrations;
-`resolver_v1` must exist before `migrate` applies `0004_resolver_v1.sql`.
+Скопируйте шаблон конфигурации и укажите реквизиты писателя (без паролей владельца схемы):
+```bash
+cp .env.example .env
+chmod 600 .env
+nano .env
+```
 
-## Deployment
-
-Provisioning, the sparse checkout and the role rights are in
-[`docs/deployment.md`](docs/deployment.md). On the server:
+### 3. Сборка Docker-образа
 
 ```bash
 docker compose build
 ```
 
+### 4. Применение миграций
+
+Миграции запускаются от имени владельца схем. Чтобы пароль не оставался в истории bash и не сохранялся в `.env`, он передается интерактивно через переменные окружения:
+
 ```bash
+export RRI_MIGRATE_DB_USER=rri_dev_owner; read -rs RRI_MIGRATE_DB_PASSWORD; export RRI_MIGRATE_DB_PASSWORD
 docker compose run --rm -e RRI_MIGRATE_DB_USER -e RRI_MIGRATE_DB_PASSWORD receipts migrate
 ```
 
+После завершения миграции обязательно выполняется тримминг прав писателя (отзыв лишних привилегий на вновь созданные таблицы и журнал миграций):
+
 ```bash
+psql -h <host> -p <port> -U rri_dev_owner -d grocery-tracker-dev \
+  -v ON_ERROR_STOP=1 -v writer=rri_dev_writer -f docs/deploy/after-migrate.sql
+unset RRI_MIGRATE_DB_USER RRI_MIGRATE_DB_PASSWORD
+```
+
+### 5. Запуск сервиса
+
+> **ВАЖНО**: Telegram Bot API доставляет обновления только одному активному поллеру. Перед запуском на сервере убедитесь, что локальные инстансы сервиса остановлены.
+
+```bash
+docker compose up -d
+docker compose logs -f receipts
+```
+
+При успешном старте в логе появится сообщение:
+```text
+ready: env=dev database=postgresql://rri_dev_writer@192.168.100.218:5432/grocery-tracker-dev
+```
+
+### 6. Обновление сервиса
+
+```bash
+git pull --ff-only
+docker compose build
+# Если обновление включает новые миграции: выполните шаг 4 (migrate + after-migrate.sql)
 docker compose up -d
 ```
 
-Export the schema owner credentials in the shell for the `migrate` run only; keep them out of
-the server's `.env`.
+---
+
+## Эксплуатация, мониторинг и алерты
+
+### Система алертов
+
+Сервис отслеживает критические неполадки и немедленно отправляет текстовое уведомление администратору в `RRI_ADMIN_CHAT_ID`:
+- `postgres_unreachable`: сбой сетевого подключения к PostgreSQL или таймаут соединения. Очередь накапливает чеки локально в SQLite и ожидает восстановления базы.
+- `gemini_config`: недействительный API-ключ, неверный ID модели или исчерпание абсолютной квоты аккаунта Google Cloud.
+- `telegram_unreachable`: долговременная недоступность Telegram Bot API при long-polling.
+- `chain_reference`: рассинхронизация системного представления `public.chains_v1` (деактивация поддерживаемой сети, невалидные записи).
+- `internal`: аварийное зацикливание шага задачи или критический сбой.
+
+Когда проблема устраняется (например, связь с БД восстановилась), сервис автоматически отправляет администратору уведомление о восстановлении (`recovery`).
+
+### Повторные попытки и экспоненциальный бэкофф
+
+- При временных сетевых ошибках или кодах 503/429 от Gemini API сервис включает экспоненциальный бэкофф (от 10 до 30 минут), предотвращая перегрузку и излишние платные вызовы.
+- Если Gemini возвращает в ответе заголовок `Retry-After`, сервис уважает указанную сервером задержку.
+- Каждая задача имеет счетчик попыток (`job_max_attempts`, по умолчанию 3). По исчерпании лимита задача переходит в `failed`, пользователю ставится реакция ошибки, а копия нераспознанного чека отправляется администратору.
+
+### Логирование и безопасность секретов
+
+- Пароли БД, токены Telegram и API-ключи Gemini оборачиваются в Pydantic `SecretStr` и никогда не выводятся в логах.
+- Библиотеки `httpx` и `httpcore` переведены в уровень `WARNING`, чтобы токены из URL-адресов Telegram Bot API не попадали в стандартный вывод.
+- Сервисные и аналитические скрипты не выводят персональные данные покупателей в открытом виде.

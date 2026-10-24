@@ -20,6 +20,8 @@ class GeminiError(Exception):
 
 
 class GeminiClient:
+    """Wraps Google GenAI client to generate structured JSON extractions with sanitized errors."""
+
     def __init__(
         self,
         client: genai.Client,
@@ -39,6 +41,7 @@ class GeminiClient:
 
     @classmethod
     def from_settings(cls, settings: Settings) -> GeminiClient:
+        """Instantiates a configured GeminiClient using application settings."""
         return cls(
             genai.Client(api_key=settings.gemini_api_key.get_secret_value()),
             api_key=settings.gemini_api_key,

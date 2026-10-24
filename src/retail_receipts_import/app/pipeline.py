@@ -47,6 +47,8 @@ Classify = Callable[[GeminiCallError, int], Classification]
 
 @dataclass(frozen=True)
 class Ports:
+    """External I/O ports and adapter callables used across pipeline stages."""
+
     generate: Generate
     write: Write
     find_other_source: FindOtherSource
@@ -67,11 +69,15 @@ class ExtractionWait(Exception):
 
 @dataclass(frozen=True)
 class ChainFound:
+    """Outcome of pass-1 when a known retail chain is recognized."""
+
     pass1: Pass1Response
 
 
 @dataclass(frozen=True)
 class Extracted:
+    """Outcome of pass-2 when receipt lines and settlements are normalized."""
+
     receipt: NormalizedReceipt
 
 
@@ -84,22 +90,30 @@ class ChainWithdrawn:
 
 @dataclass(frozen=True)
 class Stored:
+    """Final pipeline outcome when a receipt is successfully persisted."""
+
     receipt_id: uuid.UUID
 
 
 @dataclass(frozen=True)
 class Duplicate:
+    """Final pipeline outcome when a receipt duplicates an already stored record."""
+
     receipt_id: uuid.UUID
 
 
 @dataclass(frozen=True)
 class Unsupported:
+    """Pass-1 outcome when the receipt belongs to an unrecognized or inactive retail chain."""
+
     chain_id: str
     store_name: str | None = None
 
 
 @dataclass(frozen=True)
 class Invalid:
+    """Pipeline failure outcome when receipt content fails validation or schema rules."""
+
     reason: FailureReason
     detail: str
 
@@ -140,6 +154,7 @@ def precheck(pass1: Pass1Response, source: ReceiptSource, ports: Ports) -> Dupli
 def store(
     receipt_id: uuid.UUID, receipt: NormalizedReceipt, source: ReceiptSource, ports: Ports
 ) -> WriteOutcome:
+    """Persists a normalized receipt to PostgreSQL, handling duplicate deduplication."""
     written = ports.write(receipt_id, receipt, source)
     if written.kind is WriteKind.DUPLICATE:
         return Duplicate(written.receipt_id)

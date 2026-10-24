@@ -27,12 +27,16 @@ _THIRD_PARTY_FIELDS = frozenset({"business_connection_id", "guest_query_id"})
 
 
 class FileKind(StrEnum):
+    """Distinguishes Telegram photo compressed uploads from uncompressed document attachments."""
+
     PHOTO = "photo"
     DOCUMENT = "document"
 
 
 @dataclass(frozen=True)
 class Accepted:
+    """An intake receipt file that passed validation, ready to be scheduled and processed."""
+
     chat_id: int
     message_id: int
     buyer_name: str

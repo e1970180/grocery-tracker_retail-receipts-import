@@ -17,17 +17,27 @@ from retail_receipts_import.domain.receipt import NormalizedReceipt
 
 
 class ChainPlugin(Protocol):
-    @property
-    def chain_id(self) -> str: ...
+    """Protocol defining the interface implemented by chain-specific receipt extraction plugins."""
 
     @property
-    def pass1_time_hint(self) -> str: ...
+    def chain_id(self) -> str:
+        """The unique slug identifying this retail chain in public.chains_v1."""
+        ...
 
     @property
-    def pass2_prompt(self) -> str: ...
+    def pass1_time_hint(self) -> str:
+        """Visual hint assisting pass-1 model to locate receipt timestamp instead of card slips."""
+        ...
 
     @property
-    def pass2_schema(self) -> type[BaseModel]: ...
+    def pass2_prompt(self) -> str:
+        """Chain-specific prompt directing pass-2 itemized extraction."""
+        ...
+
+    @property
+    def pass2_schema(self) -> type[BaseModel]:
+        """Pydantic model schema describing structured extraction payload for pass 2."""
+        ...
 
     def normalize_pass1_time(self, purchase_date: str, purchase_time: str) -> datetime | None:
         """Converts pass-1 date and time strings to aware UTC, or None if unreadable."""

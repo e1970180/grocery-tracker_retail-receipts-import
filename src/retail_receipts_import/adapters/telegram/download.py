@@ -17,6 +17,7 @@ class FileUnavailable(Exception):
 def download_file(
     client: TelegramClient, file_id: str, declared_size: int, max_bytes: int
 ) -> bytes:
+    """Verifies file size bounds via getFile and downloads file contents into memory."""
     try:
         info = client.get_file(file_id)
         # A size Telegram does not confirm is treated as too large, so the bytes never reach memory.

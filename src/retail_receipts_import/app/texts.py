@@ -38,6 +38,8 @@ class TextsError(Exception):
 
 @dataclass(frozen=True)
 class Texts:
+    """Holds user/admin notifications, emoji reactions, and alert templates."""
+
     reactions: dict[Outcome, str]
     sender_messages: dict[TextKey, str]
     admin_messages: dict[TextKey, str]
@@ -46,6 +48,7 @@ class Texts:
 
 
 def load_texts(path: Path) -> Texts:
+    """Loads and validates notification texts and Telegram emoji reactions from a TOML file."""
     try:
         raw = tomllib.loads(path.read_text(encoding="utf-8"))
     except (OSError, tomllib.TOMLDecodeError) as exc:

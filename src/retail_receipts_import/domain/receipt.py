@@ -32,6 +32,8 @@ Quantity = Annotated[Decimal, Field(max_digits=12, decimal_places=3)]
 
 
 class SettlementKind(StrEnum):
+    """Payment or tender methods accepted on retail grocery receipts."""
+
     CARD = "card"
     CASH = "cash"
     BONUS_POINTS = "bonus_points"
@@ -40,12 +42,16 @@ class SettlementKind(StrEnum):
 
 
 class LineKind(StrEnum):
+    """Classification of receipt line items into sales, stornos, and returns."""
+
     SALE = "sale"
     STORNO = "storno"
     RETURN = "return"
 
 
 class SourceKind(StrEnum):
+    """Origin channels through which receipts are ingested."""
+
     TELEGRAM = "telegram"
 
 
@@ -66,6 +72,8 @@ class TotalSettlementMismatch(Exception):
 
 
 class ReceiptLine(BaseModel):
+    """A normalized receipt line representing a sale item, storno cancellation, or return."""
+
     model_config = ConfigDict(extra="forbid", frozen=True)
 
     kind: LineKind = LineKind.SALE
@@ -104,14 +112,18 @@ class ReceiptLine(BaseModel):
 
     @property
     def regular_amount(self) -> Decimal:
+        """Shelf price before discounts (printed amount plus included discount)."""
         return self.printed_amount + self.included_discount
 
     @property
     def effective_amount(self) -> Decimal:
+        """Actual paid price after deducting separate line discounts."""
         return self.printed_amount - self.separate_discount
 
 
 class Settlement(BaseModel):
+    """An individual payment tender entry recorded on the receipt."""
+
     model_config = ConfigDict(extra="forbid", frozen=True)
 
     kind: SettlementKind
@@ -139,6 +151,8 @@ PurchasedAt = Annotated[AwareDatetime, AfterValidator(_utc_to_the_minute)]
 
 
 class NormalizedReceipt(BaseModel):
+    """Canonical domain representation of a verified, balanced, and normalized receipt."""
+
     model_config = ConfigDict(extra="forbid", frozen=True)
 
     payload_version: Literal[1]
@@ -235,6 +249,7 @@ class ReceiptSource(BaseModel):
 
 
 def telegram_source(chat_id: int, message_id: int, buyer_name: str) -> ReceiptSource:
+    """Builds a ReceiptSource descriptor for an incoming Telegram message."""
     return ReceiptSource(
         kind=SourceKind.TELEGRAM,
         ref=f"{chat_id}:{message_id}",

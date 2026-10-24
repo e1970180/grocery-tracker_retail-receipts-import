@@ -8,6 +8,8 @@ from pydantic import BaseModel, Field
 
 
 class KauflandLine(BaseModel):
+    """Raw printed line item extracted from a Kaufland receipt."""
+
     text: str = Field(
         description=(
             "Item name, discount text such as 'Kaufland Card%', 'Popust na kupnju', "
@@ -27,6 +29,8 @@ class KauflandLine(BaseModel):
 
 
 class KauflandPayment(BaseModel):
+    """Raw printed settlement or payment entry extracted from a Kaufland receipt."""
+
     text: str = Field(
         description="Printed payment row label, such as 'Kartica', 'Euro EUR', 'Za vratiti'."
     )
@@ -34,6 +38,8 @@ class KauflandPayment(BaseModel):
 
 
 class KauflandPass2(BaseModel):
+    """Structured pass-2 extraction schema for Kaufland receipts."""
+
     seller_oib: str | None = Field(
         default=None, description="Company OIB from the receipt header (11 digits)."
     )

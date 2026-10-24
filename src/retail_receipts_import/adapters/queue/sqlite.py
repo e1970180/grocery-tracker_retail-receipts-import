@@ -72,6 +72,8 @@ class QueueError(Exception):
 
 
 class Queue:
+    """Persistent SQLite job queue managing receipt ingestion lifecycle and polling offsets."""
+
     def __init__(self, path: Path) -> None:
         path.parent.mkdir(parents=True, exist_ok=True)
         self._conn = sqlite3.connect(path, autocommit=True)
@@ -90,9 +92,11 @@ class Queue:
             self._conn.execute(f"PRAGMA user_version = {SCHEMA_VERSION}")
 
     def close(self) -> None:
+        """Closes the underlying SQLite database connection."""
         self._conn.close()
 
     def read_offset(self) -> int | None:
+        """Returns the next Telegram update offset recorded in the queue database."""
         row = self._conn.execute("SELECT next_offset FROM poll_offset WHERE id = 1").fetchone()
         return None if row is None else int(row[0])
 
@@ -128,6 +132,7 @@ class Queue:
             )
 
     def due_jobs(self, now: datetime) -> list[Job]:
+        """Returns non-final jobs whose scheduled due time has arrived."""
         rows = self._conn.execute(
             f"SELECT {_JOB_COLUMNS} FROM jobs"
             f" WHERE state NOT IN ({', '.join('?' * len(_FINAL))})"
@@ -146,6 +151,7 @@ class Queue:
         return [_job(row).accepted for row in rows]
 
     def job(self, job_id: int) -> Job:
+        """Retrieves a single job by its integer job ID."""
         row = self._conn.execute(
             f"SELECT {_JOB_COLUMNS} FROM jobs WHERE job_id = ?", (job_id,)
         ).fetchone()
@@ -175,6 +181,7 @@ class Queue:
         )
 
     def to_extract_pending(self, job_id: int, now: datetime, *, pass1_json: str) -> None:
+        """Transitions job to extract_pending with validated pass-1 chain identification JSON."""
         # A supported pass-1 result breaks a run of unsupported ones.
         self._update(
             job_id,
@@ -195,6 +202,7 @@ class Queue:
         payload_version: int,
         receipt_id: str,
     ) -> None:
+        """Transitions job to write_pending with serialized normalized receipt data."""
         self._update(
             job_id,
             now,
@@ -214,6 +222,7 @@ class Queue:
         failure_reason: FailureReason | None = None,
         receipt_id: str | None = None,
     ) -> None:
+        """Transitions job to a terminal final state, clearing in-memory receipt JSON."""
         if state not in FINAL_STATES:
             raise ValueError(f"{state} is not a final state")
         # The receipt's content is PostgreSQL's to keep; a finished job holds no copy of it.

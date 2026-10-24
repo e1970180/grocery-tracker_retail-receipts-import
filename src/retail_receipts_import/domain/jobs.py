@@ -7,6 +7,8 @@ from retail_receipts_import.domain.intake import Accepted
 
 
 class JobState(StrEnum):
+    """Lifecycle states of a receipt ingestion job in the persistent queue."""
+
     RECEIVED = "received"
     CHAIN_PENDING = "chain_pending"
     EXTRACT_PENDING = "extract_pending"
@@ -24,6 +26,8 @@ FINAL_STATES = frozenset(
 
 @dataclass(frozen=True)
 class Job:
+    """An immutable snapshot of a receipt processing job in the queue."""
+
     job_id: int
     accepted: Accepted
     state: JobState

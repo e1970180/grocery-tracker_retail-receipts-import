@@ -9,6 +9,8 @@ from retail_receipts_import.domain.chains.registry import ChainPlugin
 
 
 class Pass1Response(BaseModel):
+    """Structured extraction result from pass 1 identifying retail chain and timestamp."""
+
     chain: str = Field(description="The detected retail grocery chain slug.")
     store_name: str | None = Field(
         default=None, description="Store or branch name printed on the receipt."

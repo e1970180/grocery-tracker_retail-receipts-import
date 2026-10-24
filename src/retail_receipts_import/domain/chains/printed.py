@@ -18,18 +18,21 @@ SHORT_YEAR_DATE = re.compile(r"(\d{2})\.(\d{2})\.(\d{2}|\d{4})\.?")
 
 
 def stripped(value: str | None) -> str | None:
+    """Returns trimmed text or None if empty."""
     if value is None:
         return None
     return value.strip() or None
 
 
 def fold(text: str) -> str:
+    """Normalizes text to uppercase ASCII by removing diacritical marks."""
     # The model may keep or drop diacritics (PLAĆANJE, PLACANJE); compare without them.
     decomposed = unicodedata.normalize("NFKD", text)
     return "".join(c for c in decomposed if not unicodedata.combining(c)).upper()
 
 
 def money(text: str, field: str) -> Decimal:
+    """Parses a printed decimal money amount string using comma separator into Decimal."""
     value = text.strip()
     if MONEY.fullmatch(value) is None:
         raise UnreadableReceipt(f"{field} {text!r} is not a printed amount")
@@ -37,6 +40,7 @@ def money(text: str, field: str) -> Decimal:
 
 
 def quantity(text: str) -> Decimal:
+    """Parses a printed quantity string using comma separator into Decimal."""
     value = text.strip()
     if QUANTITY.fullmatch(value) is None:
         raise UnreadableReceipt(f"quantity {text!r} is not a printed quantity")
@@ -44,6 +48,7 @@ def quantity(text: str) -> Decimal:
 
 
 def parse_pass2[T: BaseModel](model: type[T], response: str) -> T:
+    """Validates pass-2 JSON response against target schema without leaking receipt content."""
     try:
         return model.model_validate_json(response)
     except ValidationError as exc:
@@ -57,6 +62,7 @@ def purchase_time(
     date_text: str,
     time_text: str,
 ) -> datetime:
+    """Parses printed date and time strings into a naive datetime in local timezone."""
     date = date_re.fullmatch(date_text.strip())
     time = time_re.fullmatch(time_text.strip())
     if date is None or time is None:
@@ -76,6 +82,7 @@ def pass1_time(
     date: str | None,
     time: str | None,
 ) -> datetime | None:
+    """Attempts to parse pass-1 date and time strings, returning None on failure."""
     # Pass 1 only steers the early duplicate check, so an unreadable time skips it, never fails.
     if not date or not time:
         return None

@@ -19,11 +19,14 @@ class MigrationError(Exception):
 
 @dataclass(frozen=True)
 class Migration:
+    """An immutable descriptor binding a migration sequence version to its SQL source file."""
+
     version: int
     path: Path
 
 
 def discover(directory: Path) -> list[Migration]:
+    """Finds and validates numbered migration files in ascending sequence order."""
     migrations: dict[int, Migration] = {}
     for path in sorted(directory.glob("*.sql")):
         match = MIGRATION_NAME.match(path.name)

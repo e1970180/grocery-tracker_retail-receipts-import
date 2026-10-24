@@ -11,6 +11,8 @@ DEV_DATABASE_SUFFIX = "-dev"
 
 
 class Settings(BaseSettings):
+    """Application configuration loaded and validated from RRI_* environment variables."""
+
     model_config = SettingsConfigDict(env_prefix="RRI_", env_file=".env", extra="ignore")
 
     env: Literal["dev", "prod"]
@@ -79,6 +81,7 @@ class Settings(BaseSettings):
         return self
 
     def conninfo(self, user: str, password: SecretStr) -> str:
+        """Constructs a libpq connection string with statement and connect timeouts configured."""
         return make_conninfo(
             host=self.db_host,
             port=self.db_port,
@@ -91,4 +94,5 @@ class Settings(BaseSettings):
         )
 
     def redacted_dsn(self, user: str) -> str:
+        """Returns a safe PostgreSQL connection URI with password excluded for logging."""
         return f"postgresql://{user}@{self.db_host}:{self.db_port}/{self.db_name}"

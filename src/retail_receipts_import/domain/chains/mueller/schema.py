@@ -8,6 +8,8 @@ from pydantic import BaseModel, Field
 
 
 class MuellerLine(BaseModel):
+    """Raw printed line item extracted from a Müller receipt."""
+
     text: str = Field(description="Item name as printed.")
     quantity: str | None = Field(
         default=None,
@@ -41,6 +43,8 @@ class MuellerLine(BaseModel):
 
 
 class MuellerPayment(BaseModel):
+    """Raw printed settlement or payment entry extracted from a Müller receipt."""
+
     text: str = Field(
         description=(
             "Printed payment row label, such as 'PLACANJE KARTICOM EUR', 'GOTOVINA EUR', "
@@ -56,6 +60,8 @@ class MuellerPayment(BaseModel):
 
 
 class MuellerPass2(BaseModel):
+    """Structured pass-2 extraction schema for Müller receipts."""
+
     seller_oib: str | None = Field(
         default=None,
         description="Company OIB from the footer next to 'OIB:' (11 digits).",

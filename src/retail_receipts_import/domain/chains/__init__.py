@@ -13,12 +13,15 @@ RESERVED_IDS = frozenset({OTHER, UNREADABLE})
 
 
 def is_chain_id(value: str) -> bool:
+    """Verifies whether a string conforms to the slug format for chain IDs."""
     # fullmatch, because `$` would also accept a trailing newline.
     return CHAIN_ID_PATTERN.fullmatch(value) is not None
 
 
 @dataclass(frozen=True)
 class KnownChain:
+    """An active retail grocery chain record loaded from public.chains_v1."""
+
     chain_id: str
     display_name: str
     aliases: tuple[str, ...]

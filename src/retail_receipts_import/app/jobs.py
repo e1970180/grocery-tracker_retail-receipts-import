@@ -63,6 +63,8 @@ OpenPipeline = Callable[[], AbstractContextManager[Ports]]
 
 @dataclass(frozen=True)
 class JobPorts:
+    """Bundles external adapter dependencies and ports required by background job execution."""
+
     queue: Queue
     files: FileStore
     download: Download

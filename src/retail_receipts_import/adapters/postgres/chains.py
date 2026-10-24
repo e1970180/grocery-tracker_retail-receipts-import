@@ -35,6 +35,8 @@ def is_connection_error(exc: BaseException) -> bool:
 
 
 class RejectReason(StrEnum):
+    """Reason why a row in public.chains_v1 was rejected during reference validation."""
+
     INVALID_SLUG = "invalid_slug"
     RESERVED_ID = "reserved_id"
     NULL_FIELD = "null_field"
@@ -45,12 +47,16 @@ class RejectReason(StrEnum):
 
 @dataclass(frozen=True)
 class RejectedRow:
+    """An invalid chain reference row rejected during sanity validation."""
+
     chain_id: str | None
     reason: RejectReason
 
 
 @dataclass(frozen=True)
 class ChainReference:
+    """Validated in-memory snapshot of retail chains from public.chains_v1."""
+
     chains: tuple[KnownChain, ...]
     inactive_ids: tuple[str, ...]
     rejected: tuple[RejectedRow, ...]
@@ -61,6 +67,7 @@ class ChainReferenceError(Exception):
 
 
 def read_chain_reference(conn: psycopg.Connection[tuple[Any, ...]]) -> ChainReference:
+    """Reads public.chains_v1, separating active, inactive, and rejected chains."""
     try:
         rows = conn.execute(QUERY).fetchall()
     except psycopg.Error as exc:

@@ -54,6 +54,8 @@ INSERT_FEED_STORED = f"INSERT INTO {SCHEMA}.receipt_feed (receipt_id, event) VAL
 
 
 class WriteKind(StrEnum):
+    """Categorizes the outcome of persisting a receipt in PostgreSQL."""
+
     STORED = "stored"
     OWN_WRITE = "own_write"
     DUPLICATE = "duplicate"
@@ -61,6 +63,8 @@ class WriteKind(StrEnum):
 
 @dataclass(frozen=True)
 class StoredRef:
+    """Lightweight reference to an existing stored receipt."""
+
     receipt_id: uuid.UUID
     source_kind: str
     source_ref: str
@@ -68,6 +72,8 @@ class StoredRef:
 
 @dataclass(frozen=True)
 class WriteResult:
+    """Result of a receipt insert attempt including its assigned or existing UUID."""
+
     kind: WriteKind
     # For a duplicate or own write, the receipt that is already stored.
     receipt_id: uuid.UUID
@@ -76,6 +82,7 @@ class WriteResult:
 def find_by_source(
     conn: psycopg.Connection[tuple[Any, ...]], source: ReceiptSource
 ) -> StoredRef | None:
+    """Finds an existing receipt matching the given intake source kind and reference."""
     row = conn.execute(FIND_BY_SOURCE, (source.kind.value, source.ref)).fetchone()
     return _stored_ref(row)
 
@@ -83,6 +90,7 @@ def find_by_source(
 def find_by_dedup_key(
     conn: psycopg.Connection[tuple[Any, ...]], chain_id: str, purchased_at: datetime
 ) -> StoredRef | None:
+    """Finds an existing receipt matching the chain and purchase timestamp deduplication key."""
     row = conn.execute(FIND_BY_DEDUP_KEY, (chain_id, purchased_at)).fetchone()
     return _stored_ref(row)
 

@@ -113,6 +113,7 @@ class TelegramClient:
         self._client = httpx.Client(transport=transport)
 
     def close(self) -> None:
+        """Closes the underlying HTTP client transport."""
         self._client.close()
 
     def __enter__(self) -> TelegramClient:

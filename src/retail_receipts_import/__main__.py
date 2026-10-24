@@ -23,6 +23,7 @@ log = logging.getLogger("retail_receipts_import")
 
 
 def main(argv: Sequence[str] | None = None, stop: threading.Event | None = None) -> int:
+    """Parses CLI command, validates configuration, and runs migration or the ingestion service."""
     parser = argparse.ArgumentParser(prog="retail_receipts_import")
     parser.add_argument("command", choices=["run", "migrate"])
     args = parser.parse_args(argv)
@@ -86,6 +87,7 @@ def _migrate(settings: Settings) -> int:
 
 
 def entrypoint() -> None:
+    """Console script entrypoint exiting with the process status code from main()."""
     sys.exit(main())
 
 

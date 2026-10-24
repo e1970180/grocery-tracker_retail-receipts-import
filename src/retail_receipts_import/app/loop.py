@@ -26,13 +26,19 @@ POLL_ERROR_BACKOFF_S = 5.0
 
 
 class Updates(Protocol):
+    """Protocol for fetching new updates from the Telegram Bot API."""
+
     def get_updates(
         self, *, offset: int | None, timeout: int, allowed_updates: Sequence[str] | None = None
-    ) -> list[dict[str, Any]]: ...
+    ) -> list[dict[str, Any]]:
+        """Polls for pending Telegram updates."""
+        ...
 
 
 @dataclass(frozen=True)
 class LoopSettings:
+    """Configuration parameters governing the main polling loop and job retry cadence."""
+
     allowed_user_ids: Collection[int]
     poll_timeout_s: int
     # A connection error, unavailable download, or unreadable reference waits this long.
@@ -41,6 +47,7 @@ class LoopSettings:
 
 
 def run(telegram: Updates, ports: JobPorts, settings: LoopSettings, stop: threading.Event) -> None:
+    """Runs the main event loop, alternating between polling Telegram and executing due jobs."""
     while not stop.is_set():
         try:
             poll(telegram, ports, settings)
@@ -57,6 +64,7 @@ def run(telegram: Updates, ports: JobPorts, settings: LoopSettings, stop: thread
 
 
 def poll(telegram: Updates, ports: JobPorts, settings: LoopSettings) -> None:
+    """Polls Telegram, enqueues accepted receipt jobs, and replies to refused messages."""
     updates = telegram.get_updates(
         offset=ports.queue.read_offset(),
         timeout=_poll_timeout(ports, settings),
@@ -88,6 +96,7 @@ def _poll_timeout(ports: JobPorts, settings: LoopSettings) -> int:
 
 
 def run_due(ports: JobPorts, settings: LoopSettings, stop: threading.Event) -> None:
+    """Dispatches all background jobs that have reached their due time."""
     for job in ports.queue.due_jobs(ports.clock()):
         if stop.is_set():
             return

@@ -8,6 +8,8 @@ from pydantic import BaseModel, Field
 
 
 class LidlLine(BaseModel):
+    """Raw printed line item extracted from a Lidl receipt."""
+
     text: str = Field(
         description="Item name, or discount text such as 'POPUST 25%', 'Lidl akcija'."
     )
@@ -22,11 +24,15 @@ class LidlLine(BaseModel):
 
 
 class LidlPayment(BaseModel):
+    """Raw printed settlement or payment entry extracted from a Lidl receipt."""
+
     text: str = Field(description="Printed payment row label, such as 'Kartica', 'Novčanice'.")
     amount: str = Field(description="Printed amount such as '19,75', '100,00', '-57,03'.")
 
 
 class LidlPass2(BaseModel):
+    """Structured pass-2 extraction schema for Lidl receipts."""
+
     seller_oib: str | None = Field(
         default=None, description="Company OIB from the receipt header (11 digits)."
     )

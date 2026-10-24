@@ -36,6 +36,7 @@ TIME = re.compile(r"(\d{1,2}):(\d{2})(?::(\d{2}))?")
 
 
 def normalize(response: str, chain_id: str) -> NormalizedReceipt:
+    """Parses raw pass-2 Kaufland JSON response and builds NormalizedReceipt."""
     raw = parse_pass2(KauflandPass2, response)
     # Lines and settlements are models too, so their validation errors must be caught here as well.
     try:
@@ -63,6 +64,7 @@ def normalize(response: str, chain_id: str) -> NormalizedReceipt:
 
 
 def normalize_pass1_time(purchase_date: str, purchase_time: str) -> datetime | None:
+    """Converts Kaufland pass-1 purchase date and time strings into a UTC datetime."""
     return pass1_time(SHORT_YEAR_DATE, TIME, purchase_date, purchase_time)
 
 
@@ -134,6 +136,8 @@ def _is_info(text: str) -> bool:
 
 @dataclass
 class _Item:
+    """Intermediate item accumulator used during Kaufland line normalization."""
+
     row: KauflandLine
     text: str
     quantity: Decimal

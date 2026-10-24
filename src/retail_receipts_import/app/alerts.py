@@ -28,15 +28,19 @@ def _alert_key(kind: AlertKind, state: JobState | str | None = None) -> str:
 
 
 class Alerts:
+    """Manages active system alert states and dispatches notifications on trigger and recovery."""
+
     def __init__(self, notifier: Notifier, texts: Texts) -> None:
         self._notifier = notifier
         self._texts = texts
         self._active: set[str] = set()
 
     def is_active(self, kind: AlertKind, state: JobState | str | None = None) -> bool:
+        """Checks whether the specified alert is currently active."""
         return _alert_key(kind, state) in self._active
 
     def start(self, kind: AlertKind, reason: str, state: JobState | str | None = None) -> None:
+        """Activates an alert and sends a notification to the admin chat if not already active."""
         key = _alert_key(kind, state)
         if key in self._active:
             return
@@ -45,6 +49,7 @@ class Alerts:
         self._notifier.admin(f"alert {key}", text)
 
     def recover(self, kind: AlertKind, state: JobState | str | None = None) -> None:
+        """Deactivates an alert and sends a recovery notification to the admin chat if active."""
         key = _alert_key(kind, state)
         if key not in self._active:
             return
@@ -53,6 +58,7 @@ class Alerts:
         self._notifier.admin(f"alert {key}", text)
 
     def check_reference(self, reference: ChainReference) -> ChainReference:
+        """Checks reference parity with plugins and dispatches chain reference alerts."""
         faults: list[str] = []
         active_ids = {c.chain_id for c in reference.chains}
         inactive_ids = set(reference.inactive_ids)
@@ -74,6 +80,8 @@ class Alerts:
         return reference
 
     def watch_generate(self, generate: Generate) -> Generate:
+        """Wraps Gemini generate to automatically recover from configuration alerts on success."""
+
         @functools.wraps(generate)
         def wrapped(data: bytes, mime: str, prompt: str, schema: type[BaseModel]) -> str:
             result = generate(data, mime, prompt, schema)
@@ -83,6 +91,7 @@ class Alerts:
         return wrapped
 
     def read_checked(self, read: Callable[[], ChainReference]) -> ChainReference:
+        """Reads the chain reference, catching reference errors and reporting alerts if invalid."""
         try:
             reference = read()
         except ChainReferenceError as exc:

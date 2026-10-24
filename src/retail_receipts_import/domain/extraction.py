@@ -11,6 +11,8 @@ from enum import StrEnum
 
 
 class ExtractionClass(StrEnum):
+    """Categorizes the nature of a Gemini API error for retry or abandonment decisions."""
+
     UNAVAILABLE = "unavailable"
     BLOCKED = "blocked"
     INVALID = "invalid"
@@ -40,6 +42,8 @@ class GeminiCallError(Exception):
 
 @dataclass(frozen=True)
 class Classification:
+    """Classification of an extraction error along with required backoff retry delay."""
+
     kind: ExtractionClass
     # How long the job waits before the next try; zero for an invalid result.
     delay: timedelta
@@ -59,6 +63,7 @@ _ZERO_QUOTA = re.compile(r"limit: 0(?![\d.])")
 
 
 def classify(error: GeminiCallError, waits: int, initial_s: int, cap_s: int) -> Classification:
+    """Maps a sanitized Gemini error to its failure category and backoff delay."""
     kind = _kind(error)
     if kind is ExtractionClass.INVALID:
         return Classification(kind, timedelta(0))

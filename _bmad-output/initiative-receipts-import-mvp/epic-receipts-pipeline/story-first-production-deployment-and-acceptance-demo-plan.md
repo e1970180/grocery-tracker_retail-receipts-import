@@ -3,7 +3,7 @@ title: 'First production deployment and acceptance demo'
 type: 'chore'
 ticket: '16'
 created: '2026-10-24'
-status: 'in-progress'
+status: 'built'
 baseline_revision: 'b295de207540daa3db89e644f97bc77c7e85bf8a'
 route: 'full'
 route_source: 'auto'
@@ -71,9 +71,9 @@ context: []
 - [x] `docs/deployment.md` -- provisioning SQL (roles, database, schemas, minimal grants, closing PUBLIC on other databases), sparse clone, `.env`, build, migrate, start, update; `README.md` links to it.
 - [x] `scratch/import_samples.py` -- takes a list of sample files, runs each through `process_file` with the real Gemini client and the writer; a per-file report to `scratch/import-report.md`.
 - [x] Live, with the owner: push `main`; on `srv22` sparse clone, `.env` with `RRI_ENV=dev`, build, `migrate` twice, start; one receipt sent through the bot; the 50-file import.
-- [ ] Format and comment `.env` files; create/update `.env.example` with documented environment variables and defaults.
-- [ ] Code documentation audit: verify docstrings and comments across `src/` following repository rules (plain English explaining why).
-- [ ] Write a detailed README in Russian covering architecture, configuration, deployment runbook, DB roles, and operations.
+- [x] Format and comment `.env` files; create/update `.env.example` with documented environment variables and defaults.
+- [x] Code documentation audit: verify docstrings and comments across `src/` following repository rules (plain English explaining why).
+- [x] Write a detailed README in Russian covering architecture, configuration, deployment runbook, DB roles, and operations.
 
 **Acceptance Criteria:**
 - Given the narrowed roles, when the service stores a receipt and `migrate` reruns, then both succeed, and each overreach in the matrix is refused.

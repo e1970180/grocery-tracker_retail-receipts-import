@@ -28,14 +28,24 @@ COPY_TO_ADMIN = frozenset(
 
 
 class Telegram(Protocol):
-    def set_message_reaction(self, chat_id: int, message_id: int, reaction: str | None) -> None: ...
+    """Protocol defining Telegram client actions required for sending notifications."""
 
-    def send_message(self, chat_id: int, text: str, reply_to: int | None = None) -> None: ...
+    def set_message_reaction(self, chat_id: int, message_id: int, reaction: str | None) -> None:
+        """Sets or clears an emoji reaction on a message."""
+        ...
 
-    def send_document(self, chat_id: int, path: Path, caption: str) -> None: ...
+    def send_message(self, chat_id: int, text: str, reply_to: int | None = None) -> None:
+        """Sends a text message, optionally as a reply."""
+        ...
+
+    def send_document(self, chat_id: int, path: Path, caption: str) -> None:
+        """Uploads and sends a document file."""
+        ...
 
 
 class Notifier:
+    """Dispatches user reactions, user messages, and admin alert/failure copies via Telegram."""
+
     def __init__(self, telegram: Telegram, texts: Texts, admin_chat_id: int) -> None:
         self._telegram = telegram
         self._texts = texts
@@ -77,9 +87,11 @@ class Notifier:
                 raise ValueError(f"{where}: {state} is not a final state")
 
     def in_progress(self, job_id: int, item: Accepted) -> None:
+        """Sets the in-progress reaction emoji on the user's incoming receipt message."""
         self._react(f"job {job_id}", item, self._texts.reactions[Outcome.IN_PROGRESS])
 
     def not_accepted(self, chat_id: int, message_id: int) -> None:
+        """Sets the not-accepted reaction on an incoming message that is not an accepted receipt."""
         emoji = self._texts.reactions[Outcome.NOT_ACCEPTED]
         self._send(
             f"message {message_id}",
@@ -88,6 +100,7 @@ class Notifier:
         )
 
     def admin(self, where: str, text: str) -> None:
+        """Sends an administrative text message or alert directly to the admin chat."""
         self._send(
             where, "admin message", lambda: self._telegram.send_message(self._admin_chat_id, text)
         )

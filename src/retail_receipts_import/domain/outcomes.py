@@ -7,6 +7,8 @@ from enum import StrEnum
 
 
 class Outcome(StrEnum):
+    """Overall outcome of a receipt submission reported via reaction emoji and messages."""
+
     STORED = "stored"
     DUPLICATE = "duplicate"
     UNSUPPORTED_CHAIN = "unsupported_chain"
@@ -16,6 +18,8 @@ class Outcome(StrEnum):
 
 
 class FailureReason(StrEnum):
+    """Specific cause of a receipt processing or validation failure."""
+
     ITEMS_SETTLEMENT_MISMATCH = "items_settlement_mismatch"
     TOTAL_SETTLEMENT_MISMATCH = "total_settlement_mismatch"
     NO_VALID_RESULT = "no_valid_result"
@@ -25,6 +29,8 @@ class FailureReason(StrEnum):
 
 
 class AlertKind(StrEnum):
+    """Categories of operational alerts sent to the administrator."""
+
     POSTGRES_UNREACHABLE = "postgres_unreachable"
     GEMINI_CONFIG = "gemini_config"
     TELEGRAM_UNREACHABLE = "telegram_unreachable"

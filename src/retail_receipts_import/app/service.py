@@ -52,6 +52,7 @@ def pipeline_ports(
 
 
 def loop_settings(settings: Settings) -> loop.LoopSettings:
+    """Extracts loop polling and retry settings from application configuration."""
     return loop.LoopSettings(
         allowed_user_ids=frozenset(settings.allowed_user_ids),
         poll_timeout_s=settings.telegram_poll_timeout_s,
@@ -61,6 +62,7 @@ def loop_settings(settings: Settings) -> loop.LoopSettings:
 
 
 def serve(settings: Settings, texts: Texts, stop: threading.Event) -> None:
+    """Wires adapters, sweeps orphaned files from prior crashes, and runs the polling loop."""
     gemini = GeminiClient.from_settings(settings)
     queue = Queue(settings.data_dir / "queue.sqlite3")
 

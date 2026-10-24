@@ -32,6 +32,7 @@ TIME = re.compile(r"(\d{1,2}):(\d{2})(?::(\d{2}))?")
 
 
 def normalize(response: str, chain_id: str) -> NormalizedReceipt:
+    """Parses raw pass-2 Lidl JSON response and builds NormalizedReceipt."""
     raw = parse_pass2(LidlPass2, response)
     try:
         lines, deposit_refunds = _lines(raw.lines)
@@ -57,6 +58,7 @@ def normalize(response: str, chain_id: str) -> NormalizedReceipt:
 
 
 def normalize_pass1_time(purchase_date: str, purchase_time: str) -> datetime | None:
+    """Converts Lidl pass-1 purchase date and time strings into a UTC datetime."""
     return pass1_time(DATE, TIME, purchase_date, purchase_time)
 
 
@@ -88,6 +90,8 @@ def _is_info(text: str) -> bool:
 
 @dataclass
 class _Item:
+    """Intermediate item accumulator used during Lidl line normalization."""
+
     row: LidlLine
     text: str
     quantity: Decimal
