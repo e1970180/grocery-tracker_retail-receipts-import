@@ -18,6 +18,21 @@ QUERY = "SELECT chain_id, display_name, aliases, seller_oibs, active FROM public
 # no privilege. Anything else, notably connection loss, is the caller's to handle as is.
 STRUCTURAL_SQLSTATES = frozenset({"42P01", "3F000", "42703", "42501"})
 
+# Connection loss and shutdown: SQLSTATE class 08, 57P01–57P03, or a connection error with no code.
+CONNECTION_SQLSTATE_CLASSES = frozenset({"08"})
+CONNECTION_SQLSTATES = frozenset({"57P01", "57P02", "57P03"})
+
+
+def is_connection_error(exc: BaseException) -> bool:
+    """Tells PostgreSQL connection-loss and shutdown errors from query faults or bugs."""
+    if not isinstance(exc, psycopg.Error):
+        return False
+    if exc.sqlstate is not None:
+        return (
+            exc.sqlstate[:2] in CONNECTION_SQLSTATE_CLASSES or exc.sqlstate in CONNECTION_SQLSTATES
+        )
+    return isinstance(exc, (psycopg.OperationalError, psycopg.InterfaceError))
+
 
 class RejectReason(StrEnum):
     INVALID_SLUG = "invalid_slug"

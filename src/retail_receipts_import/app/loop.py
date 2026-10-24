@@ -12,7 +12,8 @@ from retail_receipts_import.adapters.telegram.client import (
     TelegramAPIError,
     TelegramRetryExhaustedError,
 )
-from retail_receipts_import.app.jobs import JobPorts, advance
+from retail_receipts_import.app import jobs
+from retail_receipts_import.app.jobs import JobPorts
 from retail_receipts_import.domain.intake import Accepted, NotAccepted, accept
 from retail_receipts_import.domain.outcomes import AlertKind
 
@@ -34,7 +35,7 @@ class Updates(Protocol):
 class LoopSettings:
     allowed_user_ids: Collection[int]
     poll_timeout_s: int
-    # A step that raised, or a download Telegram refused, waits this long and runs again.
+    # A connection error, unavailable download, or unreadable reference waits this long.
     retry_delay: timedelta
     max_attempts: int
 
@@ -91,9 +92,8 @@ def run_due(ports: JobPorts, settings: LoopSettings, stop: threading.Event) -> N
         if stop.is_set():
             return
         try:
-            advance(job, ports, settings.max_attempts, settings.retry_delay)
+            jobs.run(job, ports, settings.max_attempts, settings.retry_delay)
         except Exception:
-            # Adapters redact their secrets, so the traceback is safe to log.
-            log.exception("job %s failed in its step; retrying later", job.job_id)
-            now = ports.clock()
-            ports.queue.postpone(job.job_id, now + settings.retry_delay, now)
+            # The boundary in jobs.py catches per-job errors; this only moves on
+            # to the next job if a fault inside the boundary escapes.
+            log.exception("job %s failed in error boundary", job.job_id)

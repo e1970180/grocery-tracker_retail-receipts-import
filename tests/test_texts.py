@@ -29,6 +29,12 @@ def test_shipped_texts_file_is_complete() -> None:
     for reason in FailureReason:
         assert texts.sender_messages[reason]
         assert texts.admin_messages[reason]
+    assert texts.sender_messages[FailureReason.INTERNAL_ERROR] == (
+        "Не удалось обработать чек из-за внутренней ошибки. Администратор уведомлён."
+    )
+    assert texts.admin_messages[FailureReason.INTERNAL_ERROR] == (
+        "Внутренняя ошибка при обработке чека, подробности в журнале; копия не приложена."
+    )
     for kind in AlertKind:
         assert texts.alerts[kind]
         assert texts.recoveries[kind]

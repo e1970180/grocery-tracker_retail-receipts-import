@@ -89,18 +89,23 @@ stateDiagram-v2
   received --> received: Telegram unavailable, wait
   received --> chain_pending: file downloaded and saved
   received --> failed: oversize after getFile
+  received --> failed: internal error
   chain_pending --> chain_pending: unavailable, wait / invalid or first unsupported, attempts left
   chain_pending --> extract_pending: supported chain, pre-check clear or skipped
   chain_pending --> duplicate: pre-check hit by another source
   chain_pending --> unsupported_chain: second unsupported in a row
   chain_pending --> failed: attempt limit reached
+  chain_pending --> failed: internal error
   extract_pending --> extract_pending: unavailable, wait
   extract_pending --> chain_pending: invalid, attempts left
+  extract_pending --> chain_pending: kept pass 1 unreadable, no attempt
   extract_pending --> write_pending: valid and consistent
   extract_pending --> failed: attempt limit reached
+  extract_pending --> failed: internal error
   write_pending --> write_pending: PostgreSQL unreachable, wait
   write_pending --> stored: committed, or own earlier write
   write_pending --> duplicate: dedup key held by another source
+  write_pending --> failed: internal error
   stored --> [*]
   duplicate --> [*]
   unsupported_chain --> [*]
@@ -199,10 +204,11 @@ stateDiagram-v2
 - **Prevents:** one bad job crash-looping the service and stopping intake until Telegram drops updates.
 - **Rule:** The loop catches every exception of a job step at the job boundary.
   - Gemini results go through AD-7.
-  - PostgreSQL connection-class errors (SQLSTATE class `08`, `57P01`–`57P03`) are a wait with backoff and raise `postgres_unreachable`.
-  - Any other error keeps the job in its state with backoff. It consumes no attempt, tells the sender nothing, and raises `internal:<state>`.
+  - Connection-class PostgreSQL errors (SQLSTATE class `08`, `57P01`–`57P03`, or a connection error with no SQLSTATE), an unreadable chain reference, and Telegram download errors are a wait of `job_retry_delay_s`: no attempt, nothing to the sender, `postgres_unreachable` or `telegram_unreachable`.
+  - Any other error ends the job as `failed` with `internal_error`, logs the traceback and raises `internal:<state>`; it is not retried (owner decision 2026-10-24).
+  - A job picked with 3 step starts and no recorded result is treated the same way.
 
-  Each step start is counted on the job. A step started 3 times with no recorded result is treated as `internal`, which catches crashes the boundary cannot see. The loop always moves on to the next job and the next poll.
+  Each step start is counted on the job. The loop always moves on to the next job and the next poll.
 
 ### AD-17 — One normalized receipt shape
 

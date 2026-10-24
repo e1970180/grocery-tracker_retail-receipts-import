@@ -21,7 +21,13 @@ from pathlib import Path
 from pydantic import ValidationError
 
 from retail_receipts_import.adapters.files.store import FileStore
+from retail_receipts_import.adapters.postgres import is_connection_error
+from retail_receipts_import.adapters.postgres.chains import ChainReferenceError
 from retail_receipts_import.adapters.queue.sqlite import Queue
+from retail_receipts_import.adapters.telegram.client import (
+    TelegramAPIError,
+    TelegramRetryExhaustedError,
+)
 from retail_receipts_import.adapters.telegram.download import FileTooLarge, FileUnavailable
 from retail_receipts_import.app import pipeline
 from retail_receipts_import.app.alerts import Alerts
@@ -84,24 +90,80 @@ def check_reference(ports: JobPorts) -> None:
         log.error("startup reference check failed: %s: %s", type(exc).__name__, exc)
 
 
+MAX_STEP_STARTS = 3
+
+
+def _alert_reason(exc: Exception) -> str:
+    method = getattr(exc, "method", None)
+    if method:
+        return f"{type(exc).__name__} {method}"
+    sqlstate = getattr(exc, "sqlstate", None)
+    if sqlstate:
+        return f"{type(exc).__name__} {sqlstate}"
+    return type(exc).__name__
+
+
+def run(job: Job, ports: JobPorts, max_attempts: int, retry_delay: timedelta) -> None:
+    """Error boundary around one job: classifies exceptions into waits or failure."""
+    if job.step_starts >= MAX_STEP_STARTS:
+        reason = f"step_starts={job.step_starts}"
+        log.error("job %s reached %d step starts in %s", job.job_id, job.step_starts, job.state)
+        ports.alerts.start(AlertKind.INTERNAL, reason, state=job.state)
+        _finish(job, ports, JobState.FAILED, failure_reason=FailureReason.INTERNAL_ERROR)
+        return
+
+    try:
+        advance(job, ports, max_attempts, retry_delay)
+    except Exception as exc:
+        fresh_job = ports.queue.job(job.job_id)
+        reason = _alert_reason(exc)
+        if fresh_job.state in FINAL_STATES:
+            log.exception(
+                "job %s failed after reaching final state %s", fresh_job.job_id, fresh_job.state
+            )
+            ports.alerts.start(AlertKind.INTERNAL, reason, state=fresh_job.state)
+            return
+
+        now = ports.clock()
+        if is_connection_error(exc):
+            log.warning("job %s: %s", fresh_job.job_id, reason)
+            ports.queue.postpone(fresh_job.job_id, now + retry_delay, now)
+            ports.alerts.start(AlertKind.POSTGRES_UNREACHABLE, reason)
+        elif isinstance(exc, ChainReferenceError):
+            log.warning("job %s: %s", fresh_job.job_id, reason)
+            ports.queue.postpone(fresh_job.job_id, now + retry_delay, now)
+        elif isinstance(exc, (TelegramAPIError, TelegramRetryExhaustedError)):
+            log.warning("job %s: %s", fresh_job.job_id, reason)
+            ports.queue.postpone(fresh_job.job_id, now + retry_delay, now)
+            ports.alerts.start(AlertKind.TELEGRAM_UNREACHABLE, reason)
+        else:
+            log.exception("job %s failed in step", fresh_job.job_id)
+            ports.alerts.start(AlertKind.INTERNAL, reason, state=fresh_job.state)
+            _finish(fresh_job, ports, JobState.FAILED, failure_reason=FailureReason.INTERNAL_ERROR)
+
+
 def advance(job: Job, ports: JobPorts, max_attempts: int, retry_delay: timedelta) -> None:
     """Runs the job's steps until it ends or waits; an exception leaves the last recorded state."""
     if job.state is JobState.RECEIVED:
         _start_step(job, ports)
         _download(job, ports, max_attempts, retry_delay)
+        ports.alerts.recover(AlertKind.INTERNAL, JobState.RECEIVED)
         job = ports.queue.job(job.job_id)
         # Failed, or still `received` and due again later: nothing for the pipeline yet.
         if job.state is not JobState.CHAIN_PENDING:
             return
     # Opened after the download, so a PostgreSQL outage does not hold back Telegram downloads.
     with ports.open_pipeline() as steps:
+        ports.alerts.recover(AlertKind.POSTGRES_UNREACHABLE)
         while job.state not in FINAL_STATES:
+            current_state = job.state
             _start_step(job, ports)
             try:
                 _STEPS[job.state](job, ports, steps, max_attempts)
             except ExtractionWait as wait:
                 _wait(job, ports, wait)
                 return
+            ports.alerts.recover(AlertKind.INTERNAL, current_state)
             # Read back, so the next step runs on exactly what a restart would see.
             job = ports.queue.job(job.job_id)
 
@@ -121,6 +183,7 @@ def _download(job: Job, ports: JobPorts, max_attempts: int, retry_delay: timedel
     except FileUnavailable as exc:
         _file_unavailable(job, ports, exc, max_attempts, retry_delay)
         return
+    ports.alerts.recover(AlertKind.TELEGRAM_UNREACHABLE)
     ports.files.save(_path(job, ports), data)
     # Gemini gets all its attempts whatever the download took.
     ports.queue.to_chain_pending(job.job_id, ports.clock(), attempts=0, unsupported=False)
@@ -158,7 +221,15 @@ def _detect_chain(job: Job, ports: JobPorts, steps: Ports, max_attempts: int) ->
 
 
 def _extract(job: Job, ports: JobPorts, steps: Ports, max_attempts: int) -> None:
-    pass1 = Pass1Response.model_validate_json(_pass1_json(job))
+    raw_pass1 = _pass1_json(job)
+    try:
+        pass1 = Pass1Response.model_validate_json(raw_pass1)
+    except ValidationError:
+        log.info("job %s: kept pass 1 no longer parses, pass 1 again", job.job_id)
+        ports.queue.to_chain_pending(
+            job.job_id, ports.clock(), attempts=job.attempts, unsupported=False
+        )
+        return
     match pipeline.extract(_path(job, ports), job.accepted.mime, pass1, steps, waits=job.waits):
         case Extracted(receipt):
             ports.queue.to_write_pending(
@@ -304,3 +375,4 @@ def _finish(
         store_name=store_name,
     )
     ports.files.delete(path)
+    ports.alerts.recover(AlertKind.INTERNAL, state)

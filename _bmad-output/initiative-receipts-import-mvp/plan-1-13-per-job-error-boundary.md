@@ -3,14 +3,14 @@ title: 'Per-job error boundary'
 type: 'feature'
 ticket: '13'
 created: '2026-10-24'
-status: 'in-progress'
+status: 'built'
 baseline_revision: 'faf23f4bcdcd52f851c9751e430fa495ea25104a'
 route: 'full'
 route_source: 'auto'
 risk: 'high'
-review: ''
-review_source: ''
-lenses_ran: []
+review: 'thorough'
+review_source: 'pinned'
+lenses_ran: ['blind-hunter', 'edge-case-hunter', 'verification-gap', 'intent-alignment']
 review_loop_iteration: 0
 context: []
 ---
@@ -76,11 +76,11 @@ context: []
 ## Tasks & Acceptance
 
 **Execution:**
-- [ ] `adapters/postgres/`, `tests/` -- predicate with one test per class, incl. `ProgrammingError` → false.
-- [ ] `domain/outcomes.py`, `texts/messages.toml`, `tests/test_texts.py` -- failure reason and texts.
-- [ ] `adapters/queue/sqlite.py`, `app/jobs.py`, `app/loop.py` -- boundary, fallback, recoveries.
-- [ ] `tests/test_loop.py`, `tests/test_dedup.py` -- every matrix row; changed tests above.
-- [ ] `architecture-receipts-import.md` -- AD-16 and AD-3 amendment.
+- [x] `adapters/postgres/`, `tests/` -- predicate with one test per class, incl. `ProgrammingError` → false.
+- [x] `domain/outcomes.py`, `texts/messages.toml`, `tests/test_texts.py` -- failure reason and texts.
+- [x] `adapters/queue/sqlite.py`, `app/jobs.py`, `app/loop.py` -- boundary, fallback, recoveries.
+- [x] `tests/test_loop.py`, `tests/test_dedup.py` -- every matrix row; changed tests above.
+- [x] `architecture-receipts-import.md` -- AD-16 and AD-3 amendment.
 
 **Acceptance Criteria:**
 - Given PostgreSQL failing for two loop cycles and then working, when the loop runs, then the admin gets one alert and one recovery and the job ends `stored` with no extra Gemini call.
@@ -88,9 +88,48 @@ context: []
 
 ## Implementation Notes
 
+- Implemented by Gemini 3.8 Flash in Antigravity, per owner decision (2026-10-24).
+- Added `is_connection_error` in `adapters/postgres/chains.py` covering SQLSTATE class `08`, `57P01`–`57P03`, and connection errors without SQLSTATE; exported in `adapters/postgres/__init__.py`.
+- Added `FailureReason.INTERNAL_ERROR` in `domain/outcomes.py` with sender and admin messages in `texts/messages.toml`.
+- Updated `Queue.postpone` in `adapters/queue/sqlite.py` to reset `step_starts` to 0.
+- Implemented `jobs.run` error boundary with 3-starts check, exception classification (PostgreSQL waits, ChainReferenceError waits without extra alert, Telegram download waits, internal errors moving to `failed` without retries, and log/alert-only for errors after final state).
+- Added recoveries in `jobs.advance`: `POSTGRES_UNREACHABLE` on pipeline open, `TELEGRAM_UNREACHABLE` after download, `INTERNAL` for state on step return.
+- Updated `jobs._extract` to wrap only `Pass1Response.model_validate_json` for fallback to `chain_pending`.
+- Updated `loop.run_due` to call `jobs.run` and log-only on unhandled exceptions; updated `LoopSettings.retry_delay` comment.
+- Amended AD-16 and AD-3 diagram in `architecture-receipts-import.md`.
+- Verification in WSL: `ruff check`, `ruff format --check`, `mypy`, `pytest` (438 passed, 34 integration deselected) all clean. Manual check on dev-bot pending owner.
+- Review fixes (pass 1 patches, Antigravity): `_finish` recovers `internal:<state>`; one-line logs for waits; the three-starts guard finishes directly with reason `step_starts=<n>`; `ProcessKilled(BaseException)` drives the guard and the crash-after-commit test; added tests for the download alert text, `internal:received` recovery and the `run_due` catch; AD-3 fallback edge.
+- Final verification (WSL, by the session): ruff, format, mypy clean; `pytest` 440 passed; `pytest -m integration` 34 passed against a throwaway `postgres:18.6` on localhost:55432. Live dev run (risk high) still pending owner approval.
+
 ## Plan Change Log
 
 ## Review Triage Log
+
+Pass 1 (thorough: blind-hunter, edge-case-hunter, verification-gap, intent-alignment): high 0, medium 3, low 14, false 6, maybe-false 0.
+
+- medium, patch: `internal:<final>` from a raise after the final state never recovers, hiding later faults of that key (blind, edge). `_finish` recovers `INTERNAL` for its state.
+- medium, patch: the crash-after-commit test in `test_dedup.py` injects a psycopg error from the SQLite queue, which cannot raise one, so it proves only the wait path (verification-gap, intent). Model the crash with a `BaseException` escaping the loop.
+- medium, patch: the three-starts guard is tested only by writing `step_starts` in SQL or calling `start_step` by hand (blind, intent). Drive it with a `BaseException` from a fake across reruns.
+- low, patch: every wait logs a full traceback each cycle, unlike `_wait`'s one line (blind). Traceback only on the internal branch.
+- low, patch: the guard's alert reason is a bare `RuntimeError`, the same as a bug (blind). Distinct reason, no synthetic raise.
+- low, patch: the `pass1_json` fallback edge is missing from the AD-3 diagram (blind).
+- low, patch: download-path `telegram_unreachable` alert text never asserted (verification-gap).
+- low, patch: `internal:received` recovery never tested (verification-gap).
+- low, patch: the outer `run_due` catch has no test (verification-gap).
+- low, patch: dead `fakes.reference = None`, a local import, a contradictory `_with_sqlstate` comment (blind).
+- low, reject: `test_texts.py` repeats the full strings; harmless duplication.
+- low, reject: the AD-16 sentence lists the unreadable reference next to the PostgreSQL/Telegram alerts; the wording is the owner's approved text.
+- low, reject: the sender text does not ask for a resend; the text is the owner's approved wording (raised with the owner).
+- low, reject: a fault escaping the boundary leaves the job due now; bounded by the three-starts guard, needs a broken SQLite.
+- low, reject: connect-ok/query-fails can flap `postgres_unreachable`; the frozen rule recovers on pipeline open.
+- low, reject: classification is tested on built psycopg errors, not a live connection; the predicate follows the frozen definition.
+- low, reject: a SQLite fault after the PostgreSQL commit ends the job `failed` while the receipt is stored; this is the owner's rule for any other error (raised with the owner).
+- false: notification sends raise past `_finish` or inside a step: `Notifier._send` catches every exception.
+- false: a PostgreSQL error after pass 1 repeats the paid call: `find_other_source` swallows `psycopg.Error`, and reference reads come before `generate`.
+- false: `telegram_unreachable` stays on after a file reply: the next successful poll recovers it.
+- false: waits never end and the guard cannot fire: waits without a deadline are the owner's rule; the guard is for crashes.
+- false: SQLSTATE classes 53/40 and local OSError/SQLite errors should wait: the frozen block defines the wait classes.
+- false: a permanent 401 on getFile waits forever: by the frozen rule it is a Telegram wait with an alert.
 
 ## Design Notes
 

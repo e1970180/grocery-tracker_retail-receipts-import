@@ -21,6 +21,7 @@ class FailureReason(StrEnum):
     NO_VALID_RESULT = "no_valid_result"
     FILE_TOO_LARGE = "file_too_large"
     FILE_UNAVAILABLE = "file_unavailable"
+    INTERNAL_ERROR = "internal_error"
 
 
 class AlertKind(StrEnum):

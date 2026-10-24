@@ -158,14 +158,16 @@ def step_starts(queue: Queue, job_id: int) -> int:
     return queue.job(job_id).step_starts
 
 
-def test_step_starts_survive_an_exception_and_reset_on_a_result(tmp_path: Path) -> None:
+def test_step_starts_accumulate_until_recorded(tmp_path: Path) -> None:
     queue = Queue(tmp_path / "q.sqlite3")
     queue.enqueue([accepted(1)], 101, NOW)
     [job] = queue.due_jobs(NOW)
     queue.start_step(job.job_id, NOW)
-    queue.postpone(job.job_id, NOW, NOW)
     queue.start_step(job.job_id, NOW)
     assert step_starts(queue, job.job_id) == 2
+    queue.postpone(job.job_id, NOW, NOW)
+    assert step_starts(queue, job.job_id) == 0
+    queue.start_step(job.job_id, NOW)
     queue.to_chain_pending(job.job_id, NOW, attempts=0, unsupported=False)
     assert step_starts(queue, job.job_id) == 0
     queue.start_step(job.job_id, NOW)

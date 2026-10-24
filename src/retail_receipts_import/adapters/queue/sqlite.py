@@ -240,8 +240,8 @@ class Queue:
         self._update(job_id, now, due_at=due_at.timestamp(), attempts=attempts, **_STEP_RESET)
 
     def postpone(self, job_id: int, due_at: datetime, now: datetime) -> None:
-        """After an exception: the step produced no result, so its start count stays."""
-        self._update(job_id, now, due_at=due_at.timestamp())
+        """A wait is a recorded result, so its start count begins again."""
+        self._update(job_id, now, due_at=due_at.timestamp(), step_starts=0)
 
     def next_due_at(self) -> datetime | None:
         """When the earliest unfinished job is due, so the long poll can end in time for it."""

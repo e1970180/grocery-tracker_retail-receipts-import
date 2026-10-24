@@ -169,12 +169,16 @@ def test_unreadable_pass1_time_leaves_the_duplicate_to_the_writer(env: Env) -> N
     assert (env.count("receipts"), env.count("receipt_feed")) == (1, 1)
 
 
+class ProcessKilled(BaseException):
+    """Simulates an abrupt process exit escaping the loop's exception handling."""
+
+
 def test_crash_after_the_commit_is_stored_on_the_rerun(
     env: Env, monkeypatch: pytest.MonkeyPatch
 ) -> None:
     job_id = env.send(10)
     real_finish: Callable[..., None] = env.queue.finish
-    failures = [RuntimeError("killed after the commit")]
+    failures = [ProcessKilled("killed after the commit")]
 
     def finish_once_failing(*args: Any, **kwargs: Any) -> None:
         if failures:
@@ -183,7 +187,8 @@ def test_crash_after_the_commit_is_stored_on_the_rerun(
 
     monkeypatch.setattr(env.queue, "finish", finish_once_failing)
     ports = env.ports()
-    loop.run_due(ports, LOOP_SETTINGS, threading.Event())
+    with pytest.raises(ProcessKilled):
+        loop.run_due(ports, LOOP_SETTINGS, threading.Event())
     # Committed to PostgreSQL, but the queue still says the write is pending.
     assert env.queue.job(job_id).state is JobState.WRITE_PENDING
     assert env.count("receipts") == 1

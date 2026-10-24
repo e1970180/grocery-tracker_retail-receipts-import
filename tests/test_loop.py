@@ -10,11 +10,12 @@ from pathlib import Path
 from typing import Any
 
 import httpx
+import psycopg
 import pytest
 from pydantic import BaseModel, SecretStr
 
 from retail_receipts_import.adapters.files.store import FileStore
-from retail_receipts_import.adapters.postgres.chains import ChainReference
+from retail_receipts_import.adapters.postgres.chains import ChainReference, ChainReferenceError
 from retail_receipts_import.adapters.postgres.receipts import WriteKind, WriteResult
 from retail_receipts_import.adapters.queue.sqlite import Queue
 from retail_receipts_import.adapters.telegram.client import (
@@ -63,10 +64,14 @@ SPAR_ONLY = ChainReference(chains=(SPAR,), inactive_ids=(), rejected=())
 SPAR_WITHDRAWN = ChainReference(chains=(), inactive_ids=("spar",), rejected=())
 # Answers that make a receipt stored: pass 1 finds Spar, pass 2 adds up.
 STORED_ANSWERS = (pass1_response(), response())
-# Raised by a fake to stop the job mid-way, as a crash or an unexpected error would.
-STOP = RuntimeError("stopped here")
+# Raised by a fake to stop the job mid-way, as a crash or connection outage would.
+STOP = psycopg.OperationalError("stopped here")
 UNAVAILABLE = GeminiCallError(code=429, status="RESOURCE_EXHAUSTED", retry_delay_s=37)
 BLOCKED = GeminiCallError(code=404, status="NOT_FOUND", detail="models/gone is not found")
+
+
+class ProcessKilled(BaseException):
+    """Simulates an abrupt process exit escaping the loop's exception handling."""
 
 
 def pdf_update(
@@ -107,7 +112,7 @@ class Fakes:
     queue: Queue
     files: FileStore
     # Gemini's answers in call order; an exception is raised instead of answered.
-    answers: list[str | Exception] = field(default_factory=lambda: list(STORED_ANSWERS))
+    answers: list[str | BaseException] = field(default_factory=lambda: list(STORED_ANSWERS))
     write_result: WriteKind | Exception = WriteKind.STORED
     # The receipt another source already stored under the key pass 1 names; None for a new one.
     stored_id: uuid.UUID | None = None
@@ -148,7 +153,7 @@ class Fakes:
         self.step_starts_seen.append(self.job().step_starts)
         assert self.answers, "unexpected Gemini call"
         answer = self.answers.pop(0)
-        if isinstance(answer, Exception):
+        if isinstance(answer, BaseException):
             raise answer
         return answer
 
@@ -480,7 +485,7 @@ def test_chain_withdrawn_before_pass2_restarts_pass1_without_an_attempt(tmp_path
 
 def test_valid_receipt_is_kept_with_its_id_before_the_write(tmp_path: Path) -> None:
     fakes = make_fakes(tmp_path)
-    fakes.write_result = RuntimeError("postgres down")
+    fakes.write_result = psycopg.OperationalError("postgres down")
     first_cycle(fakes)
     job = fakes.job()
     assert job.state is JobState.WRITE_PENDING
@@ -501,7 +506,7 @@ def test_restart_in_write_pending_never_calls_gemini(
     tmp_path: Path, kind: WriteKind, state: JobState
 ) -> None:
     fakes = make_fakes(tmp_path)
-    fakes.write_result = RuntimeError("postgres down")
+    fakes.write_result = psycopg.OperationalError("postgres down")
     first_cycle(fakes)
     kept_id = fakes.job().receipt_id
 
@@ -521,7 +526,7 @@ def test_restart_in_write_pending_never_calls_gemini(
 )
 def test_kept_receipt_of_another_version_redoes_pass2_only(tmp_path: Path, corruption: str) -> None:
     fakes = make_fakes(tmp_path)
-    fakes.write_result = RuntimeError("postgres down")
+    fakes.write_result = psycopg.OperationalError("postgres down")
     first_cycle(fakes)
     fakes.queue._conn.execute(f"UPDATE jobs SET {corruption}")
 
@@ -648,22 +653,19 @@ def test_step_exception_keeps_the_wait_count(tmp_path: Path) -> None:
     assert wait_again(fakes, [BLOCKED]) == timedelta(seconds=1200)
 
 
-def test_step_start_is_counted_before_the_step_and_kept_by_an_exception(fakes: Fakes) -> None:
-    fakes.answers = [STOP]
-    first_cycle(fakes)
+def test_step_start_is_counted_before_the_step(fakes: Fakes) -> None:
+    fakes.answers = [ProcessKilled("killed mid-step")]
+    with pytest.raises(ProcessKilled):
+        first_cycle(fakes)
+    # The step start was recorded before generate raised.
     assert fakes.step_starts_seen == [1]
     assert fakes.job().step_starts == 1
-
-    fakes.answers = [STOP]
-    fakes.now += timedelta(seconds=600)
-    rerun(fakes)
-    assert fakes.step_starts_seen == [1, 2]
 
     fakes.answers = list(STORED_ANSWERS)
     fakes.now += timedelta(seconds=600)
     rerun(fakes)
-    # Pass 2 starts afresh after the pass-1 transition.
-    assert fakes.step_starts_seen == [1, 2, 3, 1]
+    # The retry sees step_starts=2 in pass 1, then pass 2 resets it.
+    assert fakes.step_starts_seen == [1, 2, 1]
     assert fakes.job().step_starts == 0
 
 
@@ -678,11 +680,10 @@ def test_oversize_after_getfile_fails_the_job(fakes: Fakes) -> None:
 @pytest.mark.parametrize(
     "error",
     [
-        RuntimeError("telegram unavailable"),
         TelegramAPIError("getFile", 401, "Unauthorized"),
         TelegramRetryExhaustedError("getFile", 3),
     ],
-    ids=["exception", "unauthorized", "retries-exhausted"],
+    ids=["unauthorized", "retries-exhausted"],
 )
 def test_download_exception_keeps_the_job_received_without_an_attempt(
     fakes: Fakes, error: Exception
@@ -693,6 +694,33 @@ def test_download_exception_keeps_the_job_received_without_an_attempt(
     assert (job.state, job.attempts) == (JobState.RECEIVED, 0)
     assert fakes.due_at() == fakes.now + SETTINGS.retry_delay
     assert fakes.generated == [] and fakes.pipelines_opened == 0
+    assert fakes.alerts.is_active(AlertKind.TELEGRAM_UNREACHABLE)
+    admin_calls = [c for c in fakes.telegram.calls if c[0] == "message" and c[1] == ADMIN]
+    assert len(admin_calls) == 1
+    assert admin_calls[0][2] == (
+        f"{TEXTS.alerts[AlertKind.TELEGRAM_UNREACHABLE]}\n"
+        "telegram_unreachable\n"
+        f"{type(error).__name__} getFile"
+    )
+
+
+def test_download_runtime_error_fails_the_job_as_internal_error(fakes: Fakes) -> None:
+    fakes.download_error = RuntimeError("unexpected download bug")
+    first_cycle(fakes)
+    assert fakes.state() is JobState.FAILED
+    assert fakes.failure_reason() == "internal_error"
+    assert fakes.alerts.is_active(AlertKind.INTERNAL, JobState.RECEIVED)
+    assert fakes.telegram.calls == [
+        (
+            "message",
+            ADMIN,
+            f"{TEXTS.alerts[AlertKind.INTERNAL]}\ninternal:received\nRuntimeError",
+            None,
+        ),
+        ("reaction", ALLOWED, 3, "👎"),
+        ("message", ALLOWED, TEXTS.sender_messages[FailureReason.INTERNAL_ERROR], 3),
+        ("message", ADMIN, f"{TEXTS.admin_messages[FailureReason.INTERNAL_ERROR]}\nAna\n#1", None),
+    ]
 
 
 UNAVAILABLE_FILE = FileUnavailable("getFile: HTTP 400: Bad Request: wrong file_id")
@@ -847,25 +875,32 @@ def test_redelivered_update_is_not_processed_twice(fakes: Fakes) -> None:
     assert len(fakes.written) == 1
 
 
-def test_exception_keeps_the_job_and_retries_after_the_delay(
+def test_unexpected_step_exception_fails_the_job_without_retry(
     fakes: Fakes, caplog: pytest.LogCaptureFixture
 ) -> None:
-    fakes.answers = [RuntimeError("boom"), *STORED_ANSWERS]
+    fakes.answers = [RuntimeError("boom")]
     first_cycle(fakes)
-    assert fakes.state() is JobState.CHAIN_PENDING
-    assert fakes.job().attempts == 0
-    assert "job 1 failed in its step" in caplog.text
-    assert len(fakes.downloads) == 1
+    assert fakes.state() is JobState.FAILED
+    assert fakes.failure_reason() == "internal_error"
+    assert "job 1 failed in step" in caplog.text
+    assert fakes.alerts.is_active(AlertKind.INTERNAL, JobState.CHAIN_PENDING)
+    assert fakes.telegram.calls == [
+        (
+            "message",
+            ADMIN,
+            f"{TEXTS.alerts[AlertKind.INTERNAL]}\ninternal:chain_pending\nRuntimeError",
+            None,
+        ),
+        ("reaction", ALLOWED, 3, "👎"),
+        ("message", ALLOWED, TEXTS.sender_messages[FailureReason.INTERNAL_ERROR], 3),
+        ("message", ADMIN, f"{TEXTS.admin_messages[FailureReason.INTERNAL_ERROR]}\nAna\n#1", None),
+    ]
+    assert not fakes.file().exists()
 
-    fakes.now += timedelta(seconds=599)
+    # The failed job is never picked again.
+    fakes.now += timedelta(seconds=600)
     rerun(fakes)
-    assert len(fakes.generated) == 1
-
-    fakes.now += timedelta(seconds=1)
-    rerun(fakes)
-    assert fakes.state() is JobState.STORED
-    # The file was saved before the failure, so the retry does not download it again.
-    assert len(fakes.downloads) == 1
+    assert fakes.queue.due_jobs(fakes.now) == []
 
 
 def test_restart_fetches_from_the_committed_offset_and_resumes_jobs(
@@ -1225,3 +1260,314 @@ def test_failing_alert_sends_do_not_stop_the_loop(
     loop.run(PollSequence(), fakes.ports(), SETTINGS, stop)
     assert len(polls) == 3
     assert not fakes.alerts.is_active(AlertKind.TELEGRAM_UNREACHABLE)
+
+
+def test_postgres_failing_for_two_cycles_then_recovering_acceptance(tmp_path: Path) -> None:
+    fakes = make_fakes(tmp_path)
+    postgres_up = False
+
+    @contextlib.contextmanager
+    def flappy_postgres() -> Iterator[Ports]:
+        if not postgres_up:
+            raise psycopg.OperationalError("connection refused")
+        with fakes.open_pipeline() as p:
+            yield p
+
+    ports = dataclasses.replace(fakes.ports(), open_pipeline=flappy_postgres)
+
+    # First cycle: update polled, downloaded, enters pipeline, PostgreSQL fails.
+    telegram = FakeTelegram([[pdf_update(100, 3)]])
+    loop.poll(telegram, ports, SETTINGS)
+    loop.run_due(ports, SETTINGS, threading.Event())
+
+    assert fakes.state() is JobState.CHAIN_PENDING
+    assert fakes.alerts.is_active(AlertKind.POSTGRES_UNREACHABLE)
+    assert fakes.due_at() == fakes.now + SETTINGS.retry_delay
+    assert fakes.job().step_starts == 0
+    admin_calls = [c for c in fakes.telegram.calls if c[0] == "message" and c[1] == ADMIN]
+    assert len(admin_calls) == 1
+    assert admin_calls[0][2] == (
+        f"{TEXTS.alerts[AlertKind.POSTGRES_UNREACHABLE]}\npostgres_unreachable\nOperationalError"
+    )
+
+    # Second cycle: PostgreSQL still down; no extra alert.
+    fakes.now += SETTINGS.retry_delay
+    loop.run_due(ports, SETTINGS, threading.Event())
+    assert fakes.state() is JobState.CHAIN_PENDING
+    admin_calls = [c for c in fakes.telegram.calls if c[0] == "message" and c[1] == ADMIN]
+    assert len(admin_calls) == 1
+
+    # Third cycle: PostgreSQL is back up; alert is recovered and receipt is stored.
+    postgres_up = True
+    fakes.now += SETTINGS.retry_delay
+    loop.run_due(ports, SETTINGS, threading.Event())
+    assert fakes.state() is JobState.STORED
+    assert not fakes.alerts.is_active(AlertKind.POSTGRES_UNREACHABLE)
+    admin_calls = [c for c in fakes.telegram.calls if c[0] == "message" and c[1] == ADMIN]
+    assert len(admin_calls) == 2
+    assert admin_calls[1][2] == (
+        f"{TEXTS.recoveries[AlertKind.POSTGRES_UNREACHABLE]}\npostgres_unreachable"
+    )
+    # Gemini calls: exactly one pass 1 and one pass 2.
+    assert len(fakes.generated) == 2
+
+
+def test_unexpected_error_does_not_stop_next_due_job_in_same_cycle_acceptance(
+    tmp_path: Path,
+) -> None:
+    fakes = make_fakes(tmp_path)
+    telegram = FakeTelegram([[pdf_update(100, 3), pdf_update(101, 4)]])
+    loop.poll(telegram, fakes.ports(), SETTINGS)
+
+    # Job 1 will raise RuntimeError during pass 1; Job 2 will succeed.
+    fakes.answers = [RuntimeError("unexpected bug in job 1"), *STORED_ANSWERS]
+    loop.run_due(fakes.ports(), SETTINGS, threading.Event())
+
+    job1 = fakes.queue.job(1)
+    job2 = fakes.queue.job(2)
+    assert job1.state is JobState.FAILED
+    rows = fakes.queue._conn.execute("SELECT failure_reason FROM jobs WHERE job_id = 1").fetchone()
+    assert rows == ("internal_error",)
+    assert job2.state is JobState.STORED
+
+    # Job 1 is never picked again.
+    assert fakes.queue.due_jobs(fakes.now + timedelta(days=1)) == []
+
+
+def test_reference_unreadable_waits_like_postgres_with_no_extra_alert(tmp_path: Path) -> None:
+    fakes = make_fakes(tmp_path)
+
+    def failing_ref() -> ChainReference:
+        raise ChainReferenceError("view public.chains_v1 missing")
+
+    @contextlib.contextmanager
+    def ref_failing_pipeline() -> Iterator[Ports]:
+        with fakes.open_pipeline() as ports:
+            yield dataclasses.replace(
+                ports,
+                read_chain_reference=lambda: fakes.alerts.read_checked(failing_ref),
+            )
+
+    ports = dataclasses.replace(fakes.ports(), open_pipeline=ref_failing_pipeline)
+    telegram = FakeTelegram([[pdf_update(100, 3)]])
+    loop.poll(telegram, ports, SETTINGS)
+    loop.run_due(ports, SETTINGS, threading.Event())
+
+    assert fakes.state() is JobState.CHAIN_PENDING
+    assert fakes.due_at() == fakes.now + SETTINGS.retry_delay
+    assert fakes.job().step_starts == 0
+    # Alerts: chain_reference is active, NO postgres_unreachable or internal alert.
+    assert fakes.alerts.is_active(AlertKind.CHAIN_REFERENCE)
+    assert not fakes.alerts.is_active(AlertKind.POSTGRES_UNREACHABLE)
+    assert not fakes.alerts.is_active(AlertKind.INTERNAL, JobState.CHAIN_PENDING)
+
+
+def test_telegram_download_recovering_clears_alert(fakes: Fakes) -> None:
+    fakes.download_error = TelegramAPIError("getFile", 401, "Unauthorized")
+    first_cycle(fakes)
+    assert fakes.state() is JobState.RECEIVED
+    assert fakes.alerts.is_active(AlertKind.TELEGRAM_UNREACHABLE)
+    admin_calls = [c for c in fakes.telegram.calls if c[0] == "message" and c[1] == ADMIN]
+    assert len(admin_calls) == 1
+    assert admin_calls[0][2] == (
+        f"{TEXTS.alerts[AlertKind.TELEGRAM_UNREACHABLE]}\n"
+        "telegram_unreachable\n"
+        "TelegramAPIError getFile"
+    )
+
+    # Next cycle download works; alert recovered.
+    fakes.download_error = None
+    fakes.now += SETTINGS.retry_delay
+    rerun(fakes)
+    assert fakes.state() is JobState.STORED
+    assert not fakes.alerts.is_active(AlertKind.TELEGRAM_UNREACHABLE)
+    admin_calls = [c for c in fakes.telegram.calls if c[0] == "message" and c[1] == ADMIN]
+    assert any("Telegram API снова доступен." in c[2] for c in admin_calls)
+
+
+def test_three_unrecorded_step_starts_fails_the_job_before_step_runs(fakes: Fakes) -> None:
+    fakes.answers = [
+        ProcessKilled("crash 1"),
+        ProcessKilled("crash 2"),
+        ProcessKilled("crash 3"),
+    ]
+    with pytest.raises(ProcessKilled):
+        first_cycle(fakes)
+    assert fakes.job().step_starts == 1
+
+    fakes.now += timedelta(seconds=600)
+    with pytest.raises(ProcessKilled):
+        rerun(fakes)
+    assert fakes.job().step_starts == 2
+
+    fakes.now += timedelta(seconds=600)
+    with pytest.raises(ProcessKilled):
+        rerun(fakes)
+    assert fakes.job().step_starts == 3
+
+    # Fourth pick: fails before running any step, with no further Gemini call.
+    fakes.now += timedelta(seconds=600)
+    rerun(fakes)
+    assert fakes.state() is JobState.FAILED
+    assert fakes.failure_reason() == "internal_error"
+    assert len(fakes.generated) == 3
+    assert fakes.alerts.is_active(AlertKind.INTERNAL, JobState.CHAIN_PENDING)
+    admin_calls = [c for c in fakes.telegram.calls if c[0] == "message" and c[1] == ADMIN]
+    alert_call = [c for c in admin_calls if "internal:chain_pending" in c[2]][0]
+    assert alert_call[2] == (
+        f"{TEXTS.alerts[AlertKind.INTERNAL]}\ninternal:chain_pending\nstep_starts=3"
+    )
+
+
+def test_raise_after_final_state_keeps_final_state(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, caplog: pytest.LogCaptureFixture
+) -> None:
+    fakes = make_fakes(tmp_path)
+    delete_failed = True
+
+    def flappy_delete(path: Path) -> None:
+        if delete_failed:
+            raise OSError("read-only filesystem")
+        path.unlink(missing_ok=True)
+
+    monkeypatch.setattr(fakes.files, "delete", flappy_delete)
+    cycle(FakeTelegram([[pdf_update(100, 3)]]), fakes)
+    # The queue row is already STORED, so the state remains STORED.
+    assert fakes.job().state is JobState.STORED
+    assert "job 1 failed after reaching final state" in caplog.text
+    assert fakes.alerts.is_active(AlertKind.INTERNAL, JobState.STORED)
+
+    # A later job finishes stored cleanly and recovers internal:stored.
+    delete_failed = False
+    fakes.answers = list(STORED_ANSWERS)
+    cycle(FakeTelegram([[pdf_update(101, 4)]]), fakes)
+    job2 = fakes.queue.job(2)
+    assert job2.state is JobState.STORED
+    assert not fakes.alerts.is_active(AlertKind.INTERNAL, JobState.STORED)
+    admin_calls = [c for c in fakes.telegram.calls if c[0] == "message" and c[1] == ADMIN]
+    recovery = [
+        c for c in admin_calls if f"{TEXTS.recoveries[AlertKind.INTERNAL]}\ninternal:stored" in c[2]
+    ]
+    assert len(recovery) == 1
+
+
+def test_pass1_json_no_longer_parses_falls_back_to_chain_pending(tmp_path: Path) -> None:
+    fakes = make_fakes(tmp_path, [pass1_response(), STOP])
+    first_cycle(fakes)
+    assert fakes.state() is JobState.EXTRACT_PENDING
+    assert fakes.file().exists()
+
+    # Corrupt the kept pass1_json with attempts = 1.
+    fakes.queue._conn.execute(
+        "UPDATE jobs SET pass1_json = ?, attempts = 1 WHERE job_id = 1",
+        ('{"unparseable": "data"}',),
+    )
+    fakes.answers = list(STORED_ANSWERS)
+    fakes.now += SETTINGS.retry_delay
+    rerun(fakes)
+    # Fallback to chain_pending happened with same attempts (1), no alert, and then succeeded.
+    assert fakes.state() is JobState.STORED
+    assert fakes.job().attempts == 1
+    assert len(fakes.generated) == 4
+    assert not fakes.alerts.is_active(AlertKind.INTERNAL, JobState.EXTRACT_PENDING)
+
+
+def test_programming_error_fails_the_job_with_sqlstate_in_alert(fakes: Fakes) -> None:
+    pe = psycopg.ProgrammingError("relation missing")
+    pe.sqlstate = "42P01"
+    fakes.write_result = pe
+    first_cycle(fakes)
+    assert fakes.state() is JobState.FAILED
+    assert fakes.failure_reason() == "internal_error"
+    assert fakes.alerts.is_active(AlertKind.INTERNAL, JobState.WRITE_PENDING)
+    admin_calls = [c for c in fakes.telegram.calls if c[0] == "message" and c[1] == ADMIN]
+    alert_call = [c for c in admin_calls if "internal:write_pending" in c[2]][0]
+    assert "ProgrammingError 42P01" in alert_call[2]
+
+
+def test_missing_pass1_json_fails_the_job_as_internal_error(tmp_path: Path) -> None:
+    fakes = make_fakes(tmp_path, [pass1_response(), STOP])
+    first_cycle(fakes)
+    assert fakes.state() is JobState.EXTRACT_PENDING
+    assert fakes.file().exists()
+
+    fakes.queue._conn.execute("UPDATE jobs SET pass1_json = NULL WHERE job_id = 1")
+    fakes.now += SETTINGS.retry_delay
+    rerun(fakes)
+    assert fakes.state() is JobState.FAILED
+    assert fakes.failure_reason() == "internal_error"
+    assert fakes.alerts.is_active(AlertKind.INTERNAL, JobState.EXTRACT_PENDING)
+
+
+def test_same_state_works_later_recovers_internal_alert(tmp_path: Path) -> None:
+    fakes = make_fakes(tmp_path)
+    # First job encounters RuntimeError in chain_pending.
+    fakes.answers = [RuntimeError("bug in pass 1")]
+    cycle(FakeTelegram([[pdf_update(100, 3)]]), fakes)
+    assert fakes.job().state is JobState.FAILED
+    assert fakes.alerts.is_active(AlertKind.INTERNAL, JobState.CHAIN_PENDING)
+
+    # Second job succeeds in chain_pending (and whole pipeline).
+    fakes.answers = list(STORED_ANSWERS)
+    cycle(FakeTelegram([[pdf_update(101, 4)]]), fakes)
+    job2 = fakes.queue.job(2)
+    assert job2.state is JobState.STORED
+    # Alert is recovered!
+    assert not fakes.alerts.is_active(AlertKind.INTERNAL, JobState.CHAIN_PENDING)
+    admin_calls = [c for c in fakes.telegram.calls if c[0] == "message" and c[1] == ADMIN]
+    recovery = [
+        c
+        for c in admin_calls
+        if f"{TEXTS.recoveries[AlertKind.INTERNAL]}\ninternal:chain_pending" in c[2]
+    ]
+    assert len(recovery) == 1
+
+
+def test_received_state_works_later_recovers_internal_alert(tmp_path: Path) -> None:
+    fakes = make_fakes(tmp_path)
+    # Job 1 fails internally in download.
+    fakes.download_error = RuntimeError("unexpected download bug")
+    cycle(FakeTelegram([[pdf_update(100, 3)]]), fakes)
+    assert fakes.job().state is JobState.FAILED
+    assert fakes.alerts.is_active(AlertKind.INTERNAL, JobState.RECEIVED)
+
+    # Job 2 downloads cleanly.
+    fakes.download_error = None
+    fakes.answers = list(STORED_ANSWERS)
+    cycle(FakeTelegram([[pdf_update(101, 4)]]), fakes)
+    job2 = fakes.queue.job(2)
+    assert job2.state is JobState.STORED
+    assert not fakes.alerts.is_active(AlertKind.INTERNAL, JobState.RECEIVED)
+    admin_calls = [c for c in fakes.telegram.calls if c[0] == "message" and c[1] == ADMIN]
+    recovery = [
+        c
+        for c in admin_calls
+        if f"{TEXTS.recoveries[AlertKind.INTERNAL]}\ninternal:received" in c[2]
+    ]
+    assert len(recovery) == 1
+
+
+def test_error_boundary_fault_does_not_stop_next_job(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, caplog: pytest.LogCaptureFixture
+) -> None:
+    fakes = make_fakes(tmp_path)
+    telegram = FakeTelegram([[pdf_update(100, 3), pdf_update(101, 4)]])
+    loop.poll(telegram, fakes.ports(), SETTINGS)
+
+    # Job 1 will fail internally, and its file delete during _finish will raise once.
+    delete_failures = [RuntimeError("disk failure during finish")]
+    real_delete = fakes.files.delete
+
+    def delete_once_failing(path: Path) -> None:
+        if delete_failures:
+            raise delete_failures.pop()
+        real_delete(path)
+
+    monkeypatch.setattr(fakes.files, "delete", delete_once_failing)
+    fakes.answers = [RuntimeError("bug in job 1"), *STORED_ANSWERS]
+
+    loop.run_due(fakes.ports(), SETTINGS, threading.Event())
+
+    assert "job 1 failed in error boundary" in caplog.text
+    job2 = fakes.queue.job(2)
+    assert job2.state is JobState.STORED
