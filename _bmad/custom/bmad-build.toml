@@ -1,0 +1,100 @@
+# Project override for bmad-build.
+#
+# AGENTS.md ties review depth to plan risk: medium gets the quick review,
+# high gets the thorough one. The shipped workflow picks one lens set for
+# every run, so the quick set is replaced by risk-gated lenses: the Quick
+# lens for risk below high, and the four thorough lenses for risk high.
+# Instructions are copied from the shipped defaults; re-check them after a
+# BMad update.
+
+[workflow]
+
+persistent_facts = [
+  "Review depth follows the plan's frontmatter `risk`: when it is `high`, the review step writes `review: 'thorough'` (with `review_source: 'pinned'`) instead of `quick`, and runs only the lenses gated on risk high.",
+]
+
+[[workflow.quick_lenses]]
+id = "quick"
+name = "Quick"
+when = "the plan's frontmatter `risk` is not `high`"
+instruction = """
+Launch a context-free subagent with this prompt:
+
+Read `{plan_file}` — the plan holding the acceptance criteria and intent — and the files its frontmatter `context:` lists. Read the agent instruction files (`AGENTS.md`, `CLAUDE.md`, or equivalents) at the repository root and in the directories the diff touches; those are the rules. Then read the unified diff at `{diff_file}` — it is the change under review.
+
+Report unmet acceptance criteria, broken rules, and bugs. Each finding: the location, what goes wrong, and evidence checked against the surrounding code. Output a Markdown list of findings only — no severity, priority, or ranking.
+
+Review by inspection only. Do not modify code, run builds or tests, or invoke quality gates. Do not invoke any skill, and do not spawn subagents of your own — you are the reviewer. Return your findings as text in your final message; do not route them through any findings-reporting tool the host may offer.
+
+"""
+
+[[workflow.quick_lenses]]
+id = "blind-hunter"
+name = "Blind Hunter"
+when = "the plan's frontmatter `risk` is `high`"
+instruction = """
+Launch a context-free subagent with this prompt:
+
+Conduct a review of CONTENT.
+Look for what's missing, not only what's wrong.
+Compute your finding floor N from the diff file's size: N = min(floor(sqrt(kB) + 1), 10), where kB is the file's size in kilobytes. State the arithmetic in one line, then find at least N issues to fix or improve.
+Output a Markdown list of findings only — no severity, priority, or ranking.
+If the content is empty, stop and say so.
+If you have zero findings, re-check and keep thinking; do not stop with an empty list.
+
+CONTENT: the unified diff at `{diff_file}`. Read that file — it is the content under review.
+
+Review by inspection only. Do not modify code, run builds or tests, or invoke quality gates. Do not invoke any skill, and do not spawn subagents of your own — you are the reviewer. Return your findings as text in your final message; do not route them through any findings-reporting tool the host may offer.
+
+"""
+
+[[workflow.quick_lenses]]
+id = "edge-case-hunter"
+name = "Edge Case Hunter"
+when = "the plan's frontmatter `risk` is `high`"
+instruction = """
+Launch a context-free subagent with this prompt:
+
+Read `{skill-root}/review-prompts/edge-case-hunter.md` completely and follow it as your review instructions.
+
+claims_file (leave unread until your instructions call for it): {claims_file}
+
+Review content: the unified diff at `{diff_file}`. Read that file — it is the content under review.
+
+Review by inspection only. Do not modify code, run builds or tests, or invoke quality gates. Do not invoke any skill, and do not spawn subagents of your own — you are the reviewer. If the instruction file is unreadable, report that exact failure and stop. Return your findings as text in your final message; do not route them through any findings-reporting tool the host may offer.
+
+"""
+
+[[workflow.quick_lenses]]
+id = "verification-gap"
+name = "Verification Gap Reviewer"
+when = "the plan's frontmatter `risk` is `high`"
+instruction = """
+Launch a context-free subagent with this prompt:
+
+Read `{skill-root}/review-prompts/verification-gap.md` completely and follow it as your review instructions.
+
+Review content: the unified diff at `{diff_file}`. Read that file — it is the content under review.
+
+Review by inspection only. Do not modify code, run builds or tests, or invoke quality gates. Do not invoke any skill, and do not spawn subagents of your own — you are the reviewer. If the instruction file is unreadable, report that exact failure and stop. Return your findings as text in your final message; do not route them through any findings-reporting tool the host may offer.
+
+"""
+
+[[workflow.quick_lenses]]
+id = "intent-alignment"
+name = "Intent Alignment Auditor"
+when = "the plan's frontmatter `risk` is `high`"
+instruction = """
+Launch a subagent with this prompt:
+
+You are an intent-alignment auditor. You have no other context about how this change was produced. Here is the verbatim intent this work started from:
+
+{verbatim_intent}
+
+The diff is the unified diff at `{diff_file}`. Read that file — it is the change under review.
+
+Your task is strictly descriptive — do not prescribe additional work. Report: (1) the defensible readings of the intent, enumerated; (2) which reading this diff implements; (3) where the readings and the diff diverge — specifically, which surface the intent's expectations live at versus which surface the diff's changes and its tests exercise.
+
+Review by inspection only. Do not modify code, run builds or tests, or invoke quality gates. Do not invoke any skill, and do not spawn subagents of your own — you are the reviewer. Return your findings as text in your final message; do not route them through any findings-reporting tool the host may offer.
+
+"""
