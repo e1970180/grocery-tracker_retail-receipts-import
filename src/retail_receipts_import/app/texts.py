@@ -1,6 +1,7 @@
 """Loads the user- and admin-facing texts file and refuses an incomplete one at startup."""
 
 import tomllib
+from collections.abc import Collection
 from dataclasses import dataclass
 from pathlib import Path
 
@@ -8,6 +9,7 @@ from retail_receipts_import.domain.outcomes import (
     OUTCOMES_WITH_ADMIN_MESSAGE,
     OUTCOMES_WITH_REACTION,
     OUTCOMES_WITH_SENDER_MESSAGE,
+    AlertKind,
     FailureReason,
     Outcome,
 )
@@ -39,6 +41,8 @@ class Texts:
     reactions: dict[Outcome, str]
     sender_messages: dict[TextKey, str]
     admin_messages: dict[TextKey, str]
+    alerts: dict[AlertKind, str]
+    recoveries: dict[AlertKind, str]
 
 
 def load_texts(path: Path) -> Texts:
@@ -56,15 +60,19 @@ def load_texts(path: Path) -> Texts:
             )
     sender = _section(raw, path, "sender_messages", OUTCOMES_WITH_SENDER_MESSAGE | reasons)
     admin = _section(raw, path, "admin_messages", OUTCOMES_WITH_ADMIN_MESSAGE | reasons)
+    alerts = _section(raw, path, "alerts", set(AlertKind))
+    recoveries = _section(raw, path, "recoveries", set(AlertKind))
     return Texts(
         reactions={Outcome(k): v for k, v in reactions.items()},
         sender_messages=_keyed(sender),
         admin_messages=_keyed(admin),
+        alerts={AlertKind(k): v for k, v in alerts.items()},
+        recoveries={AlertKind(k): v for k, v in recoveries.items()},
     )
 
 
 def _section(
-    raw: dict[str, object], path: Path, name: str, required: frozenset[TextKey] | set[TextKey]
+    raw: dict[str, object], path: Path, name: str, required: Collection[object]
 ) -> dict[str, str]:
     table = raw.get(name)
     if not isinstance(table, dict):

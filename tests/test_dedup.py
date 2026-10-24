@@ -20,6 +20,7 @@ from retail_receipts_import.adapters.postgres.chains import ChainReference
 from retail_receipts_import.adapters.postgres.receipts import find_other_source
 from retail_receipts_import.adapters.queue.sqlite import Queue
 from retail_receipts_import.app import jobs, loop
+from retail_receipts_import.app.alerts import Alerts
 from retail_receipts_import.app.jobs import JobPorts
 from retail_receipts_import.app.notify import Notifier
 from retail_receipts_import.app.pipeline import Ports
@@ -72,11 +73,16 @@ class Env:
     files: FileStore
     gemini: Gemini = field(default_factory=Gemini)
     now: datetime = START
+    telegram: RecordingTelegram = field(default_factory=RecordingTelegram)
+    alerts: Alerts = field(init=False)
+
+    def __post_init__(self) -> None:
+        self.alerts = Alerts(Notifier(self.telegram, TEXTS, ADMIN), TEXTS)
 
     @contextlib.contextmanager
     def open_pipeline(self) -> Iterator[Ports]:
         # Only the reference read is replaced: the dedup lookup and the writer are the real ones.
-        ports = pipeline_ports(self.settings, self.conn, self.gemini.generate)
+        ports = pipeline_ports(self.settings, self.conn, self.gemini.generate, self.alerts)
         yield dataclasses.replace(ports, read_chain_reference=lambda: SPAR_ONLY)
 
     def ports(self) -> JobPorts:
@@ -85,8 +91,9 @@ class Env:
             files=self.files,
             download=lambda file_id, size: PDF_BYTES,
             open_pipeline=self.open_pipeline,
-            notify=Notifier(RecordingTelegram(), TEXTS, ADMIN),
+            notify=Notifier(self.telegram, TEXTS, ADMIN),
             clock=lambda: self.now,
+            alerts=self.alerts,
         )
 
     def send(self, message_id: int) -> int:

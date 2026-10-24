@@ -153,3 +153,15 @@ def test_reactions_that_fail_are_only_logged(caplog: pytest.LogCaptureFixture) -
     notifier.not_accepted(SENDER, 9)
     assert "job 5: reaction failed" in caplog.text
     assert "message 9: reaction failed" in caplog.text
+
+
+def test_admin_sends_message_to_admin_chat(telegram: RecordingTelegram) -> None:
+    notifier = Notifier(telegram, TEXTS, ADMIN)
+    notifier.admin("alert test", "alert text")
+    assert telegram.calls == [("message", ADMIN, "alert text", None)]
+
+
+def test_admin_failure_is_only_logged(caplog: pytest.LogCaptureFixture) -> None:
+    notifier = Notifier(RecordingTelegram(fail=True), TEXTS, ADMIN)
+    notifier.admin("alert test", "alert text")
+    assert "alert test: admin message failed" in caplog.text

@@ -18,6 +18,7 @@ from retail_receipts_import.adapters.queue.sqlite import Queue
 from retail_receipts_import.adapters.telegram.client import TelegramClient
 from retail_receipts_import.adapters.telegram.download import download_file
 from retail_receipts_import.app import jobs, loop
+from retail_receipts_import.app.alerts import Alerts
 from retail_receipts_import.app.jobs import JobPorts
 from retail_receipts_import.app.notify import Notifier
 from retail_receipts_import.app.pipeline import Generate, Ports
@@ -28,14 +29,19 @@ from retail_receipts_import.domain.intake import MAX_FILE_BYTES
 
 
 def pipeline_ports(
-    settings: Settings, conn: psycopg.Connection[tuple[Any, ...]], generate: Generate
+    settings: Settings,
+    conn: psycopg.Connection[tuple[Any, ...]],
+    generate: Generate,
+    alerts: Alerts,
 ) -> Ports:
     """The pipeline's ports over one connection; separate from `serve` so a test can check them."""
     return Ports(
         generate=generate,
         write=functools.partial(write_receipt, conn),
         find_other_source=functools.partial(find_other_source, conn),
-        read_chain_reference=functools.partial(read_chain_reference, conn),
+        read_chain_reference=functools.partial(
+            alerts.read_checked, functools.partial(read_chain_reference, conn)
+        ),
         prepare=functools.partial(images.prepare, max_pixels=settings.image_max_pixels),
         classify=functools.partial(
             classify,
@@ -58,15 +64,20 @@ def serve(settings: Settings, texts: Texts, stop: threading.Event) -> None:
     gemini = GeminiClient.from_settings(settings)
     queue = Queue(settings.data_dir / "queue.sqlite3")
 
-    @contextlib.contextmanager
-    def open_pipeline() -> Iterator[Ports]:
-        # A connection per job, so one dropped by the server never outlives the job it broke.
-        conninfo = settings.conninfo(settings.db_user, settings.db_password)
-        with psycopg.connect(conninfo, autocommit=True) as conn:
-            yield pipeline_ports(settings, conn, gemini.generate)
-
     try:
         with TelegramClient(settings.telegram_bot_token) as telegram:
+            notifier = Notifier(telegram, texts, settings.admin_chat_id)
+            alerts = Alerts(notifier, texts)
+
+            @contextlib.contextmanager
+            def open_pipeline() -> Iterator[Ports]:
+                # One connection per job: a dropped server connection never outlives the job.
+                conninfo = settings.conninfo(settings.db_user, settings.db_password)
+                with psycopg.connect(conninfo, autocommit=True) as conn:
+                    yield pipeline_ports(
+                        settings, conn, alerts.watch_generate(gemini.generate), alerts
+                    )
+
             ports = JobPorts(
                 queue=queue,
                 files=FileStore(settings.data_dir / "files"),
@@ -74,10 +85,12 @@ def serve(settings: Settings, texts: Texts, stop: threading.Event) -> None:
                     telegram, file_id, size, MAX_FILE_BYTES
                 ),
                 open_pipeline=open_pipeline,
-                notify=Notifier(telegram, texts, settings.admin_chat_id),
+                notify=notifier,
                 clock=lambda: datetime.now(UTC),
+                alerts=alerts,
             )
             jobs.sweep_files(ports)
+            jobs.check_reference(ports)
             loop.run(telegram, ports, loop_settings(settings), stop)
     finally:
         queue.close()

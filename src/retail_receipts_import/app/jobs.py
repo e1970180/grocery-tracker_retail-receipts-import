@@ -24,6 +24,7 @@ from retail_receipts_import.adapters.files.store import FileStore
 from retail_receipts_import.adapters.queue.sqlite import Queue
 from retail_receipts_import.adapters.telegram.download import FileTooLarge, FileUnavailable
 from retail_receipts_import.app import pipeline
+from retail_receipts_import.app.alerts import Alerts
 from retail_receipts_import.app.notify import Notifier
 from retail_receipts_import.app.pipeline import (
     ChainFound,
@@ -39,7 +40,7 @@ from retail_receipts_import.app.pipeline import (
 from retail_receipts_import.domain.chains.pass1 import Pass1Response
 from retail_receipts_import.domain.extraction import ExtractionClass
 from retail_receipts_import.domain.jobs import FINAL_STATES, Job, JobState
-from retail_receipts_import.domain.outcomes import FailureReason
+from retail_receipts_import.domain.outcomes import AlertKind, FailureReason
 from retail_receipts_import.domain.receipt import (
     PAYLOAD_VERSION,
     NormalizedReceipt,
@@ -62,12 +63,25 @@ class JobPorts:
     open_pipeline: OpenPipeline
     notify: Notifier
     clock: Callable[[], datetime]
+    alerts: Alerts
 
 
 def sweep_files(ports: JobPorts) -> None:
     """Deletes files a crash left behind after their job's final state, before the loop starts."""
     for item in ports.queue.final_jobs():
         ports.files.delete(ports.files.path_for(item.chat_id, item.message_id, item.mime))
+
+
+def check_reference(ports: JobPorts) -> None:
+    """Reports a reference out of step with the plug-ins before any receipt arrives.
+
+    Every exception is only logged: the service must start even while PostgreSQL is down.
+    """
+    try:
+        with ports.open_pipeline() as steps:
+            steps.read_chain_reference()
+    except Exception as exc:
+        log.error("startup reference check failed: %s: %s", type(exc).__name__, exc)
 
 
 def advance(job: Job, ports: JobPorts, max_attempts: int, retry_delay: timedelta) -> None:
@@ -231,6 +245,11 @@ def _wait(job: Job, ports: JobPorts, wait: ExtractionWait) -> None:
     )
     now = ports.clock()
     ports.queue.wait(job.job_id, now + wait.delay, now, waits=job.waits + 1)
+    if wait.kind is ExtractionClass.BLOCKED:
+        ports.alerts.start(
+            AlertKind.GEMINI_CONFIG,
+            f"code={error.code} status={error.status} reason={error.reason}",
+        )
     # Only an outage tells the sender to wait; a blocked model is the admin's to fix. Once
     # per stretch of waits: a later stretch repeats the same reaction, which nobody sees.
     if wait.kind is ExtractionClass.UNAVAILABLE and job.waits == 0:

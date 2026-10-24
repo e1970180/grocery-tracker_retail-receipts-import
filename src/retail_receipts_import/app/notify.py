@@ -87,6 +87,11 @@ class Notifier:
             lambda: self._telegram.set_message_reaction(chat_id, message_id, emoji),
         )
 
+    def admin(self, where: str, text: str) -> None:
+        self._send(
+            where, "admin message", lambda: self._telegram.send_message(self._admin_chat_id, text)
+        )
+
     def _react(self, where: str, item: Accepted, emoji: str | None) -> None:
         self._send(
             where,
@@ -111,9 +116,7 @@ class Notifier:
         store_name: str | None,
     ) -> None:
         text = _admin_text(self._texts.admin_messages[key], job_id, item, store_name)
-        self._send(
-            where, "admin message", lambda: self._telegram.send_message(self._admin_chat_id, text)
-        )
+        self.admin(where, text)
 
     def _admin_copy(
         self, where: str, job_id: int, item: Accepted, reason: FailureReason, path: Path

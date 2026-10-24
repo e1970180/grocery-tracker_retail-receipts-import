@@ -8,8 +8,13 @@ from dataclasses import dataclass
 from datetime import timedelta
 from typing import Any, Protocol
 
+from retail_receipts_import.adapters.telegram.client import (
+    TelegramAPIError,
+    TelegramRetryExhaustedError,
+)
 from retail_receipts_import.app.jobs import JobPorts, advance
 from retail_receipts_import.domain.intake import Accepted, NotAccepted, accept
+from retail_receipts_import.domain.outcomes import AlertKind
 
 log = logging.getLogger(__name__)
 
@@ -38,6 +43,10 @@ def run(telegram: Updates, ports: JobPorts, settings: LoopSettings, stop: thread
     while not stop.is_set():
         try:
             poll(telegram, ports, settings)
+        except (TelegramAPIError, TelegramRetryExhaustedError) as exc:
+            ports.alerts.start(AlertKind.TELEGRAM_UNREACHABLE, f"{type(exc).__name__} {exc.method}")
+            log.error("getUpdates failed: %s: %s", type(exc).__name__, exc)
+            stop.wait(POLL_ERROR_BACKOFF_S)
         except Exception as exc:
             log.error("getUpdates failed: %s: %s", type(exc).__name__, exc)
             stop.wait(POLL_ERROR_BACKOFF_S)
@@ -52,6 +61,7 @@ def poll(telegram: Updates, ports: JobPorts, settings: LoopSettings) -> None:
         timeout=_poll_timeout(ports, settings),
         allowed_updates=ALLOWED_UPDATES,
     )
+    ports.alerts.recover(AlertKind.TELEGRAM_UNREACHABLE)
     if not updates:
         return
     results = [accept(u, settings.allowed_user_ids) for u in updates]

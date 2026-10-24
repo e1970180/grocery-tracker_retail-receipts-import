@@ -25,3 +25,17 @@ total_settlement_mismatch = "Итог чека не сходится с сумм
 no_valid_result = "Распознавание не дало корректного результата за отведенные попытки."
 file_too_large = "Файл больше 20 МБ после getFile; копия не приложена."
 file_unavailable = "Файл не скачивается из Telegram после всех попыток; копия не приложена."
+
+[alerts]
+postgres_unreachable = "PostgreSQL недоступен, чеки ждут записи."
+gemini_config = "Gemini отклоняет запросы из-за настройки (ключ, квота или модель), чеки ждут."
+telegram_unreachable = "Telegram API недоступен."
+chain_reference = "Справочник сетей не согласован с плагинами."
+internal = "Внутренняя ошибка при обработке чека."
+
+[recoveries]
+postgres_unreachable = "PostgreSQL снова доступен."
+gemini_config = "Gemini снова отвечает."
+telegram_unreachable = "Telegram API снова доступен."
+chain_reference = "Справочник сетей снова согласован с плагинами."
+internal = "Внутренняя ошибка устранена."

@@ -3,7 +3,7 @@ from pathlib import Path
 import pytest
 
 from retail_receipts_import.app.texts import TextsError, load_texts
-from retail_receipts_import.domain.outcomes import FailureReason, Outcome
+from retail_receipts_import.domain.outcomes import AlertKind, FailureReason, Outcome
 
 SHIPPED = Path(__file__).resolve().parents[1] / "texts" / "messages.toml"
 
@@ -29,6 +29,29 @@ def test_shipped_texts_file_is_complete() -> None:
     for reason in FailureReason:
         assert texts.sender_messages[reason]
         assert texts.admin_messages[reason]
+    for kind in AlertKind:
+        assert texts.alerts[kind]
+        assert texts.recoveries[kind]
+
+
+def test_missing_alerts_key_is_refused_by_name(tmp_path: Path) -> None:
+    path = _variant(
+        tmp_path,
+        'telegram_unreachable = "Telegram API недоступен."',
+        'other = "Telegram API недоступен."',
+    )
+    with pytest.raises(TextsError, match=r"missing keys alerts\.telegram_unreachable"):
+        load_texts(path)
+
+
+def test_missing_recoveries_key_is_refused_by_name(tmp_path: Path) -> None:
+    path = _variant(
+        tmp_path,
+        'telegram_unreachable = "Telegram API снова доступен."',
+        'other = "Telegram API снова доступен."',
+    )
+    with pytest.raises(TextsError, match=r"missing keys recoveries\.telegram_unreachable"):
+        load_texts(path)
 
 
 def test_missing_key_is_refused_by_name(tmp_path: Path) -> None:

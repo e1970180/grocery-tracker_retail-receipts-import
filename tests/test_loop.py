@@ -28,6 +28,7 @@ from retail_receipts_import.adapters.telegram.download import (
     download_file,
 )
 from retail_receipts_import.app import jobs, loop
+from retail_receipts_import.app.alerts import Alerts
 from retail_receipts_import.app.jobs import JobPorts
 from retail_receipts_import.app.notify import Notifier
 from retail_receipts_import.app.pipeline import Ports
@@ -36,7 +37,7 @@ from retail_receipts_import.domain.chains.spar.schema import SparPass2
 from retail_receipts_import.domain.extraction import GeminiCallError, classify
 from retail_receipts_import.domain.intake import MAX_FILE_BYTES, Accepted, FileKind
 from retail_receipts_import.domain.jobs import Job, JobState
-from retail_receipts_import.domain.outcomes import FailureReason
+from retail_receipts_import.domain.outcomes import AlertKind, FailureReason
 from retail_receipts_import.domain.receipt import (
     PAYLOAD_VERSION,
     NormalizedReceipt,
@@ -120,9 +121,11 @@ class Fakes:
     written: list[tuple[uuid.UUID, NormalizedReceipt, ReceiptSource]] = field(default_factory=list)
     lookups: list[tuple[str, datetime, ReceiptSource]] = field(default_factory=list)
     pipelines_opened: int = 0
+    alerts: Alerts = field(init=False)
 
     def __post_init__(self) -> None:
         self.telegram.observe = self.snapshot
+        self.alerts = Alerts(Notifier(self.telegram, TEXTS, ADMIN), TEXTS)
 
     def snapshot(self) -> tuple[JobState | None, bool, int | None]:
         """The job's state, whether its file exists, and the committed offset, at a send."""
@@ -169,10 +172,10 @@ class Fakes:
     def open_pipeline(self) -> Iterator[Ports]:
         self.pipelines_opened += 1
         yield Ports(
-            generate=self.generate,
+            generate=self.alerts.watch_generate(self.generate),
             write=self.write,
             find_other_source=self.find_other_source,
-            read_chain_reference=lambda: self.reference,
+            read_chain_reference=lambda: self.alerts.read_checked(lambda: self.reference),
             prepare=lambda data, mime: data,
             classify=lambda error, waits: classify(error, waits, initial_s=600, cap_s=1800),
         )
@@ -185,6 +188,7 @@ class Fakes:
             open_pipeline=self.open_pipeline,
             notify=Notifier(self.telegram, TEXTS, ADMIN),
             clock=lambda: self.now,
+            alerts=self.alerts,
         )
 
     def job(self) -> Job:
@@ -1004,7 +1008,10 @@ def test_blocked_gemini_sends_no_reaction(tmp_path: Path) -> None:
     wait_again(fakes, [UNAVAILABLE])
     assert fakes.state() is JobState.CHAIN_PENDING
     # The unavailable wait came second in its stretch, so it is not announced either.
-    assert fakes.telegram.calls == []
+    assert [c for c in fakes.telegram.calls if c[0] == "reaction"] == []
+    assert len(fakes.telegram.calls) == 1
+    assert fakes.telegram.calls[0][1] == ADMIN
+    assert "gemini_config" in fakes.telegram.calls[0][2]
 
 
 def stored(fakes: Fakes) -> None:
@@ -1064,3 +1071,157 @@ def test_sweep_deletes_files_of_finished_jobs_only(fakes: Fakes) -> None:
     assert not finished.exists() and not finished_gone.exists()
     assert waiting.read_bytes() == PDF_BYTES
     assert fakes.telegram.calls == []
+
+
+def test_two_blocked_waits_give_one_alert_and_one_recovery(tmp_path: Path) -> None:
+    fakes = make_fakes(tmp_path, [BLOCKED])
+    first_cycle(fakes)
+    assert fakes.state() is JobState.CHAIN_PENDING
+    assert fakes.alerts.is_active(AlertKind.GEMINI_CONFIG)
+
+    admin_alerts = [c for c in fakes.telegram.calls if c[0] == "message" and c[1] == ADMIN]
+    assert len(admin_alerts) == 1
+    assert admin_alerts[0][2] == (
+        f"{TEXTS.alerts[AlertKind.GEMINI_CONFIG]}\n"
+        "gemini_config\n"
+        "code=404 status=NOT_FOUND reason=None"
+    )
+
+    wait_again(fakes, [BLOCKED])
+    assert fakes.state() is JobState.CHAIN_PENDING
+    admin_alerts = [c for c in fakes.telegram.calls if c[0] == "message" and c[1] == ADMIN]
+    assert len(admin_alerts) == 1
+
+    wait_again(fakes, STORED_ANSWERS)
+    assert fakes.state() is JobState.STORED
+    assert not fakes.alerts.is_active(AlertKind.GEMINI_CONFIG)
+
+    admin_calls = [c for c in fakes.telegram.calls if c[0] == "message" and c[1] == ADMIN]
+    assert len(admin_calls) == 2
+    assert admin_calls[1][2] == (f"{TEXTS.recoveries[AlertKind.GEMINI_CONFIG]}\ngemini_config")
+
+
+def test_two_failed_polls_then_one_good_poll_give_one_alert_and_one_recovery(
+    fakes: Fakes, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    monkeypatch.setattr(loop, "POLL_ERROR_BACKOFF_S", 0.0)
+    stop = threading.Event()
+
+    class PollSequence:
+        calls = 0
+
+        def get_updates(
+            self, *, offset: int | None, timeout: int, allowed_updates: Sequence[str] | None = None
+        ) -> list[dict[str, Any]]:
+            self.calls += 1
+            if self.calls in (1, 2):
+                raise TelegramRetryExhaustedError("getUpdates", 3)
+            stop.set()
+            return []
+
+    loop.run(PollSequence(), fakes.ports(), SETTINGS, stop)
+    admin_calls = [c for c in fakes.telegram.calls if c[0] == "message" and c[1] == ADMIN]
+    assert len(admin_calls) == 2
+    assert admin_calls[0][2] == (
+        f"{TEXTS.alerts[AlertKind.TELEGRAM_UNREACHABLE]}\n"
+        "telegram_unreachable\n"
+        "TelegramRetryExhaustedError getUpdates"
+    )
+    assert admin_calls[1][2] == (
+        f"{TEXTS.recoveries[AlertKind.TELEGRAM_UNREACHABLE]}\ntelegram_unreachable"
+    )
+
+
+def test_non_telegram_poll_error_gives_no_alert(
+    fakes: Fakes, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    monkeypatch.setattr(loop, "POLL_ERROR_BACKOFF_S", 0.0)
+    stop = threading.Event()
+
+    class Failing:
+        calls = 0
+
+        def get_updates(
+            self, *, offset: int | None, timeout: int, allowed_updates: Sequence[str] | None = None
+        ) -> list[dict[str, Any]]:
+            self.calls += 1
+            stop.set()
+            raise RuntimeError("something unexpected")
+
+    loop.run(Failing(), fakes.ports(), SETTINGS, stop)
+    assert not fakes.alerts.is_active(AlertKind.TELEGRAM_UNREACHABLE)
+    assert fakes.telegram.calls == []
+
+
+def test_failed_alert_send_leaves_job_state_identical(tmp_path: Path) -> None:
+    working = make_fakes(tmp_path / "working", [BLOCKED])
+    first_cycle(working)
+    working_job = working.job()
+
+    failing = make_fakes(tmp_path / "failing", [BLOCKED])
+    failing.telegram.fail = True
+    first_cycle(failing)
+    failing_job = failing.job()
+
+    assert failing_job.state == working_job.state
+    assert failing_job.waits == working_job.waits
+    assert failing.alerts.is_active(AlertKind.GEMINI_CONFIG)
+
+
+def chain_reference_messages(fakes: Fakes) -> list[str]:
+    return [c[2] for c in fakes.telegram.calls if c[1] == ADMIN and "\nchain_reference" in c[2]]
+
+
+def test_withdrawn_plugin_alerts_once_and_leaves_the_job_path_unchanged(tmp_path: Path) -> None:
+    # Spar withdrawn leaves it out of the pass-1 schema, so the model can only answer `other`.
+    other = pass1_response(chain="other")
+    fakes = make_fakes(tmp_path, [other, other])
+    fakes.reference = SPAR_WITHDRAWN
+    jobs.check_reference(fakes.ports())
+    first_cycle(fakes)
+    # Two reference reads, one alert; the job takes the plain unsupported path.
+    assert fakes.state() is JobState.UNSUPPORTED_CHAIN
+    assert len(fakes.generated) == 2
+    assert chain_reference_messages(fakes) == [
+        f"{TEXTS.alerts[AlertKind.CHAIN_REFERENCE]}\nchain_reference\ninactive plug-in: spar"
+    ]
+
+    fakes.reference = SPAR_ONLY
+    jobs.check_reference(fakes.ports())
+    assert chain_reference_messages(fakes)[1:] == [
+        f"{TEXTS.recoveries[AlertKind.CHAIN_REFERENCE]}\nchain_reference"
+    ]
+
+
+def test_startup_reference_check_with_postgres_down_only_logs(
+    fakes: Fakes, caplog: pytest.LogCaptureFixture
+) -> None:
+    def postgres_down() -> contextlib.AbstractContextManager[Ports]:
+        raise ConnectionError("connection refused")
+
+    jobs.check_reference(dataclasses.replace(fakes.ports(), open_pipeline=postgres_down))
+    assert "startup reference check failed: ConnectionError" in caplog.text
+    assert fakes.telegram.calls == []
+
+
+def test_failing_alert_sends_do_not_stop_the_loop(
+    fakes: Fakes, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    monkeypatch.setattr(loop, "POLL_ERROR_BACKOFF_S", 0.0)
+    fakes.telegram.fail = True
+    stop = threading.Event()
+    polls: list[int] = []
+
+    class PollSequence:
+        def get_updates(
+            self, *, offset: int | None, timeout: int, allowed_updates: Sequence[str] | None = None
+        ) -> list[dict[str, Any]]:
+            polls.append(timeout)
+            if len(polls) < 3:
+                raise TelegramAPIError("getUpdates", 401, "Unauthorized")
+            stop.set()
+            return []
+
+    loop.run(PollSequence(), fakes.ports(), SETTINGS, stop)
+    assert len(polls) == 3
+    assert not fakes.alerts.is_active(AlertKind.TELEGRAM_UNREACHABLE)

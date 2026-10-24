@@ -23,6 +23,14 @@ class FailureReason(StrEnum):
     FILE_UNAVAILABLE = "file_unavailable"
 
 
+class AlertKind(StrEnum):
+    POSTGRES_UNREACHABLE = "postgres_unreachable"
+    GEMINI_CONFIG = "gemini_config"
+    TELEGRAM_UNREACHABLE = "telegram_unreachable"
+    CHAIN_REFERENCE = "chain_reference"
+    INTERNAL = "internal"
+
+
 # Which outcomes carry which kind of text. A failed outcome takes its sender message and
 # admin notice from its failure reason, so FAILED itself carries only the reaction.
 OUTCOMES_WITH_REACTION = frozenset(
