@@ -3,7 +3,7 @@ title: 'Full outcome matrix and effect order'
 type: 'feature'
 ticket: '12'
 created: '2026-10-23'
-status: 'built'
+status: done
 baseline_revision: 'ce462aacb18d1e2af7e7697c6e4f5ee19e5692c5'
 route: 'full'
 route_source: 'auto'
