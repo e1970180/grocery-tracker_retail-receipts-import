@@ -3,7 +3,7 @@ title: 'Müller plug-in'
 type: 'feature'
 ticket: '11'
 created: '2026-10-24'
-status: 'built'
+status: 'done'
 baseline_revision: 'ecc924ed443bfce48abe5975438ea1ac15b9efa7'
 route: 'full'
 route_source: 'auto'
@@ -110,4 +110,4 @@ After patches (WSL): ruff, format, mypy clean; `pytest` 595 passed.
 - `wsl -- bash -lc 'UV_PROJECT_ENVIRONMENT=$HOME/.venvs/$(basename "$PWD") PYTHONPYCACHEPREFIX=$HOME/.cache/pyc uv run ruff check && uv run ruff format --check && uv run mypy && uv run pytest'` -- expected: all pass
 
 **Manual checks:**
-- Owner confirms the fifteen `expected.json` against the images.
+- Owner confirms the fifteen `expected.json` against the images. -- confirmed by the owner, 2026-10-24, including the total as ZA PLATITI plus Müller bodovi, the payment labels with `EUR`, and `PFEILRING`.
