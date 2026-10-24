@@ -64,3 +64,7 @@
 - source_plan: `_bmad-output/initiative-receipts-import-mvp/epic-receipts-pipeline/story-full-outcome-matrix-and-effect-order-plan.md`
   summary: The README settings table does not list the required `RRI_ALLOWED_USER_IDS`.
   evidence: Found by the 1.12 quick review; the row has been missing since the setting was added, only `.env.example` documents it.
+
+- source_plan: `_bmad-output/initiative-receipts-import-mvp/epic-receipts-pipeline/story-job-steps-attempts-and-resume-plan.md`
+  summary: A step that raises on every run is postponed without end, and a raise after a Gemini answer repeats a paid call each time; entry 13's three-unrecorded-starts rule must also cover a kept `pass1_json` that no longer parses after a deploy.
+  evidence: Thorough retro-review of 1.6: `loop.run_due` postpones on any exception and nothing reads `step_starts`; `jobs._extract` parses `pass1_json` without the fallback `_kept_receipt` gives `receipt_json`.

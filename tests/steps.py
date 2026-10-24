@@ -1,4 +1,7 @@
-"""Runs the pipeline steps back to back, as a job does when nothing waits in between."""
+"""Runs the pipeline steps back to back, as a job does when nothing waits in between.
+
+The dedup pre-check is left out, so pass 2 always runs, whatever is already stored.
+"""
 
 import uuid
 from pathlib import Path

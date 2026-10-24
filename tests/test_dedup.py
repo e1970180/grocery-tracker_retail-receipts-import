@@ -218,3 +218,20 @@ def test_find_other_source_on_a_closed_connection_answers_none(
         record.levelno == logging.WARNING and "OperationalError" in record.getMessage()
         for record in caplog.records
     )
+
+
+def test_find_other_source_on_any_database_error_answers_none(
+    pg_conn: psycopg.Connection[Any], caplog: pytest.LogCaptureFixture
+) -> None:
+    # An aborted transaction refuses every query with an error that is not OperationalError.
+    dsn = os.environ[TEST_DSN_VAR]
+    with psycopg.connect(dsn, connect_timeout=10) as aborted:
+        with contextlib.suppress(psycopg.errors.DivisionByZero):
+            aborted.execute("SELECT 1 / 0")
+        purchased_at = datetime(2030, 2, 1, 8, 5, tzinfo=UTC)
+        source = telegram_source(1, 11, "Ana")
+        assert find_other_source(aborted, "spar", purchased_at, source) is None
+    assert any(
+        record.levelno == logging.WARNING and "InFailedSqlTransaction" in record.getMessage()
+        for record in caplog.records
+    )

@@ -457,9 +457,10 @@ def test_supported_chain_persists_pass1_and_a_restart_skips_it(tmp_path: Path) -
 
 
 def test_chain_withdrawn_before_pass2_restarts_pass1_without_an_attempt(tmp_path: Path) -> None:
-    fakes = make_fakes(tmp_path, [pass1_response(), STOP])
+    # One attempt already spent, so keeping the count differs from resetting it.
+    fakes = make_fakes(tmp_path, ["not json", pass1_response(), STOP])
     first_cycle(fakes)
-    assert fakes.state() is JobState.EXTRACT_PENDING
+    assert (fakes.state(), fakes.job().attempts) == (JobState.EXTRACT_PENDING, 1)
 
     fakes.reference = SPAR_WITHDRAWN
     fakes.answers = [STOP]
@@ -467,7 +468,7 @@ def test_chain_withdrawn_before_pass2_restarts_pass1_without_an_attempt(tmp_path
     before = len(fakes.generated)
     rerun(fakes)
     job = fakes.job()
-    assert (job.state, job.attempts, job.pass1_json) == (JobState.CHAIN_PENDING, 0, None)
+    assert (job.state, job.attempts, job.pass1_json) == (JobState.CHAIN_PENDING, 1, None)
     # The withdrawn chain cost no pass-2 call; the one call made was pass 1 again.
     [again] = fakes.generated[before:]
     assert again is not SparPass2

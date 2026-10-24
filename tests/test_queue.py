@@ -236,6 +236,34 @@ def test_next_due_at_is_the_earliest_unfinished_job_in_utc(tmp_path: Path) -> No
     assert queue.next_due_at() is None
 
 
+def test_finish_keeps_the_receipt_id_but_no_receipt_content(tmp_path: Path) -> None:
+    queue = Queue(tmp_path / "q.sqlite3")
+    queue.enqueue([accepted(1)], 101, NOW)
+    queue.to_extract_pending(1, NOW, pass1_json='{"chain": "spar"}')
+    queue.to_write_pending(1, NOW, receipt_json="{}", payload_version=1, receipt_id="r-1")
+    queue.finish(1, JobState.STORED, NOW, receipt_id="r-1")
+    job = queue.job(1)
+    assert (job.state, job.receipt_id) == (JobState.STORED, "r-1")
+    assert (job.pass1_json, job.receipt_json, job.payload_version) == (None, None, None)
+
+
+def test_a_failed_upgrade_leaves_the_file_at_version_1(tmp_path: Path) -> None:
+    path = tmp_path / "q.sqlite3"
+    write_v1_queue(path, JobState.CHAIN_PENDING)
+    # A column the upgrade adds last already exists, so the upgrade fails after its first steps.
+    raw = sqlite3.connect(path)
+    raw.execute("ALTER TABLE jobs ADD COLUMN payload_version INTEGER")
+    raw.commit()
+    raw.close()
+    with pytest.raises(sqlite3.OperationalError, match="duplicate column"):
+        Queue(path)
+    raw = sqlite3.connect(path)
+    columns = {row[1] for row in raw.execute("PRAGMA table_info(jobs)")}
+    assert raw.execute("PRAGMA user_version").fetchone() == (1,)
+    raw.close()
+    assert not {"attempts", "waits", "step_starts", "pass1_json"} & columns
+
+
 def test_only_a_final_state_finishes_a_job(tmp_path: Path) -> None:
     queue = Queue(tmp_path / "q.sqlite3")
     queue.enqueue([accepted(1)], 101, NOW)

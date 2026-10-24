@@ -216,12 +216,16 @@ class Queue:
     ) -> None:
         if state not in FINAL_STATES:
             raise ValueError(f"{state} is not a final state")
+        # The receipt's content is PostgreSQL's to keep; a finished job holds no copy of it.
         self._update(
             job_id,
             now,
             state=state.value,
             failure_reason=None if failure_reason is None else failure_reason.value,
             receipt_id=receipt_id,
+            pass1_json=None,
+            receipt_json=None,
+            payload_version=None,
             **_STEP_RESET,
         )
 

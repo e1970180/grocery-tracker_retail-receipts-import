@@ -100,7 +100,7 @@ def find_other_source(
     """
     try:
         found = find_by_dedup_key(conn, chain_id, purchased_at)
-    except psycopg.OperationalError as exc:
+    except psycopg.Error as exc:
         # The type alone: nothing from the connection may reach the log.
         log.warning("dedup pre-check lookup failed (%s), continuing without it", type(exc).__name__)
         return None

@@ -82,6 +82,20 @@ def test_gemini_timeout_must_be_positive(
         Settings()  # type: ignore[call-arg]
 
 
+def test_job_defaults(rri_env: dict[str, str]) -> None:
+    settings = Settings()  # type: ignore[call-arg]
+    assert (settings.job_max_attempts, settings.job_retry_delay_s) == (3, 600)
+
+
+@pytest.mark.parametrize("name", ["RRI_JOB_MAX_ATTEMPTS", "RRI_JOB_RETRY_DELAY_S"])
+def test_job_limits_must_be_positive(
+    name: str, rri_env: dict[str, str], monkeypatch: pytest.MonkeyPatch
+) -> None:
+    monkeypatch.setenv(name, "0")
+    with pytest.raises(ValidationError, match=name.removeprefix("RRI_").lower()):
+        Settings()  # type: ignore[call-arg]
+
+
 def test_statement_timeout_defaults_to_30_seconds(rri_env: dict[str, str]) -> None:
     settings = Settings()  # type: ignore[call-arg]
     assert "statement_timeout=30000" in settings.conninfo("owner", settings.db_password)
