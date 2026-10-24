@@ -64,6 +64,7 @@
 - source_plan: `_bmad-output/initiative-receipts-import-mvp/epic-receipts-pipeline/story-full-outcome-matrix-and-effect-order-plan.md`
   summary: The README settings table does not list the required `RRI_ALLOWED_USER_IDS`.
   evidence: Found by the 1.12 quick review; the row has been missing since the setting was added, only `.env.example` documents it.
+  resolution: done in the 1.15 refactor sweep, with every other missing setting (2026-10-24).
 
 - source_plan: `_bmad-output/initiative-receipts-import-mvp/epic-receipts-pipeline/story-job-steps-attempts-and-resume-plan.md`
   summary: A step that raises on every run is postponed without end, and a raise after a Gemini answer repeats a paid call each time; entry 13's three-unrecorded-starts rule must also cover a kept `pass1_json` that no longer parses after a deploy.
@@ -101,6 +102,7 @@
 - source_plan: `_bmad-output/initiative-receipts-import-mvp/epic-receipts-pipeline/story-kaufland-plug-in-plan.md`
   summary: The Lidl normalizer builds `ReceiptLine` and `Settlement` outside its `ValidationError` guard, so a malformed row raises a raw `ValidationError` carrying receipt content into the error log instead of `UnreadableReceipt`.
   evidence: Found by the 1.9 quick review on the Kaufland copy and reproduced there (`Otkup`-style zero deposit row, quantity `0`); `lidl/normalize.py` calls `_lines` and `_settlements` before its `try`, and `pipeline.py:217` catches only `UnreadableReceipt`. The Kaufland fix moves both calls inside the guard; Lidl was out of 1.9 scope.
+  resolution: fixed in the 1.15 refactor sweep on owner approval (2026-10-24).
 
 - source_plan: `_bmad-output/initiative-receipts-import-mvp/epic-receipts-pipeline/story-store-the-receipt-total-and-expose-it-in-resolver-v1-plan.md`
   summary: CAP-4 success asks that recorded Müller bonus-point, coupon and negative-payout fixtures be read back through `resolver_v1` with their total; 1.21 proves the total path only with synthetic receipts.

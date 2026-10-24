@@ -13,6 +13,9 @@ from retail_receipts_import.domain.chains.printed import (
     DATE,
     fold,
     money,
+    parse_pass2,
+    pass1_time,
+    purchase_time,
     quantity,
     stripped,
 )
@@ -29,14 +32,10 @@ TIME = re.compile(r"(\d{1,2}):(\d{2})(?::(\d{2}))?")
 
 
 def normalize(response: str, chain_id: str) -> NormalizedReceipt:
+    raw = parse_pass2(LidlPass2, response)
     try:
-        raw = LidlPass2.model_validate_json(response)
-    except ValidationError as exc:
-        # The error count only: the errors themselves would echo receipt content into logs.
-        raise UnreadableReceipt(f"response fails the schema ({exc.error_count()} errors)") from None
-    lines, deposit_refunds = _lines(raw.lines)
-    settlements = _settlements(raw.payments, deposit_refunds)
-    try:
+        lines, deposit_refunds = _lines(raw.lines)
+        settlements = _settlements(raw.payments, deposit_refunds)
         return NormalizedReceipt(
             payload_version=1,
             chain_id=chain_id,
@@ -44,7 +43,9 @@ def normalize(response: str, chain_id: str) -> NormalizedReceipt:
             branch_number=_branch(raw.pj, raw.ibr),
             receipt_number=stripped(raw.receipt_number),
             store_address=stripped(raw.store_address),
-            purchased_at=zagreb_to_utc(_purchase_time(raw.purchase_date, raw.purchase_time)),
+            purchased_at=zagreb_to_utc(
+                purchase_time(DATE, TIME, raw.purchase_date, raw.purchase_time)
+            ),
             # The total is the value of the goods, and za platiti has the deposit refunds taken
             # off, wherever the model listed them.
             total=money(raw.total, "total") + _refunded(settlements),
@@ -56,18 +57,7 @@ def normalize(response: str, chain_id: str) -> NormalizedReceipt:
 
 
 def normalize_pass1_time(purchase_date: str, purchase_time: str) -> datetime | None:
-    try:
-        if not purchase_date or not purchase_time:
-            return None
-        date = DATE.fullmatch(purchase_date.strip())
-        time = TIME.fullmatch(purchase_time.strip())
-        if date is None or time is None:
-            return None
-        day, month, year = (int(part) for part in date.groups())
-        hour, minute = int(time.group(1)), int(time.group(2))
-        return zagreb_to_utc(datetime(year, month, day, hour, minute))
-    except Exception:
-        return None
+    return pass1_time(DATE, TIME, purchase_date, purchase_time)
 
 
 def _branch(pj: str | None, ibr: str | None) -> str:
@@ -83,19 +73,6 @@ def _branch(pj: str | None, ibr: str | None) -> str:
         if first_segment.isdigit():
             return first_segment
     raise UnreadableReceipt(f"neither PJ {pj!r} nor IBR {ibr!r} gives a numeric branch")
-
-
-def _purchase_time(date_text: str, time_text: str) -> datetime:
-    date = DATE.fullmatch(date_text.strip())
-    time = TIME.fullmatch(time_text.strip())
-    if date is None or time is None:
-        raise UnreadableReceipt(f"purchase time {date_text!r} {time_text!r} cannot be read")
-    day, month, year = (int(part) for part in date.groups())
-    hour, minute = int(time.group(1)), int(time.group(2))
-    try:
-        return datetime(year, month, day, hour, minute)
-    except ValueError:
-        raise UnreadableReceipt(f"purchase time {date_text!r} {time_text!r} is no date") from None
 
 
 def _is_info(text: str) -> bool:

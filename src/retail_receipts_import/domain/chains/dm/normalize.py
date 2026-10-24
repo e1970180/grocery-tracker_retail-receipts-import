@@ -13,8 +13,12 @@ from retail_receipts_import.domain.chains.dm.schema import (
 )
 from retail_receipts_import.domain.chains.errors import UnreadableReceipt
 from retail_receipts_import.domain.chains.printed import (
+    SHORT_YEAR_DATE,
     fold,
     money,
+    parse_pass2,
+    pass1_time,
+    purchase_time,
     quantity,
     stripped,
 )
@@ -27,19 +31,12 @@ from retail_receipts_import.domain.receipt import (
     zagreb_to_utc,
 )
 
-# Accepts DD.MM.YY or DD.MM.YYYY, optionally ending with a dot.
-DATE = re.compile(r"(\d{2})\.(\d{2})\.(\d{2}|\d{4})\.?")
-
 # Accepts HH:MM or HH:MM:SS from the header line; seconds are dropped by zagreb_to_utc.
 TIME = re.compile(r"(\d{1,2}):(\d{2})(?::(\d{2}))?")
 
 
 def normalize(response: str, chain_id: str) -> NormalizedReceipt:
-    try:
-        raw = DmPass2.model_validate_json(response)
-    except ValidationError as exc:
-        # The error count only: the errors themselves would echo receipt content into logs.
-        raise UnreadableReceipt(f"response fails the schema ({exc.error_count()} errors)") from None
+    raw = parse_pass2(DmPass2, response)
     try:
         lines = _lines(raw.lines)
         settlements = _settlements(raw.payments)
@@ -52,7 +49,9 @@ def normalize(response: str, chain_id: str) -> NormalizedReceipt:
             receipt_number=receipt_number,
             store_address=_store_address(raw.store_address),
             loyalty_card_number=None,
-            purchased_at=zagreb_to_utc(_purchase_time(raw.purchase_date, raw.purchase_time)),
+            purchased_at=zagreb_to_utc(
+                purchase_time(SHORT_YEAR_DATE, TIME, raw.purchase_date, raw.purchase_time)
+            ),
             total=money(raw.total, "total"),
             lines=lines,
             settlements=settlements,
@@ -62,19 +61,7 @@ def normalize(response: str, chain_id: str) -> NormalizedReceipt:
 
 
 def normalize_pass1_time(purchase_date: str, purchase_time: str) -> datetime | None:
-    try:
-        if not purchase_date or not purchase_time:
-            return None
-        date = DATE.fullmatch(purchase_date.strip())
-        time = TIME.fullmatch(purchase_time.strip())
-        if date is None or time is None:
-            return None
-        day, month, year_str = date.groups()
-        year = 2000 + int(year_str) if len(year_str) == 2 else int(year_str)
-        hour, minute = int(time.group(1)), int(time.group(2))
-        return zagreb_to_utc(datetime(year, int(month), int(day), hour, minute))
-    except Exception:
-        return None
+    return pass1_time(SHORT_YEAR_DATE, TIME, purchase_date, purchase_time)
 
 
 def _receipt_number_and_branch(receipt_number: str | None) -> tuple[str, str]:
@@ -103,20 +90,6 @@ def _store_address(store_address: str | None) -> str | None:
     # one shop always gives one address. The head office line is the company's, not the shop's.
     parts = [p.strip() for p in addr.splitlines() if p.strip() and "kovinska" not in p.lower()]
     return ", ".join(parts) or None
-
-
-def _purchase_time(date_text: str, time_text: str) -> datetime:
-    date = DATE.fullmatch(date_text.strip())
-    time = TIME.fullmatch(time_text.strip())
-    if date is None or time is None:
-        raise UnreadableReceipt(f"purchase time {date_text!r} {time_text!r} cannot be read")
-    day, month, year_str = date.groups()
-    year = 2000 + int(year_str) if len(year_str) == 2 else int(year_str)
-    hour, minute = int(time.group(1)), int(time.group(2))
-    try:
-        return datetime(year, int(month), int(day), hour, minute)
-    except ValueError:
-        raise UnreadableReceipt(f"purchase time {date_text!r} {time_text!r} is no date") from None
 
 
 def _is_info(text: str) -> bool:

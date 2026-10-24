@@ -15,12 +15,20 @@ working directory. `.env.example` lists them. The service refuses to start on an
 | `RRI_GEMINI_MODEL` | Gemini model id (default `gemini-3.8-flash`). |
 | `RRI_GEMINI_TIMEOUT_S` | Timeout of one Gemini request in seconds (default 120). |
 | `RRI_GEMINI_THINKING_LEVEL` | `minimal`, `low`, `medium` or `high` (default `low`; `gemini-3.8-flash` has no `minimal`). |
+| `RRI_GEMINI_BACKOFF_INITIAL_S` | First wait in seconds after an unavailable or misconfigured Gemini that names no delay of its own; each further wait in a row doubles (default 600). |
+| `RRI_GEMINI_BACKOFF_CAP_S` | Cap on that doubling wait in seconds (default 1800). |
+| `RRI_IMAGE_MAX_PIXELS` | Maximum image pixels before downscaling (default 16000000). |
 | `RRI_DB_HOST`, `RRI_DB_PORT`, `RRI_DB_NAME` | PostgreSQL server and database. |
 | `RRI_DB_USER`, `RRI_DB_PASSWORD` | Writer role, used by the service. |
 | `RRI_DB_CONNECT_TIMEOUT_S` | Connect timeout in seconds (default 10). |
 | `RRI_DB_STATEMENT_TIMEOUT_MS` | Server-side cap on one statement in milliseconds (default 30000). |
 | `RRI_MIGRATE_DB_USER`, `RRI_MIGRATE_DB_PASSWORD` | Schema owner role, used only by `migrate`. |
+| `RRI_ALLOWED_USER_IDS` | Required. Telegram user ids whose private messages are taken as receipts, comma-separated. |
 | `RRI_ADMIN_CHAT_ID` | Required. Chat that gets failure notices and file copies; the admin must have started the bot. |
+| `RRI_TELEGRAM_POLL_TIMEOUT_S` | Telegram long-polling timeout in seconds (default 30). |
+| `RRI_JOB_RETRY_DELAY_S` | Wait in seconds before retrying a failed job step (default 600). |
+| `RRI_JOB_MAX_ATTEMPTS` | Refused downloads or Gemini attempts before a job fails (default 3). |
+| `RRI_DATA_DIR` | Directory for the SQLite queue and downloaded receipt files (default `/data`). |
 | `RRI_TEXTS_PATH` | Texts file (default `texts/messages.toml`). |
 | `RRI_LOG_LEVEL` | `DEBUG`, `INFO`, `WARNING` or `ERROR` (default `INFO`). |
 

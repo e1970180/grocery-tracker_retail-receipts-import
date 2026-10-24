@@ -8,11 +8,16 @@ from decimal import Decimal
 from pydantic import ValidationError
 
 from retail_receipts_import.domain.chains.errors import UnreadableReceipt
-from retail_receipts_import.domain.chains.printed import DATE
-from retail_receipts_import.domain.chains.printed import fold as _fold
-from retail_receipts_import.domain.chains.printed import money as _money
-from retail_receipts_import.domain.chains.printed import quantity as _quantity
-from retail_receipts_import.domain.chains.printed import stripped as _stripped
+from retail_receipts_import.domain.chains.printed import (
+    DATE,
+    fold,
+    money,
+    parse_pass2,
+    pass1_time,
+    purchase_time,
+    quantity,
+    stripped,
+)
 from retail_receipts_import.domain.chains.spar.schema import SparLine, SparPass2, SparPayment
 from retail_receipts_import.domain.receipt import (
     NormalizedReceipt,
@@ -27,21 +32,19 @@ TIME = re.compile(r"(\d{1,2}):(\d{2})")
 
 
 def normalize(response: str, chain_id: str) -> NormalizedReceipt:
-    try:
-        raw = SparPass2.model_validate_json(response)
-    except ValidationError as exc:
-        # The error count only: the errors themselves would echo receipt content into logs.
-        raise UnreadableReceipt(f"response fails the schema ({exc.error_count()} errors)") from None
+    raw = parse_pass2(SparPass2, response)
     try:
         return NormalizedReceipt(
             payload_version=1,
             chain_id=chain_id,
             store_name=raw.store_name.strip(),
             branch_number=_branch(raw.receipt_number),
-            receipt_number=_stripped(raw.receipt_number),
-            store_address=_stripped(raw.store_address),
-            purchased_at=zagreb_to_utc(_purchase_time(raw.purchase_date, raw.purchase_time)),
-            total=_money(raw.total, "total"),
+            receipt_number=stripped(raw.receipt_number),
+            store_address=stripped(raw.store_address),
+            purchased_at=zagreb_to_utc(
+                purchase_time(DATE, TIME, raw.purchase_date, raw.purchase_time)
+            ),
+            total=money(raw.total, "total"),
             lines=_lines(raw.lines),
             settlements=_settlements(raw.payments),
         )
@@ -50,42 +53,18 @@ def normalize(response: str, chain_id: str) -> NormalizedReceipt:
 
 
 def normalize_pass1_time(purchase_date: str, purchase_time: str) -> datetime | None:
-    try:
-        if not purchase_date or not purchase_time:
-            return None
-        date = DATE.fullmatch(purchase_date.strip())
-        time = TIME.fullmatch(purchase_time.strip())
-        if date is None or time is None:
-            return None
-        day, month, year = (int(part) for part in date.groups())
-        hour, minute = (int(part) for part in time.groups())
-        return zagreb_to_utc(datetime(year, month, day, hour, minute))
-    except Exception:
-        return None
+    return pass1_time(DATE, TIME, purchase_date, purchase_time)
 
 
 def _branch(receipt_number: str | None) -> str | None:
     # Spar prints `sequence/branch/till`; the branch is the middle segment.
-    number = _stripped(receipt_number)
+    number = stripped(receipt_number)
     if number is None:
         return None
     parts = number.split("/")
     if len(parts) != 3 or not all(part.isdigit() for part in parts):
         raise UnreadableReceipt(f"receipt number {number!r} is not three numeric segments")
     return parts[1]
-
-
-def _purchase_time(date_text: str, time_text: str) -> datetime:
-    date = DATE.fullmatch(date_text.strip())
-    time = TIME.fullmatch(time_text.strip())
-    if date is None or time is None:
-        raise UnreadableReceipt(f"purchase time {date_text!r} {time_text!r} cannot be read")
-    day, month, year = (int(part) for part in date.groups())
-    hour, minute = (int(part) for part in time.groups())
-    try:
-        return datetime(year, month, day, hour, minute)
-    except ValueError:
-        raise UnreadableReceipt(f"purchase time {date_text!r} {time_text!r} is no date") from None
 
 
 @dataclass
@@ -107,9 +86,9 @@ def _lines(rows: list[SparLine]) -> list[ReceiptLine]:
     for row in rows:
         if _is_info(row.text):
             continue
-        amount = _money(row.amount, "line amount")
+        amount = money(row.amount, "line amount")
         if row.quantity is not None:
-            items.append(_Item(row=row, quantity=_quantity(row.quantity), amount=amount))
+            items.append(_Item(row=row, quantity=quantity(row.quantity), amount=amount))
             continue
         if amount >= 0 or not items:
             raise UnreadableReceipt(f"row {row.text!r} is neither an item nor a discount")
@@ -128,7 +107,7 @@ def _line(item: _Item) -> ReceiptLine:
         printed_text=item.row.text.strip(),
         quantity=item.quantity,
         unit="kg" if unit and unit.strip().lower().startswith("kg") else None,
-        unit_price=None if price is None else _money(price, "unit price"),
+        unit_price=None if price is None else money(price, "unit price"),
         printed_amount=item.amount,
         separate_discount=item.discount,
         discount_text=item.discount_text,
@@ -142,7 +121,7 @@ def _is_info(text: str) -> bool:
     `Vaša ušteda` sums discounts already printed as their own rows; counting either would
     count it twice.
     """
-    label = _fold(text)
+    label = fold(text)
     return "POVRATNA NAKNADA" in label or "USTEDA" in label
 
 
@@ -153,8 +132,8 @@ def _settlements(payments: list[SparPayment]) -> list[Settlement]:
     for payment in payments:
         if _is_info(payment.text):
             continue
-        label = _fold(payment.text)
-        amount = _money(payment.amount, "payment")
+        label = fold(payment.text)
+        amount = money(payment.amount, "payment")
         if "OSTATAK" in label:
             if change is not None:
                 raise UnreadableReceipt("two change rows")

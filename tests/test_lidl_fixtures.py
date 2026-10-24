@@ -335,3 +335,14 @@ def test_matrix_card_and_unknown_payment() -> None:
     # Unknown payment label is unreadable
     with pytest.raises(UnreadableReceipt, match="not a known kind"):
         PLUGINS["lidl"].normalize(response(payments=[payment("BON", "19,75")]))
+
+
+def test_lidl_row_failing_receipt_line_raises_unreadable_receipt() -> None:
+    # A raw ValidationError would carry receipt content into the error log.
+    raw = response(
+        lines=[item("Kruh", "0", None, "2,00")],
+        total="2,00",
+        payments=[payment(CARD, "2,00")],
+    )
+    with pytest.raises(UnreadableReceipt, match=r"receipt fails the model \(1 errors\)"):
+        PLUGINS["lidl"].normalize(raw)
