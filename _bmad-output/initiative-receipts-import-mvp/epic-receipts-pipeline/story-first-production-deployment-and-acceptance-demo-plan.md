@@ -79,6 +79,14 @@ context: []
 
 ## Implementation Notes
 
+- Written in this session (Opus 5.5). Runbook `docs/deployment.md` with `docs/deploy/provision.sql` and `docs/deploy/after-migrate.sql`; README links to it.
+- Role narrowing, 2026-10-24: table rights by `scratch/narrow_dev_roles.py --apply` as `rri_dev_owner`. The agent's database-level change through pg18 and a temporary admin role were both refused by the harness as changes to shared resources. The owner ran `scratch/admin_narrow_dev.sql` as `postgres` through `postgres:16` psql on srv22: PUBLIC lost CONNECT/TEMP on `postgres`, `data` and `template1`; `lab_loader`, `lab_reader` and `retail_prices_ingest` got the same rights explicitly; `rri_dev_owner` lost CREATE/TEMP on the dev database; `public` is usable only by `rri_dev_writer` and `retail_prices_ingest`.
+- `scratch/check_overreach.py` after both steps: the writer is refused UPDATE, DELETE, TRUNCATE, reads of lines/feed/`schema_migrations`/`resolver_v1`/`public.chains`, CREATE TABLE and TEMP; the reader is refused internal tables, `chains_v1`, `public` functions and TEMP; all three roles are refused on `postgres`, `data` and `template1`.
+- Deployment, srv22 (192.168.100.22): the existing empty clone got the positive sparse set from the runbook, `main` at `7f9638f`; `compose build` ok; `.env` written over ssh stdin without the owner's and Resolver's credentials, mode 600; `migrate` from the container applied 0 three times (before and after narrowing); pending updates 0 and no local poller; `compose up -d` logged `ready: env=dev`.
+- Surprise: on Windows, `subprocess` text input sends CRLF and the remote `read` kept the CR, so the first `migrate` failed authentication; the helper now sends bytes.
+- Import of 50 samples (10 per chain, DM 9 plus one Kaufland), live Gemini, 2026-10-24: 44 stored, 5 duplicate, 1 failed. Duplicates are real: two Spar samples stored by earlier dev runs, `muller 6.jpeg` = `Attachment-3.png` and `muller 7.jpeg` = `Attachment-2.png` (same receipts), Kaufland `20250630_084443` = `20250625_185418` (same receipt, both checked by eye). All 44 are readable as `resolver_dev_reader` through `resolver_v1`.
+- Defect found: Kaufland `20260427_231253.pdf` (valid receipt) fails `no_valid_result` because the returned bottle line `Boca za pivo * 4 * 0,16 -0,64` becomes a sale line with a negative amount, which the model refuses; reproduced on a second run, pass-2 response kept in `scratch/diagnose-pass2.json`. Needs a bug ticket; not fixed here.
+
 ## Plan Change Log
 
 - 2026-10-24, owner: scope moved from a production deployment to trial operation on the dev database with role narrowing and a 50-receipt live import; the production steps wait for a later run of this ticket.

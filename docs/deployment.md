@@ -13,6 +13,13 @@ own database and three login roles:
 None of them may connect to any other database, update or delete a receipt, or touch the
 migrations ledger. `dev` needs a database name ending in `-dev`; `prod` one that does not.
 
+The SQL steps need `psql`. Where it is not installed, run it from the PostgreSQL image with the
+repository mounted, for example on the home server:
+
+```bash
+docker run --rm -it -v "$PWD":/repo -w /repo postgres:18.6 psql -h <host> -p <port> -U postgres -d postgres
+```
+
 ## 1. Close the other databases (admin, once per cluster)
 
 PostgreSQL grants CONNECT and TEMPORARY on every new database to PUBLIC. Revoke that on every
