@@ -1,0 +1,12 @@
+[[epic]]
+id = 1
+slug = "epic-shared-chains-contract"
+title = "Shared chains contract and optional tax identifier"
+covers = ["R1", "R2", "R3", "R4"]
+
+[[epic]]
+id = 2
+slug = "epic-multi-country-pipeline"
+title = "Multi-country receipt pipeline and currency handling"
+covers = ["R5", "R6"]
+after = [{ epic = 1, needs = "the updated chains_v1 contract and country-aware chain reference" }]

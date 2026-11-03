@@ -1,0 +1,54 @@
+[[entry]]
+id = 1
+type = "story"
+title = "Consumer contract chains_v1 update and common ownership"
+description = "Updates docs/contracts/chains_v1.md and chains_v1.sql in-place: documents provider as common, adds country_code, and generalizes seller_oibs to optional tax_numbers."
+verify = "Contract documents the in-place schema changes, rule updates, and api-versions record."
+covers = ["E1", "E2", "E3"]
+after = []
+hitl = false
+risk = "medium"
+
+[[entry]]
+id = 2
+type = "story"
+title = "PostgreSQL chain reference adapter for optional tax numbers and country code"
+description = "Updates adapters/postgres/chains.py KnownChain, query, and row validation to load country_code and allow empty/null tax_numbers."
+verify = "Unit tests in test_chains_reader.py verify rows with valid tax_numbers, empty tax_numbers, NULL tax_numbers, and invalid values."
+covers = ["E4"]
+after = [1]
+hitl = false
+risk = "medium"
+
+[[entry]]
+id = 3
+type = "story"
+title = "Pipeline seller guard relaxation for chains without tax numbers"
+description = "Updates pipeline pass 2 seller guard to check printed tax numbers only when the chain has tax numbers configured, bypassing check when empty."
+verify = "Pipeline tests confirm a chain without tax numbers is accepted, while a chain with tax numbers continues to enforce the seller guard."
+covers = ["E5"]
+after = [2]
+hitl = false
+risk = "medium"
+
+[[entry]]
+id = 4
+type = "story"
+title = "Test fixtures and integration suite for shared chains reference"
+description = "Updates conftest.py, existing fixtures, and integration tests to align with chains_v1 in-place update and common provider setup."
+verify = "uv run pytest and uv run pytest -m integration pass with the updated schema and mock references."
+covers = ["E6"]
+after = [3]
+hitl = false
+risk = "medium"
+
+[[entry]]
+id = 5
+type = "story"
+title = "Refactor sweep and documentation parity"
+description = "Performs code cleanup, updates docs/adding-a-chain.md, and runs ruff, mypy strict, and test suite."
+verify = "Standard check suite passes cleanly and documentation matches code."
+covers = ["E7"]
+after = [4]
+hitl = false
+risk = "low"
