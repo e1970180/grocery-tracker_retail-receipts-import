@@ -234,7 +234,7 @@ def _extract(path: Path, mime: str, pass1: Pass1Response, ports: Ports) -> Pass2
 
     # The printed OIB must belong to the chain in the reference; neither value enters the detail.
     printed_oib = plugin.seller_oib(pass2_text)
-    if printed_oib is None or printed_oib not in known_chain.seller_oibs:
+    if printed_oib is None or printed_oib not in known_chain.tax_numbers:
         return Invalid(FailureReason.NO_VALID_RESULT, "seller OIB does not match chain reference")
 
     # Checked here as well as in the writer, so a mismatch is an outcome and not an exception.

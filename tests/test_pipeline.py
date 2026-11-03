@@ -51,11 +51,11 @@ SOURCE = telegram_source(0, 1, buyer_name="tester")
 STORED_ID = uuid.UUID(int=7)
 
 DEFAULT_CHAINS = (
-    KnownChain("dm", "dm", ("DM", "dm"), ("94124811986",)),
-    KnownChain("kaufland", "Kaufland", ("KAUFLAND", "Kaufland"), ("47432874968",)),
-    KnownChain("lidl", "Lidl", ("LIDL", "Lidl"), ("66089976432",)),
-    KnownChain("tommy", "Tommy", ("TOMMY", "Tommy"), ("12345678901",)),
-    KnownChain("spar", "Spar", ("SPAR", "Spar", "INTERSPAR"), ("46108893754",)),
+    KnownChain("dm", "dm", ("DM", "dm"), "HR", ("94124811986",)),
+    KnownChain("kaufland", "Kaufland", ("KAUFLAND", "Kaufland"), "HR", ("47432874968",)),
+    KnownChain("lidl", "Lidl", ("LIDL", "Lidl"), "HR", ("66089976432",)),
+    KnownChain("tommy", "Tommy", ("TOMMY", "Tommy"), "HR", ("12345678901",)),
+    KnownChain("spar", "Spar", ("SPAR", "Spar", "INTERSPAR"), "HR", ("46108893754",)),
 )
 DEFAULT_REFERENCE = ChainReference(
     chains=DEFAULT_CHAINS,
@@ -343,7 +343,7 @@ def test_chain_withdrawn_before_pass2_calls_no_gemini(pdf: Path) -> None:
 
 def test_pass2_checks_the_oib_against_the_reference_read_now(pdf: Path) -> None:
     corrected = ChainReference(
-        chains=(KnownChain("spar", "Spar", ("SPAR",), ("12345678903",)),),
+        chains=(KnownChain("spar", "Spar", ("SPAR",), "HR", ("12345678903",)),),
         inactive_ids=(),
         rejected=(),
     )

@@ -95,8 +95,8 @@ def test_pipeline_stores_recorded_dm_samples(case: Path, tmp_path: Path) -> None
 
     reference = ChainReference(
         chains=(
-            KnownChain("dm", "dm", ("DM", "dm"), (DM_OIB,)),
-            KnownChain("spar", "Spar", ("SPAR", "Spar", "INTERSPAR"), ("46108893754",)),
+            KnownChain("dm", "dm", ("DM", "dm"), "HR", (DM_OIB,)),
+            KnownChain("spar", "Spar", ("SPAR", "Spar", "INTERSPAR"), "HR", ("46108893754",)),
         ),
         inactive_ids=(),
         rejected=(),

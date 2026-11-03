@@ -87,8 +87,8 @@ def test_pipeline_stores_recorded_kaufland_samples(case: Path, tmp_path: Path) -
 
     reference = ChainReference(
         chains=(
-            KnownChain("kaufland", "Kaufland", ("KAUFLAND", "Kaufland"), (KAUFLAND_OIB,)),
-            KnownChain("spar", "Spar", ("SPAR", "Spar", "INTERSPAR"), ("46108893754",)),
+            KnownChain("kaufland", "Kaufland", ("KAUFLAND", "Kaufland"), "HR", (KAUFLAND_OIB,)),
+            KnownChain("spar", "Spar", ("SPAR", "Spar", "INTERSPAR"), "HR", ("46108893754",)),
         ),
         inactive_ids=(),
         rejected=(),

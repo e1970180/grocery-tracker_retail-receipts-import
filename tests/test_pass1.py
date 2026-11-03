@@ -22,8 +22,8 @@ def test_pass1_schema_restricts_chain_to_active_and_sentinels() -> None:
 
 def test_pass1_prompt_lists_aliases_and_time_hints() -> None:
     chains = (
-        KnownChain("dm", "dm", ("DM", "dm"), ("94124811986",)),
-        KnownChain("spar", "Spar", ("SPAR", "Spar", "INTERSPAR"), ("46108893754",)),
+        KnownChain("dm", "dm", ("DM", "dm"), "HR", ("94124811986",)),
+        KnownChain("spar", "Spar", ("SPAR", "Spar", "INTERSPAR"), "HR", ("46108893754",)),
     )
     prompt = build_pass1_prompt(chains, PLUGINS)
     assert "spar (Spar): aliases: SPAR, Spar, INTERSPAR." in prompt

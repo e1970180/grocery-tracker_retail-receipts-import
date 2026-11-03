@@ -72,7 +72,8 @@ Before writing any Python code, determine the chain's metadata according to the 
 - **`chain_id`**: Lowercase alphanumeric slug (e.g., `konzum`, `tommy`, `studenac`), matching regex `^[a-z][a-z0-9_]{0,31}$`.
 - **`display_name`**: Human-readable name (e.g., `"Konzum"`).
 - **`aliases`**: Common OCR printed variants (e.g., `["KONZUM PLUS d.o.o.", "KONZUM"]`).
-- **`seller_oibs`**: Text array of 11-digit Croatian tax numbers (OIB) printed on receipts (e.g., `{"12345678901"}`).
+- **`country_code`**: Two uppercase letters (e.g., `HR`).
+- **`tax_numbers`**: Optional text array of tax identifiers printed on receipts (e.g., `{"12345678901"}`). NULL or empty when the chain prints none. For `HR` every element must be an 11-digit OIB.
 
 > [!IMPORTANT]
 > **Reference Parity Alert:** The service continuously checks registered plug-ins against `public.chains_v1`. If a chain exists in the Python registry but is absent or inactive in the database view, the service issues an operational alert (`chain_reference`). Ensure the admin seeds `public.chains_v1` in both dev and production.
@@ -284,7 +285,7 @@ wsl -- bash -l scratch/wsl-run.sh run pytest
 
 Before finalizing changes:
 - [ ] `chain_id` matches regex `^[a-z][a-z0-9_]{0,31}$`.
-- [ ] `public.chains_v1` includes the chain slug, aliases, and valid 11-digit OIBs.
+- [ ] `public.chains_v1` includes the chain slug, aliases, country code, and valid tax numbers (11-digit OIBs for `HR`).
 - [ ] Schema fields extract numbers as `str`, never `float`.
 - [ ] Payment card slip data (PAN, terminal ID) is never requested.
 - [ ] `seller_oib(...)` returns OIB extracted through the model schema.

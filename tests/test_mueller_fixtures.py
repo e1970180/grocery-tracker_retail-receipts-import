@@ -138,8 +138,8 @@ def test_pipeline_stores_recorded_mueller_samples(case: Path, tmp_path: Path) ->
 
     reference = ChainReference(
         chains=(
-            KnownChain("mueller", "Müller", ("MÜLLER", "Müller", "Muller"), (MUELLER_OIB,)),
-            KnownChain("spar", "Spar", ("SPAR", "Spar", "INTERSPAR"), ("46108893754",)),
+            KnownChain("mueller", "Müller", ("MÜLLER", "Müller", "Muller"), "HR", (MUELLER_OIB,)),
+            KnownChain("spar", "Spar", ("SPAR", "Spar", "INTERSPAR"), "HR", ("46108893754",)),
         ),
         inactive_ids=(),
         rejected=(),

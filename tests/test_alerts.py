@@ -18,11 +18,11 @@ from retail_receipts_import.domain.jobs import JobState
 from retail_receipts_import.domain.outcomes import AlertKind
 from tests.test_notify import ADMIN, TEXTS, RecordingTelegram
 
-SPAR = KnownChain("spar", "Spar", ("SPAR", "Spar", "INTERSPAR"), ("46108893754",))
-LIDL = KnownChain("lidl", "Lidl", ("LIDL", "Lidl"), ("66089976432",))
-KAUFLAND = KnownChain("kaufland", "Kaufland", ("KAUFLAND", "Kaufland"), ("47432874968",))
-DM = KnownChain("dm", "dm", ("DM", "dm"), ("94124811986",))
-MUELLER = KnownChain("mueller", "Müller", ("MÜLLER", "Müller", "Muller"), ("84698789700",))
+SPAR = KnownChain("spar", "Spar", ("SPAR", "Spar", "INTERSPAR"), "HR", ("46108893754",))
+LIDL = KnownChain("lidl", "Lidl", ("LIDL", "Lidl"), "HR", ("66089976432",))
+KAUFLAND = KnownChain("kaufland", "Kaufland", ("KAUFLAND", "Kaufland"), "HR", ("47432874968",))
+DM = KnownChain("dm", "dm", ("DM", "dm"), "HR", ("94124811986",))
+MUELLER = KnownChain("mueller", "Müller", ("MÜLLER", "Müller", "Muller"), "HR", ("84698789700",))
 CLEAN_REFERENCE = ChainReference(
     chains=(SPAR, LIDL, KAUFLAND, DM, MUELLER), inactive_ids=(), rejected=()
 )

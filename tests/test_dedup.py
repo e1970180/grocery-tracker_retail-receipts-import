@@ -37,7 +37,7 @@ from tests.test_notify import ADMIN, TEXTS, RecordingTelegram
 
 pytestmark = pytest.mark.integration
 
-SPAR = KnownChain("spar", "Spar", ("SPAR", "Spar", "INTERSPAR"), ("46108893754",))
+SPAR = KnownChain("spar", "Spar", ("SPAR", "Spar", "INTERSPAR"), "HR", ("46108893754",))
 SPAR_ONLY = ChainReference(chains=(SPAR,), inactive_ids=(), rejected=())
 PDF_BYTES = b"%PDF-1.7 receipt"
 RETRY_DELAY = timedelta(seconds=600)

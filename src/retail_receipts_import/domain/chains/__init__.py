@@ -25,4 +25,6 @@ class KnownChain:
     chain_id: str
     display_name: str
     aliases: tuple[str, ...]
-    seller_oibs: tuple[str, ...]
+    country_code: str
+    # Empty when the chain prints no tax identifier; the reference stores that as NULL or [].
+    tax_numbers: tuple[str, ...]

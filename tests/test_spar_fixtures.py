@@ -85,7 +85,7 @@ def test_pipeline_stores_recorded_spar_samples(case: Path, tmp_path: Path) -> No
         return WriteResult(WriteKind.STORED, stored_id)
 
     reference = ChainReference(
-        chains=(KnownChain("spar", "Spar", ("SPAR", "Spar", "INTERSPAR"), ("46108893754",)),),
+        chains=(KnownChain("spar", "Spar", ("SPAR", "Spar", "INTERSPAR"), "HR", ("46108893754",)),),
         inactive_ids=(),
         rejected=(),
     )

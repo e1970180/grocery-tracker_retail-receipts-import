@@ -76,8 +76,8 @@ def test_pipeline_stores_recorded_lidl_samples(case: Path, tmp_path: Path) -> No
 
     reference = ChainReference(
         chains=(
-            KnownChain("lidl", "Lidl", ("LIDL", "Lidl"), ("66089976432",)),
-            KnownChain("spar", "Spar", ("SPAR", "Spar", "INTERSPAR"), ("46108893754",)),
+            KnownChain("lidl", "Lidl", ("LIDL", "Lidl"), "HR", ("66089976432",)),
+            KnownChain("spar", "Spar", ("SPAR", "Spar", "INTERSPAR"), "HR", ("46108893754",)),
         ),
         inactive_ids=(),
         rejected=(),
