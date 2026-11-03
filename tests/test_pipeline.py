@@ -351,6 +351,19 @@ def test_pass2_checks_the_oib_against_the_reference_read_now(pdf: Path) -> None:
     assert isinstance(extract(pdf, "application/pdf", SPAR_PASS1, fake.ports(), waits=0), Extracted)
 
 
+@pytest.mark.parametrize("printed_oib", [None, "99999999999", "46108893754"])
+def test_chain_without_tax_numbers_skips_the_seller_guard(
+    pdf: Path, printed_oib: str | None
+) -> None:
+    no_tax = ChainReference(
+        chains=(KnownChain("spar", "Spar", ("SPAR",), "HR", ()),),
+        inactive_ids=(),
+        rejected=(),
+    )
+    fake = FakePorts(answers=[response(seller_oib=printed_oib)], reference=no_tax)
+    assert isinstance(extract(pdf, "application/pdf", SPAR_PASS1, fake.ports(), waits=0), Extracted)
+
+
 def test_blank_store_name_is_none(pdf: Path) -> None:
     fake = FakePorts(answers=[pass1_response(chain="other", store_name="   ")])
     assert run(pdf, fake) == Unsupported("other", None)

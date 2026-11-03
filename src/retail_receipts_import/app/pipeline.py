@@ -232,10 +232,14 @@ def _extract(path: Path, mime: str, pass1: Pass1Response, ports: Ports) -> Pass2
     except UnreadableReceipt as exc:
         return Invalid(FailureReason.NO_VALID_RESULT, str(exc))
 
-    # The printed OIB must belong to the chain in the reference; neither value enters the detail.
-    printed_oib = plugin.seller_oib(pass2_text)
-    if printed_oib is None or printed_oib not in known_chain.tax_numbers:
-        return Invalid(FailureReason.NO_VALID_RESULT, "seller OIB does not match chain reference")
+    # A chain with no tax numbers in the reference has nothing to match against, so it skips the
+    # guard. Otherwise the printed OIB must belong to the chain; neither value enters the detail.
+    if known_chain.tax_numbers:
+        printed_oib = plugin.seller_oib(pass2_text)
+        if printed_oib is None or printed_oib not in known_chain.tax_numbers:
+            return Invalid(
+                FailureReason.NO_VALID_RESULT, "seller OIB does not match chain reference"
+            )
 
     # Checked here as well as in the writer, so a mismatch is an outcome and not an exception.
     if difference := check_consistency(receipt):
