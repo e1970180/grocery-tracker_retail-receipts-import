@@ -36,7 +36,7 @@ Incoming Receipt (Image/PDF)
                             ▼
 ┌────────────────────────────────────────────────────────┐
 │ Plugin Normalization & Arithmetic Balance Verification │
-│ - Verifies seller OIB against reference                │
+│ - Verifies seller OIB when chain has tax numbers       │
 │ - Nets stornos and maps deposit refunds                │
 │ - Verifies: sum(effective_amount) == sum(settlements)  │
 │ - Constructs canonical NormalizedReceipt               │
@@ -260,7 +260,7 @@ Open [`src/retail_receipts_import/domain/chains/registry.py`](file:///d:/MyGitPr
    - Test 1: all fixture cases are present and loaded.
    - Test 2: `normalize(pass2.json)` produces exact match with `expected.json`.
    - Test 3: arithmetic mismatches (off by 0.01 EUR) raise `UnreadableReceipt`.
-   - Test 4: seller OIB guard rejects responses with missing or invalid OIB.
+   - Test 4: `seller_oib(...)` returns the printed OIB, and `None` for missing or unreadable responses. The pipeline rejects a mismatch only for chains with tax numbers.
 
 ### Running Verification Checks (in WSL)
 
@@ -285,7 +285,7 @@ wsl -- bash -l scratch/wsl-run.sh run pytest
 
 Before finalizing changes:
 - [ ] `chain_id` matches regex `^[a-z][a-z0-9_]{0,31}$`.
-- [ ] `public.chains_v1` includes the chain slug, aliases, country code, and valid tax numbers (11-digit OIBs for `HR`).
+- [ ] `public.chains_v1` includes the chain slug, aliases, and country code; tax numbers are optional (11-digit OIBs for `HR`), and a chain without any skips the seller guard.
 - [ ] Schema fields extract numbers as `str`, never `float`.
 - [ ] Payment card slip data (PAN, terminal ID) is never requested.
 - [ ] `seller_oib(...)` returns OIB extracted through the model schema.
