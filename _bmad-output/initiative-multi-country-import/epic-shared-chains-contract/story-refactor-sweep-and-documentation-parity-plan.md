@@ -1,9 +1,9 @@
 ---
 title: 'Refactor sweep and documentation parity'
 type: 'chore'
-ticket: '1.5'
+ticket: '5'
 created: '2026-11-04'
-status: 'built'
+status: done
 baseline_revision: 'da443fb'
 route: 'oneshot'
 route_source: 'auto'
