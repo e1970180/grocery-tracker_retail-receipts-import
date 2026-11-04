@@ -3,7 +3,7 @@ title: 'PostgreSQL chain reference adapter for optional tax numbers and country 
 type: 'feature'
 ticket: '2'
 created: '2026-11-03'
-status: 'built'
+status: done
 baseline_revision: '6999c1dcd11864ba9b56235574361bb898eebe37'
 route: 'full'
 route_source: 'auto'

@@ -3,7 +3,7 @@ title: 'Consumer contract chains_v1 update and common ownership'
 type: 'feature'
 ticket: '1'
 created: '2026-11-03'
-status: 'built'
+status: done
 baseline_revision: '39f305c3ef9889ccb47c02ff4ef6788b7c48215d'
 route: 'oneshot'
 route_source: 'auto'

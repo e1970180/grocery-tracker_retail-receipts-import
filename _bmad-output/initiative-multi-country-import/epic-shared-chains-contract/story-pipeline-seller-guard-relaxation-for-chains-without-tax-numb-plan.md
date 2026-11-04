@@ -3,7 +3,7 @@ title: 'Pipeline seller guard relaxation for chains without tax numbers'
 type: 'feature'
 ticket: '3'
 created: '2026-11-03'
-status: 'built'
+status: done
 baseline_revision: '11349c7098dc484ac8f4fc3091151350b5a5328b'
 route: 'oneshot'
 route_source: 'auto'
