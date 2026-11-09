@@ -58,7 +58,7 @@ def _run(settings: Settings, stop: threading.Event) -> int:
     # Python as PID 1 in a container ignores SIGTERM unless it installs a handler.
     if threading.current_thread() is threading.main_thread():
         signal.signal(signal.SIGTERM, lambda *_: stop.set())
-    log.info("ready: env=%s database=%s", settings.env, settings.redacted_dsn(settings.db_user))
+    log.info("ready: database=%s", settings.redacted_dsn(settings.db_user))
     try:
         serve(settings, texts, stop)
     except QueueError as exc:

@@ -1,5 +1,5 @@
 -- Chain reference, consumer contract chains_v1 1.2.0 (see chains_v1.md).
--- Reference copy for dev and tests. In shared environments grocery-tracker/common owns the
+-- Reference copy for provisioning and tests. In shared environments grocery-tracker/common owns the
 -- chains table, its DDL and migrations; this file only shows the shape this service reads.
 -- Grant SELECT on public.chains_v1 to the environment's writer role afterwards. No BEGIN/COMMIT
 -- here: the caller decides the transaction (psql -1, or a test transaction that rolls back).

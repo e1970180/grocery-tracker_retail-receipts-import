@@ -20,6 +20,8 @@ Additional deliverables:
 - Audit codebase documentation: verify docstrings and comments across `src/` to ensure they explain rationale in plain English without restating specs.
 - Write a comprehensive, detailed README in Russian covering system purpose, architecture, configuration, deployment runbook, database roles, and operations.
 
+> Note: this story speaks of a separate production database. There is one environment, srv22 with the database `grocery-tracker-dev`; the deployment and demo were run there.
+
 ## Acceptance Criteria
 
 1. **Production Deployment & Acceptance Demo**

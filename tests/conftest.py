@@ -12,7 +12,7 @@ from retail_receipts_import.migrate import SCHEMA, apply_migrations
 
 RESOLVER_SCHEMA = "resolver_v1"
 
-# A dedicated variable, never libpq's PG* defaults: those may point at the production database.
+# A dedicated variable, never libpq's PG* defaults: those may point at the live srv22 database.
 TEST_DSN_VAR = "RRI_TEST_DATABASE_URL"
 REPO = Path(__file__).resolve().parents[1]
 # Shared routines that migrations call; on a throwaway database they come from common's DDL.
@@ -28,14 +28,13 @@ DB_PASSWORD = "db-secret-password"
 
 @pytest.fixture
 def rri_env(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> dict[str, str]:
-    """A valid dev environment, isolated from the developer's real `.env` and shell."""
+    """A valid configuration, isolated from the developer's real `.env` and shell."""
     for name in list(os.environ):
         if name.startswith("RRI_") and name != TEST_DSN_VAR:
             monkeypatch.delenv(name)
     # Settings reads `.env` from the working directory; the repo's holds real tokens.
     monkeypatch.chdir(tmp_path)
     values = {
-        "RRI_ENV": "dev",
         "RRI_TELEGRAM_BOT_TOKEN": TOKEN,
         "RRI_GEMINI_API_KEY": GEMINI_KEY,
         "RRI_DB_HOST": "db.example",

@@ -198,7 +198,7 @@ Payment tenders and settlement breakdowns recorded for the receipt.
 ## Privileges
 
 The database admin provisions schema `resolver_v1` owned by the schema owner role
-(`rri_dev_owner` in dev) and grants access to the Resolver reader role (`resolver_dev_reader` in dev,
+(`rri_dev_owner` on srv22) and grants access to the Resolver reader role (`resolver_dev_reader` on srv22,
 or placeholder `<resolver_role>`):
 
 ```sql

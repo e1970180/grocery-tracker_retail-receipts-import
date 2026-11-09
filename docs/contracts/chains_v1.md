@@ -6,7 +6,7 @@
 | Kind | Consumer contract: this project states what it needs; `common` provides it |
 | Provider | `grocery-tracker/common`, which owns the `chains` table, its DDL, migrations and seed data |
 | Consumer | `retail-receipts-import`, read-only |
-| Reference DDL and rows | [`chains_v1.sql`](chains_v1.sql), a reference copy for dev and tests |
+| Reference DDL and rows | [`chains_v1.sql`](chains_v1.sql), a reference copy for provisioning and tests |
 
 The service learns the known retail chains from a shared reference in PostgreSQL. It never
 creates or writes the reference, and no receipt table has a foreign key to it. The table is
@@ -34,9 +34,9 @@ The ids `other` and `unreadable` are reserved for the service's own use and must
 
 ## Privileges
 
-`SELECT` on `public.chains_v1` for the environment's writer role (`rri_dev_writer` in dev),
+`SELECT` on `public.chains_v1` for the environment's writer role (`rri_dev_writer` on srv22),
 plus `USAGE` on schema `public`. The grant is not part of `chains_v1.sql`, because the grantee
-differs per environment.
+differs per deployment.
 
 ## What the service does with it
 

@@ -1,13 +1,11 @@
 """Service configuration from `RRI_*` environment variables, validated once at startup."""
 
 from pathlib import Path
-from typing import Annotated, Literal, Self
+from typing import Annotated, Literal
 
 from psycopg.conninfo import make_conninfo
-from pydantic import Field, SecretStr, field_validator, model_validator
+from pydantic import Field, SecretStr, field_validator
 from pydantic_settings import BaseSettings, NoDecode, SettingsConfigDict
-
-DEV_DATABASE_SUFFIX = "-dev"
 
 
 class Settings(BaseSettings):
@@ -15,7 +13,6 @@ class Settings(BaseSettings):
 
     model_config = SettingsConfigDict(env_prefix="RRI_", env_file=".env", extra="ignore")
 
-    env: Literal["dev", "prod"]
     telegram_bot_token: SecretStr
     gemini_api_key: SecretStr
     gemini_model: str = "gemini-3.8-flash"
@@ -66,19 +63,6 @@ class Settings(BaseSettings):
         if isinstance(value, str):
             return [part.strip() for part in value.split(",") if part.strip()]
         return value
-
-    # One bot serves both environments, so the database name is the only thing that tells
-    # a dev run from production. A mismatch would write test receipts to the real data.
-    @model_validator(mode="after")
-    def _environment_matches_database(self) -> Self:
-        is_dev_db = self.db_name.endswith(DEV_DATABASE_SUFFIX)
-        if (self.env == "dev") != is_dev_db:
-            expected = "ends" if self.env == "dev" else "does not end"
-            raise ValueError(
-                f"environment mismatch: RRI_ENV={self.env} needs a database name that "
-                f"{expected} with {DEV_DATABASE_SUFFIX!r}, got {self.db_name!r}"
-            )
-        return self
 
     def conninfo(self, user: str, password: SecretStr) -> str:
         """Constructs a libpq connection string with statement and connect timeouts configured."""

@@ -76,7 +76,7 @@ Before writing any Python code, determine the chain's metadata according to the 
 - **`tax_numbers`**: Optional text array of tax identifiers printed on receipts (e.g., `{"12345678901"}`). NULL or empty when the chain prints none. For `HR` every element must be an 11-digit OIB.
 
 > [!IMPORTANT]
-> **Reference Parity Alert:** The service continuously checks registered plug-ins against `public.chains_v1`. If a chain exists in the Python registry but is absent or inactive in the database view, the service issues an operational alert (`chain_reference`). Ensure the admin seeds `public.chains_v1` in both dev and production.
+> **Reference Parity Alert:** The service continuously checks registered plug-ins against `public.chains_v1`. If a chain exists in the Python registry but is absent or inactive in the database view, the service issues an operational alert (`chain_reference`). Ensure the admin seeds `public.chains_v1` in the database.
 
 ---
 

@@ -1,8 +1,8 @@
 # Deployment
 
 The service runs on the home server as one compose service with one named volume. PostgreSQL is
-the existing LAN instance (18.6 or later) and is not part of compose. Each environment has its
-own database and three login roles:
+the existing LAN instance (18.6 or later) and is not part of compose. There is one environment,
+with its own database and three login roles; "dev" in their names is historical:
 
 | Role | Used by | May do |
 | --- | --- | --- |
@@ -11,11 +11,11 @@ own database and three login roles:
 | Resolver reader (`resolver_dev_reader`) | the Resolver | connect to its database; read the views in `resolver_v1` |
 
 None of them may connect to any other database, update or delete a receipt, or touch the
-migrations ledger. `dev` needs a database name ending in `-dev`; `prod` one that does not.
+migrations ledger.
 
-Only the home server holds the writer's password. In dev, the workstation works as a fourth role,
-`rri_dev_developer`: a member of the schema owner, with CONNECT, CREATE and TEMPORARY on the dev
-database and SELECT on `public.chains_v1`. Production has no such role.
+Only the home server holds the writer's password. The workstation works as a fourth role,
+`rri_dev_developer`: a member of the schema owner, with CONNECT, CREATE and TEMPORARY on the
+database and SELECT on `public.chains_v1`. Every write through it changes live data.
 
 The SQL steps need `psql`. Where it is not installed, run it from the PostgreSQL image with the
 repository mounted, for example on the home server:
@@ -37,7 +37,7 @@ REVOKE ALL ON DATABASE "<other_db>" FROM PUBLIC;
 
 A role created on the cluster later then needs an explicit CONNECT to reach those databases.
 
-## 2. Provision the environment (admin, once per environment)
+## 2. Provision the environment (admin, once)
 
 From the repository root, here or on the home server after step 3 (the script includes
 `docs/contracts/chains_v1.sql`):
@@ -111,8 +111,8 @@ psql -h <host> -p <port> -U rri_dev_owner -d grocery-tracker-dev -v ON_ERROR_STO
 
 ## 5. Start
 
-One Telegram bot serves dev and production, and Telegram gives updates to one poller at a time.
-Before starting, stop every other instance of the service, wherever it runs.
+Telegram gives updates to one poller at a time. Before starting, stop every other instance of
+the service, wherever it runs.
 
 ```bash
 docker compose up -d

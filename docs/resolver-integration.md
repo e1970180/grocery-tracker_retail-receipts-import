@@ -31,8 +31,7 @@
 
 ### Роли и доступы:
 - Агент подключается под выделенной учетной записью читателя:
-  - **Dev**: `resolver_dev_reader` (база данных `grocery-tracker-dev`)
-  - **Prod**: `resolver_prod_reader` (база данных `grocery-tracker`)
+  - `resolver_dev_reader` (база данных `grocery-tracker-dev`; «dev» в именах историческое, окружение одно)
 - **Разрешенные права**:
   - `USAGE` на схему `resolver_v1`
   - `SELECT` на 4 витрины схемы `resolver_v1`
@@ -47,7 +46,7 @@
 # Пример конфигурации потребителя (Resolver)
 RESOLVER_DB_HOST=192.168.100.218
 RESOLVER_DB_PORT=5432
-RESOLVER_DB_NAME=grocery-tracker-dev   # или grocery-tracker для прода
+RESOLVER_DB_NAME=grocery-tracker-dev
 RESOLVER_DB_USER=resolver_dev_reader
 RESOLVER_DB_PASSWORD=<пароль_читателя>
 ```
@@ -365,7 +364,7 @@ if __name__ == "__main__":
 
 ## 8. Административные операции и управление жизненным циклом чеков
 
-Для сопровождения данных и исправления ошибок распознавания в схеме `retail_receipts_import` реализованы специализированные хранимые процедуры. Они вызываются под административной учетной записью (`rri_dev_developer` в dev или `rri_owner`) через `psql` или прямой SQL-вызов.
+Для сопровождения данных и исправления ошибок распознавания в схеме `retail_receipts_import` реализованы специализированные хранимые процедуры. Они вызываются под административной учетной записью (`rri_dev_developer` или `rri_dev_owner`) через `psql` или прямой SQL-вызов.
 
 ### 8.1. Отзыв и удаление чека: `delete_receipt`
 

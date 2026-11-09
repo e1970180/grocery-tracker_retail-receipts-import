@@ -5,9 +5,8 @@ from retail_receipts_import.config import Settings
 from tests.conftest import DB_PASSWORD, GEMINI_KEY, TOKEN
 
 
-def test_valid_dev_config(rri_env: dict[str, str]) -> None:
+def test_valid_config(rri_env: dict[str, str]) -> None:
     settings = Settings()  # type: ignore[call-arg]
-    assert settings.env == "dev"
     assert settings.db_port == 5432
 
 
@@ -17,23 +16,6 @@ def test_admin_chat_id_is_required(
     assert Settings().admin_chat_id == 777  # type: ignore[call-arg]
     monkeypatch.delenv("RRI_ADMIN_CHAT_ID")
     with pytest.raises(ValidationError, match="admin_chat_id"):
-        Settings()  # type: ignore[call-arg]
-
-
-def test_prod_with_dev_database_is_refused(
-    rri_env: dict[str, str], monkeypatch: pytest.MonkeyPatch
-) -> None:
-    monkeypatch.setenv("RRI_ENV", "prod")
-    with pytest.raises(ValidationError, match="environment mismatch") as info:
-        Settings()  # type: ignore[call-arg]
-    assert "grocery-tracker-dev" in str(info.value)
-
-
-def test_dev_with_non_dev_database_is_refused(
-    rri_env: dict[str, str], monkeypatch: pytest.MonkeyPatch
-) -> None:
-    monkeypatch.setenv("RRI_DB_NAME", "grocery-tracker")
-    with pytest.raises(ValidationError, match="environment mismatch"):
         Settings()  # type: ignore[call-arg]
 
 

@@ -23,7 +23,7 @@ def _assert_no_secrets(text: str) -> None:
 def test_run_logs_readiness(rri_env: dict[str, str], caplog: pytest.LogCaptureFixture) -> None:
     caplog.set_level("INFO")
     assert cli.main(["run"], stop=_stopped()) == 0
-    assert "ready: env=dev database=postgresql://writer@db.example:5432/grocery-tracker-dev" in (
+    assert "ready: database=postgresql://writer@db.example:5432/grocery-tracker-dev" in (
         caplog.text
     )
     _assert_no_secrets(caplog.text)
@@ -39,15 +39,15 @@ def test_http_request_logs_are_silenced(
         assert not logging.getLogger(name).isEnabledFor(logging.INFO)
 
 
-def test_run_refuses_environment_mismatch_without_leaking_secrets(
+def test_run_refuses_invalid_config_without_leaking_secrets(
     rri_env: dict[str, str],
     monkeypatch: pytest.MonkeyPatch,
     caplog: pytest.LogCaptureFixture,
     capsys: pytest.CaptureFixture[str],
 ) -> None:
-    monkeypatch.setenv("RRI_ENV", "prod")
+    monkeypatch.delenv("RRI_DB_HOST")
     assert cli.main(["run"], stop=_stopped()) == 2
-    assert "environment mismatch" in caplog.text
+    assert "invalid config: db_host" in caplog.text
     assert "ready" not in caplog.text
     captured = capsys.readouterr()
     _assert_no_secrets(caplog.text + captured.out + captured.err)
