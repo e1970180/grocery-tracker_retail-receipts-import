@@ -1,4 +1,4 @@
-# Provider contract `resolver_v1`
+# Provider contract `receipt_feed_v1`
 
 | | |
 | --- | --- |
@@ -13,7 +13,8 @@ has access only to these views, never to the internal tables.
 
 ## Objects
 
-All objects live in schema **`resolver_v1`**. The Resolver reads only these four views:
+All objects live in schema **`resolver_v1`**; the schema keeps its original name, only the
+contract is called `receipt_feed_v1`. The Resolver reads only these four views:
 
 - `resolver_v1.feed`
 - `resolver_v1.receipts`
