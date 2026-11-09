@@ -154,7 +154,7 @@ def test_printed_text_changes_rekey_the_line(receipts_conn: Conn) -> None:
     )
 
     receipts_conn.execute(
-        f"UPDATE {SCHEMA}.receipt_lines SET printed_text = 'MLIJEKO 2,8% 1L'"
+        f"UPDATE {SCHEMA}.receipt_lines SET printed_text = 'MLIJEKO 2,8%% 1L'"
         " WHERE receipt_id = %s AND line_no = 1",
         (receipt_id,),
     )
