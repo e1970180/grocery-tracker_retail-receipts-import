@@ -15,6 +15,12 @@ RESOLVER_SCHEMA = "resolver_v1"
 # A dedicated variable, never libpq's PG* defaults: those may point at the production database.
 TEST_DSN_VAR = "RRI_TEST_DATABASE_URL"
 REPO = Path(__file__).resolve().parents[1]
+# Shared routines that migrations call; on a throwaway database they come from common's DDL.
+PUBLIC_ROUTINES_DIR = REPO / "tests" / "fixtures" / "public_routines"
+PUBLIC_ROUTINES = {
+    "unaccent_grocery_tracker": "unaccent_grocery_tracker.sql",
+    "sanitize_text": "sanitize_text.sql",
+}
 TOKEN = "123456:telegram-secret-token"
 GEMINI_KEY = "gemini-secret-key"
 DB_PASSWORD = "db-secret-password"
@@ -76,6 +82,24 @@ def block_network(request: pytest.FixtureRequest, monkeypatch: pytest.MonkeyPatc
     monkeypatch.setattr(socket.socket, "connect", guarded_connect)
 
 
+def _bootstrap_public_routines(conn: psycopg.Connection[tuple[object, ...]]) -> None:
+    """Installs the routines common provides on shared databases but a throwaway one lacks.
+
+    The DDL is common's, vendored unchanged; CREATE OR REPLACE makes re-applying it harmless.
+    """
+    for name, file_name in PUBLIC_ROUTINES.items():
+        path = PUBLIC_ROUTINES_DIR / file_name
+        if path.is_file():
+            conn.execute(path.read_bytes())
+            continue
+        found = conn.execute(
+            "SELECT 1 FROM pg_proc WHERE proname = %s AND pronamespace = 'public'::regnamespace",
+            (name,),
+        ).fetchone()
+        if found is None:
+            pytest.fail(f"public.{name} is missing and {path.relative_to(REPO)} is not vendored")
+
+
 @pytest.fixture
 def migrate_conn() -> Iterator[psycopg.Connection[tuple[object, ...]]]:
     """Autocommit connection to the throwaway test database with a fresh service schema."""
@@ -86,6 +110,7 @@ def migrate_conn() -> Iterator[psycopg.Connection[tuple[object, ...]]]:
         # The fixture drops the real service schema; never let it near a project database.
         if "grocery-tracker" in conn.info.dbname:
             pytest.fail(f"{TEST_DSN_VAR} points at {conn.info.dbname!r}, not a throwaway database")
+        _bootstrap_public_routines(conn)
         conn.execute(f"DROP SCHEMA IF EXISTS {RESOLVER_SCHEMA} CASCADE")
         conn.execute(f"DROP SCHEMA IF EXISTS {SCHEMA} CASCADE")
         conn.execute(f"CREATE SCHEMA {SCHEMA}")

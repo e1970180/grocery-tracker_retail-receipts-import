@@ -2,10 +2,10 @@
 
 | | |
 | --- | --- |
-| Version | 1.1.0 |
+| Version | 1.2.0 |
 | Kind | Provider contract: this project provides the feed; the Resolver reads it |
 | Provider | `retail-receipts-import` (writes receipts and feed, publishes views) |
-| Consumer | Resolver, read-only |
+| Consumers | Resolver, read-only; `canonical-products`, read-only, uses `item_key` of `resolver_v1.receipt_lines` to link lines to canonical products |
 
 The service exposes stored retail grocery receipts and an event feed to the Resolver via
 schema-qualified PostgreSQL views. The Resolver connects with a dedicated read-only role that
@@ -71,6 +71,82 @@ Purchased line items only; see reading rule 3.
 | `discount_text` | `text` | Yes | Description of discounts or promotions applied. |
 | `regular_amount` | `text` | No | Pre-discount price (`printed_amount + included_discount`), 2 decimal places. |
 | `effective_amount` | `text` | No | Final line cost (`printed_amount - separate_discount`), 2 decimal places. |
+| `item_key` | `uuid` | No | Deterministic item key (UUIDv5) from the receipt's `chain_id` and the line's `printed_text`; see [Item key](#item-key). Kept as `uuid` like the other identifiers; only numbers are rendered as text. |
+
+### Item key
+
+`item_key` identifies an item as the receipt side sees it: lines with equal `item_key` carry the
+same item, within one chain, whatever receipt they come from, so one link made by a consumer
+applies to every line carrying that key. Different chains always give different keys. The
+database computes the key on every insert and on every change of `printed_text`; historical
+lines carry it too. It identifies the printed item text, not a product catalogue entry: the
+same product printed differently gives different keys.
+
+**Construction.** `item_key = UUIDv5(namespace, name)` (RFC 9562, SHA-1 based):
+
+- `namespace` is the RFC 9562 `NAMESPACE_URL`, `6ba7b811-9dad-11d1-80b4-00c04fd430c8`.
+- `name` is the UTF-8 encoding of `chain_id || ':' || sanitize_text(unaccent_grocery_tracker(printed_text))`:
+  1. `public.unaccent_grocery_tracker(text)`, contract `v1.0.0` (owner `common`), transliterates
+     accented and special characters (`Č` -> `C`, `ß` -> `ss`).
+  2. `public.sanitize_text(text)`, contract `v1.0.0` (owner `common`), applied to the result of
+     step 1, removes invisible characters, turns whitespace and control characters into spaces,
+     collapses runs of spaces and trims both ends.
+  3. The receipt's `chain_id`, one ASCII colon `:` (U+003A), then the result of step 2. A
+     `chain_id` never contains `:`.
+- Case is not changed: `Žličica` and `ŽLIČICA` give different keys.
+
+The database function `retail_receipts_import.item_key(chain text, printed_text text)` computes
+it. Consumers read the stored column and are not granted the function; the SQL below
+reproduces it wherever the two shared routines and `uuid-ossp` are installed:
+
+```sql
+SELECT public.uuid_generate_v5(
+    '6ba7b811-9dad-11d1-80b4-00c04fd430c8'::uuid,
+    :chain_id || ':' || public.sanitize_text(public.unaccent_grocery_tracker(:printed_text))
+);
+```
+
+Python reproduces the UUID from a final name. This project provides no Python port of the two
+routines: a consumer computing names outside PostgreSQL needs behaviour equal to their
+contracts, and checks it against the final names below.
+
+```python
+import uuid
+
+def item_key(chain_id: str, normalized_text: str) -> uuid.UUID:
+    """`normalized_text` is sanitize_text(unaccent_grocery_tracker(printed_text))."""
+    return uuid.uuid5(uuid.NAMESPACE_URL, f"{chain_id}:{normalized_text}")
+```
+
+**Test vectors.** Strings are Python string literals; non-ASCII letters are precomposed (NFC),
+and the hex column gives the exact UTF-8 bytes of the name fed to UUIDv5.
+
+`uuid_generate_v5` itself (RFC 9562 published values, and a UTF-8 check over a raw, not
+normalized, name):
+
+| Namespace | Name | Name UTF-8 hex | UUID |
+| --- | --- | --- | --- |
+| DNS | `"www.example.com"` | | `2ed6657d-e927-568b-95e1-2665a8aea6a2` |
+| URL | `"http://python.org/"` | | `4c565f0d-3f5a-5890-b41b-20cf47701c5e` |
+| URL | `"spar:Čaj zeleni 0,5l ß"` | `737061723ac48c616a207a656c656e6920302c356c20c39f` | `165b574d-f4c8-528e-b1a8-7b8651ade646` |
+
+`item_key`:
+
+| `chain_id` | `printed_text` | Final name | Name UTF-8 hex | `item_key` |
+| --- | --- | --- | --- | --- |
+| `"spar"` | `"Čaj  zeleni 0,5l ß"` | `"spar:Caj zeleni 0,5l ss"` | `737061723a43616a207a656c656e6920302c356c207373` | `f8b02898-1bae-5aba-82b3-b18527e6c93c` |
+| `"kaufland"` | `"MLIJEKO 2,8% 1L"` | `"kaufland:MLIJEKO 2,8% 1L"` | `6b6175666c616e643a4d4c494a454b4f20322c382520314c` | `529c0b4c-0a9e-5c2c-afb4-25f11ea018e8` |
+| `"lidl"` | `"  Jogurt​ voćni\t150g "` | `"lidl:Jogurt vocni 150g"` | `6c69646c3a4a6f6775727420766f636e692031353067` | `a9189539-4c4e-57f6-91af-20ae2f1753ee` |
+| `"dm"` | `"Žličica"` | `"dm:Zlicica"` | `646d3a5a6c6963696361` | `26f8975f-52f9-5819-9103-a13e8ae3c591` |
+| `"dm"` | `"ŽLIČICA"` | `"dm:ZLICICA"` | `646d3a5a4c4943494341` | `7881c082-cb8c-5b31-a584-28942ee26c99` |
+
+**Stability.** The construction above is frozen for this contract. Consumers may store
+`item_key` and key their own records by it. Any change that alters a key value for any input
+(namespace, name construction, a new version of either shared routine) is a breaking change:
+it ships as a new contract major version with a new database function (`item_key_v2`), is
+announced in advance, and leaves `item_key` as published until consumers have migrated. No
+old-to-new key mapping is provided; a consumer re-links from `printed_text` and `chain_id`,
+both published in the same views.
 
 ### `resolver_v1.receipt_settlements`
 
@@ -153,5 +229,6 @@ Semantic versioning from 1.0.0.
 
 ### Changes
 
+- **1.2.0**: Added `item_key` column to `resolver_v1.receipt_lines` (deterministic UUIDv5 item key) and the Item key section with its construction, test vectors and stability rule. `canonical-products` is registered as a reader of `item_key`.
 - **1.1.0**: Added `total` column to `resolver_v1.receipts` (value of goods, equal to the sum of settlement amounts). Minor changes definition updated to adding columns to views.
 - **1.0.0**: Initial release of the resolver feed contract.

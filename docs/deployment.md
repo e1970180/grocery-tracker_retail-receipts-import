@@ -49,6 +49,26 @@ psql -h <host> -p <port> -U postgres -d postgres -v ON_ERROR_STOP=1 -v db=grocer
 It creates the roles (psql asks for their passwords), the database, both schemas with their
 default privileges, and the chain reference with the writer's SELECT.
 
+The item key migration (`0007`) needs, before `migrate` runs:
+
+- `public.unaccent_grocery_tracker(text)` and `public.sanitize_text(text)`, provisioned by
+  `common` (see `docs/contracts/external/`). The migration does not create them.
+- The `uuid-ossp` extension in schema `public`. The migration runs
+  `CREATE EXTENSION IF NOT EXISTS "uuid-ossp" SCHEMA public`, which is a no-op when the
+  extension exists. When it does not, the schema owner needs `CREATE` on the database
+  (`uuid-ossp` is a trusted extension), or the admin creates the extension once instead.
+- `USAGE` on schema `public` for the schema owner, which the migration's function resolves its
+  calls through. `provision.sql` grants it; an environment provisioned earlier needs it once:
+
+```sql
+\connect "<db>"
+GRANT USAGE ON SCHEMA public TO <schema_owner>;
+CREATE EXTENSION IF NOT EXISTS "uuid-ossp" SCHEMA public;
+SELECT 'public.unaccent_grocery_tracker(text)'::regprocedure, 'public.sanitize_text(text)'::regprocedure;
+```
+
+Run it as the admin; the last line fails if either shared routine is missing.
+
 ## 3. Check out and build (home server)
 
 A sparse checkout holds only what the image needs:
@@ -108,7 +128,8 @@ docker compose logs -f receipts
 git pull --ff-only && docker compose build
 ```
 
-When the update brings a new migration, run step 4 now, before the new code starts. Then:
+When the update brings a new migration, run step 4 now, before the new code starts; before
+migration `0007` runs the first time, run the one-off admin block in step 2. Then:
 
 ```bash
 docker compose up -d

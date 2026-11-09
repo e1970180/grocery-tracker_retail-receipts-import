@@ -18,9 +18,9 @@ GRANT CONNECT ON DATABASE :"db" TO :"owner", :"writer", :"reader";
 
 \connect :"db"
 
--- Only the writer reads public (the chain reference view).
+-- The writer reads the chain reference view; both call the shared routines the item key uses.
 REVOKE ALL ON SCHEMA public FROM PUBLIC;
-GRANT USAGE ON SCHEMA public TO :"writer";
+GRANT USAGE ON SCHEMA public TO :"writer", :"owner";
 
 CREATE SCHEMA retail_receipts_import AUTHORIZATION :"owner";
 CREATE SCHEMA resolver_v1 AUTHORIZATION :"owner";
