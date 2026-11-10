@@ -37,4 +37,6 @@ Verify: after a printed-text correction, a consumer reading the feed from its pr
 ## Notes
 
 - Open question: new event type, or a deleted then stored pair for the receipt. A new type breaks consumers that reject unknown events; the pair needs no new type but replays the whole receipt.
+- Decision: 2026-11-10, owner: announce as new feed event `corrected` in `resolver_v1`; no consumers exist, so no backward compatibility, no `resolver_v2`, contract stays 1.2.0 (change recorded in Changes and reading rules).
+- Done: 2026-11-10, migration 0008 applied to grocery-tracker-dev; one line corrected and restored (feed seq 55 and 56, both `corrected`), `resolver_v1.receipt_lines` showed the new text and `item_key`, then the original ones.
 - Assumption: risk is high and hitl is true because the feed contract changes; the owner confirms or corrects. A high-risk ticket also needs one check outside its own criteria; the owner names it.
