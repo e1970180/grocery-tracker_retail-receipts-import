@@ -1,0 +1,307 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Technical Research Briefing: uuid-ossp vs. pgcrypto for UUIDv5</title>
+<style>
+  :root {
+    --bg: #f8fafc;
+    --surface: #ffffff;
+    --surface-muted: #f1f5f9;
+    --text: #0f172a;
+    --text-muted: #475569;
+    --border: #cbd5e1;
+    --accent: #1d4ed8;
+    --verified-bg: #ecfdf5;
+    --verified-fg: #065f46;
+    --verified-bd: #a7f3d0;
+    --unverified-bg: #fffbeb;
+    --unverified-fg: #92400e;
+    --unverified-bd: #f59e0b;
+    --medium-bg: #eff6ff;
+    --medium-fg: #1e40af;
+    --medium-bd: #93c5fd;
+    --low-bg: #fef2f2;
+    --low-fg: #991b1b;
+    --low-bd: #fca5a5;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --bg: #0b1120;
+      --surface: #111827;
+      --surface-muted: #1e293b;
+      --text: #f1f5f9;
+      --text-muted: #94a3b8;
+      --border: #334155;
+      --accent: #60a5fa;
+      --verified-bg: #064e3b;
+      --verified-fg: #a7f3d0;
+      --verified-bd: #059669;
+      --unverified-bg: #451a03;
+      --unverified-fg: #fde68a;
+      --unverified-bd: #f59e0b;
+      --medium-bg: #1e3a8a;
+      --medium-fg: #bfdbfe;
+      --medium-bd: #3b82f6;
+      --low-bg: #450a0a;
+      --low-fg: #fecaca;
+      --low-bd: #ef4444;
+    }
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    font-family: system-ui, -apple-system, Segoe UI, Roboto, sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    line-height: 1.6;
+  }
+  .wrap {
+    max-width: 1120px;
+    margin: 0 auto;
+    padding: 2rem 1.25rem 4rem;
+    display: grid;
+    grid-template-columns: 240px 1fr;
+    gap: 2rem;
+    align-items: start;
+  }
+  header {
+    grid-column: 1 / -1;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 1.5rem 1.75rem;
+  }
+  header h1 { margin: 0 0 0.5rem; font-size: 1.6rem; line-height: 1.25; }
+  .decision-line { margin: 0 0 1rem; color: var(--text-muted); font-size: 0.98rem; }
+  .meta {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem 1.25rem;
+    font-size: 0.85rem;
+    color: var(--text-muted);
+  }
+  nav.toc {
+    position: sticky;
+    top: 1.25rem;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 1rem 1.1rem;
+    font-size: 0.88rem;
+  }
+  nav.toc h2 { margin: 0 0 0.6rem; font-size: 0.82rem; text-transform: uppercase; letter-spacing: 0.05em; color: var(--text-muted); }
+  nav.toc ul { list-style: none; padding: 0; margin: 0; display: grid; gap: 0.45rem; }
+  nav.toc a { color: var(--text); text-decoration: none; }
+  nav.toc a:hover { color: var(--accent); text-decoration: underline; }
+  main { min-width: 0; display: grid; gap: 1.5rem; }
+  section, details.appendix {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 1.4rem 1.6rem;
+  }
+  section.exec { border-left: 4px solid var(--accent); }
+  h2 { margin: 0 0 0.9rem; font-size: 1.22rem; }
+  h3 { margin: 1.2rem 0 0.5rem; font-size: 1.02rem; }
+  ul, ol { padding-left: 1.25rem; margin: 0.5rem 0; }
+  li { margin: 0.45rem 0; }
+  code {
+    font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+    font-size: 0.88em;
+    background: var(--surface-muted);
+    padding: 0.1em 0.35em;
+    border-radius: 4px;
+  }
+  .callout {
+    background: var(--unverified-bg);
+    color: var(--unverified-fg);
+    border: 1px solid var(--unverified-bd);
+    border-radius: 8px;
+    padding: 0.85rem 1rem;
+    margin-top: 1rem;
+    font-size: 0.94rem;
+  }
+  .badge {
+    display: inline-block;
+    font-size: 0.74rem;
+    font-weight: 700;
+    letter-spacing: 0.02em;
+    padding: 0.12rem 0.48rem;
+    border-radius: 999px;
+    border: 1px solid;
+    vertical-align: baseline;
+    margin-left: 0.25rem;
+  }
+  .badge.verified { background: var(--verified-bg); color: var(--verified-fg); border-color: var(--verified-bd); font-weight: 600; }
+  .badge.unverified { background: var(--unverified-bg); color: var(--unverified-fg); border-color: var(--unverified-bd); box-shadow: 0 0 0 1px var(--unverified-bd); }
+  .badge.medium { background: var(--medium-bg); color: var(--medium-fg); border-color: var(--medium-bd); }
+  .badge.low { background: var(--low-bg); color: var(--low-fg); border-color: var(--low-bd); }
+  a.cite {
+    color: var(--accent);
+    text-decoration: none;
+    font-weight: 600;
+    font-size: 0.85em;
+    margin-left: 0.12rem;
+  }
+  a.cite:hover { text-decoration: underline; }
+  table { width: 100%; border-collapse: collapse; margin-top: 0.75rem; font-size: 0.88rem; }
+  th, td { text-align: left; padding: 0.55rem 0.65rem; border-bottom: 1px solid var(--border); vertical-align: top; }
+  th { background: var(--surface-muted); font-weight: 600; }
+  .table-wrap { overflow-x: auto; }
+  details.appendix summary { cursor: pointer; font-weight: 700; font-size: 1.15rem; }
+  @media (max-width: 820px) {
+    .wrap { grid-template-columns: 1fr; }
+    nav.toc { position: static; }
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <h1>Technical research: uuid-ossp vs. pgcrypto for UUIDv5</h1>
+    <p class="decision-line"><strong>Decision:</strong> Choose <code>uuid-ossp</code> or <code>pgcrypto</code> to compute deterministic UUIDv5 in PostgreSQL 18.6</p>
+    <div class="meta">
+      <span><strong>Type:</strong> technical</span>
+      <span><strong>Status:</strong> complete</span>
+      <span><strong>Preset:</strong> standard (3 subagents, 1 round)</span>
+      <span><strong>Validation:</strong> normal (3 verified, 6 unverified)</span>
+      <span><strong>Created:</strong> 2026-11-09</span>
+      <span><strong>Updated:</strong> 2026-11-10</span>
+    </div>
+  </header>
+
+  <nav class="toc" aria-label="Table of contents">
+    <h2>Contents</h2>
+    <ul>
+      <li><a href="#exec">Executive summary</a></li>
+      <li><a href="#core">Core &amp; pgcrypto</a></li>
+      <li><a href="#packaging">Packaging &amp; operations</a></li>
+      <li><a href="#rfc">RFC 9562 &amp; vectors</a></li>
+      <li><a href="#insights">Cross-dimension insights</a></li>
+      <li><a href="#contrary">Contrary evidence</a></li>
+      <li><a href="#recommendations">Recommendations</a></li>
+      <li><a href="#open">Open questions</a></li>
+      <li><a href="#sources">Source appendix (19)</a></li>
+      <li><a href="#staleness">Staleness map</a></li>
+    </ul>
+  </nav>
+
+  <main>
+    <section id="exec" class="exec">
+      <h2>Executive summary</h2>
+      <p><strong>Verdict:</strong> Use <strong><code>uuid-ossp</code> (<code>uuid_generate_v5</code>)</strong> rather than implementing UUIDv5 over <code>pgcrypto</code> (<code>digest</code>).</p>
+      <ol>
+        <li><strong>PostgreSQL 18 has no built-in UUIDv5:</strong> Core adds <code>uuidv4()</code> and <code>uuidv7()</code> <a class="cite" href="#src-7">[7]</a>, but neither PG 18 <a class="cite" href="#src-10">[10]</a> nor the 2026-11-07 <code>devel</code> branch <a class="cite" href="#src-11">[11]</a> includes a core name-based UUID generator. <span class="badge unverified">unverified</span></li>
+        <li><strong><code>uuid-ossp</code> avoids custom crypto code and links <code>e2fs</code> (<code>libuuid</code>) in Debian and Alpine Docker builds:</strong> Debian PGDG <a class="cite" href="#src-4">[4]</a> and official <code>postgres:18-alpine</code> <a class="cite" href="#src-6">[6]</a> compile with <code>--with-uuid=e2fs</code>, avoiding the unmaintained OSSP library noted in docs <a class="cite" href="#src-1">[1]</a> <span class="badge verified">verified</span> (Bookworm <code>postgres:18</code> uses PGDG apt and is inferred <code>e2fs</code> <a class="cite" href="#src-5">[5]</a> <span class="badge medium">medium</span>). In <code>master</code> SQL, <code>uuid_generate_v5</code> is <code>IMMUTABLE STRICT PARALLEL SAFE</code> in C <a class="cite" href="#src-3">[3]</a>, and dev-database checks matched RFC 9562 <a class="cite" href="#src-14">[14]</a>, CPython <a class="cite" href="#src-15">[15]</a>, and non-ASCII UTF-8 outputs. <span class="badge verified">verified</span></li>
+        <li><strong><code>pgcrypto</code> adds custom maintenance and FIPS uncertainty:</strong> Searches found no sourced SQL recipe for UUIDv5 over <code>pgcrypto</code>, and <code>sha1</code> behavior in <code>digest()</code> under FIPS OpenSSL 3 is unverified in docs <a class="cite" href="#src-8">[8]</a>. <span class="badge unverified">unverified</span></li>
+      </ol>
+      <div class="callout">
+        <strong>Biggest caveat:</strong> Two operational items remain <span class="badge unverified">unverified</span>: how <code>uuid-ossp--1.1.sql</code> behaves under an empty <code>search_path</code> and during <code>pg_dump</code>/restore (the script uses no schema qualification or <code>SET search_path</code> <a class="cite" href="#src-3">[3]</a>), and whether the migration role holds database <code>CREATE</code> privilege to install a trusted extension <a class="cite" href="#src-1">[1]</a><a class="cite" href="#src-2">[2]</a>.
+      </div>
+    </section>
+
+    <section id="core">
+      <h2>Core landscape and the <code>pgcrypto</code> alternative</h2>
+      <ul>
+        <li><strong>No core UUIDv5:</strong> PG 18 adds <code>uuidv7()</code> and <code>uuidv4()</code> <a class="cite" href="#src-7">[7]</a> alongside <code>gen_random_uuid()</code> from v13 <a class="cite" href="#src-13">[13]</a>, while neither PG 18 <a class="cite" href="#src-10">[10]</a> nor 2026-11-07 <code>devel</code> <a class="cite" href="#src-11">[11]</a> has <code>uuidv3</code> or <code>uuidv5</code>. <span class="badge unverified">unverified</span></li>
+        <li><strong><code>pgcrypto</code> properties:</strong> Trusted in PG 18, requires OpenSSL <a class="cite" href="#src-8">[8]</a>, and <code>digest(text, text)</code> is <code>IMMUTABLE STRICT PARALLEL SAFE</code> in <code>pgcrypto--1.3.sql</code> (<code>master</code>; <code>bytea</code> overload partly verified) <a class="cite" href="#src-9">[9]</a>. With <code>gen_random_uuid()</code> in core, loading <code>pgcrypto</code> would serve solely to call <code>digest()</code> <a class="cite" href="#src-13">[13]</a>. <span class="badge unverified">unverified</span></li>
+        <li><strong>Missing recipe and FIPS risk:</strong> Searches found no sourced UUIDv5 SQL recipe over <code>pgcrypto</code>. Docs list <code>sha1</code> and say OpenSSL 3 legacy provider covers old ciphers (<code>DES</code>, <code>Blowfish</code> <span class="badge medium">medium</span>), while the FIPS note covers only <code>gen_salt()</code> and <code>crypt()</code>, leaving <code>digest(..., 'sha1')</code> under FIPS OpenSSL 3 unverified <a class="cite" href="#src-8">[8]</a>. <span class="badge unverified">unverified</span></li>
+      </ul>
+    </section>
+
+    <section id="packaging">
+      <h2>Packaging, build lineage, and operations (<code>uuid-ossp</code>)</h2>
+      <ul>
+        <li><strong>Privileges &amp; control file:</strong> PG 18 marks <code>uuid-ossp</code> as <code>trusted</code> (non-superuser with <code>CREATE</code> on the database can install) <a class="cite" href="#src-1">[1]</a> <span class="badge medium">medium</span> <span class="badge unverified">unverified</span>; <code>uuid-ossp.control</code> (<code>master</code>, not <code>REL_18</code>) sets <code>trusted = true</code>, <code>relocatable = true</code>, <code>default_version = '1.1'</code> <a class="cite" href="#src-2">[2]</a>.</li>
+        <li><strong>Function attributes &amp; script gaps:</strong> <code>uuid-ossp--1.1.sql</code> (<code>master</code>) marks <code>uuid_generate_v3</code>, <code>uuid_generate_v5</code>, and <code>uuid_ns_*</code> as <code>IMMUTABLE STRICT PARALLEL SAFE</code> C functions (<code>v1</code>/<code>v1mc</code>/<code>v4</code> are <code>VOLATILE</code>) <a class="cite" href="#src-3">[3]</a>. The script has no schema qualification and no <code>SET search_path</code> <a class="cite" href="#src-3">[3]</a>, leaving empty-<code>search_path</code> and <code>pg_dump</code>/restore behavior untested. <span class="badge unverified">unverified</span></li>
+        <li><strong>Library backend:</strong> Upstream docs warn the OSSP library is "not well maintained" <a class="cite" href="#src-1">[1]</a>. Debian PGDG <a class="cite" href="#src-4">[4]</a> <span class="badge medium">medium-high</span> and <code>postgres:18-alpine</code> <a class="cite" href="#src-6">[6]</a> build with <code>--with-uuid=e2fs</code> <span class="badge verified">verified</span>; Bookworm <code>postgres:18</code> uses PGDG apt and is inferred <code>e2fs</code> <a class="cite" href="#src-5">[5]</a> <span class="badge medium">medium</span>.</li>
+      </ul>
+    </section>
+
+    <section id="rfc">
+      <h2>RFC 9562 conformance, text encoding, and test vectors</h2>
+      <p><em>Digest caveat: web fetches in <code>rfc-conformance-r1-1.md</code> were summarized by a small model, so source quotes are second-hand.</em></p>
+      <ul>
+        <li><strong>Spec &amp; namespaces:</strong> RFC 9562 (Sections 4.1–4.2) hashes 16-byte network-order namespace + name bytes via SHA-1, taking the leftmost 128 bits and setting version (<code>5</code>) and variant bits <a class="cite" href="#src-14">[14]</a>. Standard namespaces match across RFC 9562 <a class="cite" href="#src-14">[14]</a>, <code>google/uuid</code> <a class="cite" href="#src-17">[17]</a>, and <code>uuidjs</code> (<code>v35.test.ts</code>) <span class="badge verified">verified</span>.</li>
+        <li><strong>Encoding &amp; normalization:</strong> RFC 9562 specifies no encoding or Unicode normalization <a class="cite" href="#src-14">[14]</a>. Python <code>uuid.uuid5</code> <a class="cite" href="#src-15">[15]</a> and <code>uuidjs</code> (<code>TextEncoder</code>) <a class="cite" href="#src-16">[16]</a> use UTF-8; Go takes raw bytes <a class="cite" href="#src-17">[17]</a>. PG's <code>uuid_generate_v5(uuid, text)</code> accepts <code>text</code> only (no <code>bytea</code> overload planned per 2017 thread <a class="cite" href="#src-12">[12]</a> <span class="badge unverified">unverified</span>), and upstream <code>current</code> docs are silent on encoding <a class="cite" href="#src-19">[19]</a> <span class="badge unverified">unverified</span>.</li>
+        <li><strong>Caveats:</strong> <code>.NET Guid.ToByteArray()</code> uses little-endian order for the first three fields unless swapped <a class="cite" href="#src-18">[18]</a> <span class="badge unverified">unverified</span>. Canonically equivalent Unicode forms hash differently without app normalization <span class="badge low">low-medium</span> <span class="badge unverified">unverified</span>. Searches found no published non-ASCII UUIDv5 vector <span class="badge unverified">unverified</span>.</li>
+      </ul>
+      <h3>Dev-database verification (2026-11-09, <code>grocery-tracker-dev</code>, read-only)</h3>
+      <p>Confirmed <code>uuid-ossp</code> <code>1.1</code> installed in <code>public</code>, <code>UTF8</code> server encoding, and <code>IMMUTABLE</code>, <code>PARALLEL SAFE</code>, <code>STRICT</code> on <code>public.uuid_generate_v5</code>.</p>
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>Namespace</th><th>Input</th><th>UUID</th><th>Source</th><th>Dev-DB / Python check</th></tr></thead>
+          <tbody>
+            <tr><td><code>DNS</code></td><td><code>www.example.com</code></td><td><code>2ed6657d-e927-568b-95e1-2665a8aea6a2</code></td><td>RFC 9562 A.4 <a class="cite" href="#src-14">[14]</a></td><td>Matched <span class="badge verified">verified</span></td></tr>
+            <tr><td><code>URL</code></td><td><code>http://python.org/</code></td><td><code>4c565f0d-3f5a-5890-b41b-20cf47701c5e</code></td><td>CPython docs <a class="cite" href="#src-15">[15]</a></td><td>Matched <span class="badge verified">verified</span></td></tr>
+            <tr><td><code>DNS</code></td><td><code>python.org</code></td><td><code>886313e1-3b8a-5372-9b90-0c9aee199e5d</code></td><td>CPython docs <a class="cite" href="#src-15">[15]</a></td><td>—</td></tr>
+            <tr><td><code>OID</code></td><td><code>1.3.6.1</code></td><td><code>1447fa61-5277-5fef-a9b3-fbc6e44f4af3</code></td><td>CPython docs <a class="cite" href="#src-15">[15]</a></td><td>—</td></tr>
+            <tr><td><code>X500</code></td><td><code>c=ca</code></td><td><code>cc957dd1-a972-5349-98cd-874190002798</code></td><td>CPython docs <a class="cite" href="#src-15">[15]</a></td><td>—</td></tr>
+            <tr><td><code>URL</code></td><td><code>http://example.com/hello</code></td><td><code>3bbcee75-cecc-5b56-8031-b6641c1ed1f1</code></td><td><code>uuidjs</code> (<code>v35.test.ts</code>)</td><td>—</td></tr>
+            <tr><td><code>URL</code></td><td><code>spar:Čaj zeleni 0,5l ß</code></td><td><code>165b574d-f4c8-528e-b1a8-7b8651ade646</code></td><td>Non-ASCII check</td><td>PG &amp; Python matched <span class="badge verified">verified</span></td></tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+    <section id="insights">
+      <h2>Cross-dimension insights</h2>
+      <p>Debian and Alpine PostgreSQL 18 images avoid the unmaintained OSSP library by linking <code>e2fs</code> (<code>libuuid</code>) <a class="cite" href="#src-4">[4]</a><a class="cite" href="#src-6">[6]</a>, removing the historical reason to build custom <code>pgcrypto</code> SQL while keeping cross-language determinism anchored in <code>UTF8</code> encoding and explicit text normalization <a class="cite" href="#src-14">[14]</a><a class="cite" href="#src-15">[15]</a><a class="cite" href="#src-16">[16]</a>.</p>
+    </section>
+
+    <section id="contrary">
+      <h2>Contrary evidence</h2>
+      <p>No red-team pass ran (<code>preset: standard</code>, <code>validation: normal</code>, <code>red_team: off</code>). Surviving counterarguments from digests: (1) upstream PG 18 docs warn OSSP is "not well maintained" <a class="cite" href="#src-1">[1]</a> (mitigated by <code>e2fs</code> <a class="cite" href="#src-4">[4]</a><a class="cite" href="#src-6">[6]</a>); (2) <code>uuid_generate_v5</code> accepts <code>text</code> only <a class="cite" href="#src-12">[12]</a><a class="cite" href="#src-19">[19]</a> without encoding docs <a class="cite" href="#src-19">[19]</a>; (3) <code>uuid-ossp--1.1.sql</code> lacks <code>SET search_path</code> <a class="cite" href="#src-3">[3]</a>.</p>
+    </section>
+
+    <section id="recommendations">
+      <h2>Recommendations</h2>
+      <ul>
+        <li><strong>Adopt <code>uuid-ossp</code> (<code>public.uuid_generate_v5</code>):</strong> Schema-qualify calls as <code>public.uuid_generate_v5(...)</code> with an explicit <code>uuid</code> namespace literal <a class="cite" href="#src-14">[14]</a>; specify UTF-8 and <code>unaccent</code>/<code>sanitize</code> order in migrations and warn .NET and other non-Python consumers on byte order <a class="cite" href="#src-18">[18]</a> and Unicode normalization <a class="cite" href="#src-14">[14]</a>.</li>
+        <li><strong>Runner-up (<code>pgcrypto</code>):</strong> Only if a host forbids <code>uuid-ossp</code>, write a bitwise wrapper around <code>digest(..., 'sha1')</code> (<span class="badge unverified">unverified</span> under FIPS OpenSSL 3 <a class="cite" href="#src-8">[8]</a>) and validate against RFC 9562 <a class="cite" href="#src-14">[14]</a> and non-ASCII Python vectors <a class="cite" href="#src-15">[15]</a>.</li>
+      </ul>
+    </section>
+
+    <section id="open">
+      <h2>Open questions</h2>
+      <ol>
+        <li>Empty <code>search_path</code> and <code>pg_dump</code>/restore behavior <a class="cite" href="#src-3">[3]</a> — verify in CI. <span class="badge unverified">unverified</span></li>
+        <li>Migration-role <code>CREATE EXTENSION</code> privilege <a class="cite" href="#src-1">[1]</a><a class="cite" href="#src-2">[2]</a> — verify in CI under migration role. <span class="badge unverified">unverified</span></li>
+        <li>Canonical Unicode normalization (NFC/NFD) <a class="cite" href="#src-14">[14]</a> — fix in application/SQL normalization contract. <span class="badge unverified">unverified</span></li>
+        <li>FIPS OpenSSL 3 <code>sha1</code> behavior <a class="cite" href="#src-8">[8]</a> — moot under <code>uuid-ossp</code>. <span class="badge unverified">unverified</span></li>
+      </ol>
+    </section>
+
+    <details id="sources" class="appendix">
+      <summary>Source appendix (19 sources)</summary>
+      <div class="table-wrap">
+        <table class="sources"><thead><tr><th>#</th><th>Topic supported</th><th>Publisher</th><th>Pub date</th><th>Accessed</th><th>Confidence</th></tr></thead><tbody><tr id="src-1"><td>[1]</td><td>PG18 `uuid-ossp` trusted status, OSSP note, backend options</td><td><a href="https://www.postgresql.org/docs/18/uuid-ossp.html" target="_blank" rel="noopener">PostgreSQL 18 Docs: uuid-ossp</a></td><td>undated</td><td>2026-11-09</td><td>high</td></tr><tr id="src-2"><td>[2]</td><td>`uuid-ossp.control` (`trusted`, `relocatable`, `1.1`, `master`)</td><td><a href="https://raw.githubusercontent.com/postgres/postgres/master/contrib/uuid-ossp/uuid-ossp.control" target="_blank" rel="noopener">PostgreSQL Git (`uuid-ossp.control`)</a></td><td>undated (`master`)</td><td>2026-11-09</td><td>high</td></tr><tr id="src-3"><td>[3]</td><td>`uuid-ossp--1.1.sql` volatility and missing `search_path` (`master`)</td><td><a href="https://raw.githubusercontent.com/postgres/postgres/master/contrib/uuid-ossp/uuid-ossp--1.1.sql" target="_blank" rel="noopener">PostgreSQL Git (`uuid-ossp--1.1.sql`)</a></td><td>undated (`master`)</td><td>2026-11-09</td><td>high</td></tr><tr id="src-4"><td>[4]</td><td>Debian PGDG `--with-uuid=e2fs` build flag (no per-version check)</td><td><a href="https://salsa.debian.org/postgresql/postgresql-common/-/raw/master/server/postgresql.mk" target="_blank" rel="noopener">Debian Salsa (`postgresql.mk`)</a></td><td>undated</td><td>2026-11-09</td><td>medium-high</td></tr><tr id="src-5"><td>[5]</td><td>`postgres:18` Bookworm PGDG apt (`e2fs` and presence inferred)</td><td><a href="https://raw.githubusercontent.com/docker-library/postgres/master/18/bookworm/Dockerfile" target="_blank" rel="noopener">Docker Official Images (`18/bookworm/Dockerfile`)</a></td><td>undated</td><td>2026-11-09</td><td>medium</td></tr><tr id="src-6"><td>[6]</td><td>`postgres:18-alpine` `--with-uuid=e2fs` source build</td><td><a href="https://raw.githubusercontent.com/docker-library/postgres/master/18/alpine3.24/Dockerfile" target="_blank" rel="noopener">Docker Official Images (`18/alpine3.24/Dockerfile`)</a></td><td>undated</td><td>2026-11-09</td><td>high (flags), medium (presence)</td></tr><tr id="src-7"><td>[7]</td><td>PG18 release notes (`uuidv7`/`uuidv4`, no `uuid-ossp` change)</td><td><a href="https://www.postgresql.org/docs/18/release-18.html" target="_blank" rel="noopener">PostgreSQL 18 Release Notes</a></td><td>undated</td><td>2026-11-09</td><td>high (`v4`/`v7`), medium (no `v5`)</td></tr><tr id="src-8"><td>[8]</td><td>PG18 `pgcrypto` OpenSSL, `sha1`, and FIPS scope</td><td><a href="https://www.postgresql.org/docs/18/pgcrypto.html" target="_blank" rel="noopener">PostgreSQL 18 Docs: pgcrypto</a></td><td>undated</td><td>2026-11-09</td><td>high (quote), medium (`sha1` unaffected), none (FIPS)</td></tr><tr id="src-9"><td>[9]</td><td>`pgcrypto--1.3.sql` `digest(text, text)` attributes (`master`)</td><td><a href="https://raw.githubusercontent.com/postgres/postgres/master/contrib/pgcrypto/pgcrypto--1.3.sql" target="_blank" rel="noopener">PostgreSQL Git (`pgcrypto--1.3.sql`)</a></td><td>undated (`master`)</td><td>2026-11-09</td><td>high (`text`), medium (`bytea`)</td></tr><tr id="src-10"><td>[10]</td><td>PG18 core UUID functions (no `uuidv3`/`uuidv5`)</td><td><a href="https://www.postgresql.org/docs/18/functions-uuid.html" target="_blank" rel="noopener">PostgreSQL 18 Docs: UUID Functions</a></td><td>undated</td><td>2026-11-09</td><td>high</td></tr><tr id="src-11"><td>[11]</td><td>PG `devel` UUID functions snapshot (no `uuidv5`)</td><td><a href="https://www.postgresql.org/docs/devel/functions-uuid.html" target="_blank" rel="noopener">PostgreSQL devel Docs: UUID Functions</a></td><td>2026-11-07</td><td>2026-11-09</td><td>medium-high</td></tr><tr id="src-12"><td>[12]</td><td>`uuid_generate_v3`/`v5` `text`-only signature, no `bytea`</td><td><a href="https://www.postgresql.org/message-id/15138.1495666113%40sss.pgh.pa.us" target="_blank" rel="noopener">PostgreSQL `pgsql-bugs` Archive</a></td><td>2017</td><td>2026-11-09</td><td>medium (snippet only)</td></tr><tr id="src-13"><td>[13]</td><td>Core `gen_random_uuid()` since PG13 (`pgcrypto` redundant)</td><td><a href="https://hackorum.dev/topics/77365" target="_blank" rel="noopener">Hackorum</a></td><td>undated</td><td>2026-11-09</td><td>high</td></tr><tr id="src-14"><td>[14]</td><td>RFC 9562 UUIDv5 spec, namespaces, A.4 vector, no encoding rule</td><td><a href="https://www.rfc-editor.org/rfc/rfc9562.txt" target="_blank" rel="noopener">IETF RFC 9562</a></td><td>2024-05</td><td>2026-11-09</td><td>high (spec/vector), medium-high (absence)</td></tr><tr id="src-15"><td>[15]</td><td>Python `uuid.uuid5` UTF-8 encoding and CPython test vectors</td><td><a href="https://docs.python.org/3/library/uuid.html" target="_blank" rel="noopener">Python 3 Docs (`uuid`)</a></td><td>undated</td><td>2026-11-09</td><td>high</td></tr><tr id="src-16"><td>[16]</td><td>`uuidjs` UTF-8 encoding using `TextEncoder`</td><td><a href="https://raw.githubusercontent.com/uuidjs/uuid/main/src/v35.ts" target="_blank" rel="noopener">uuidjs/uuid (`src/v35.ts`)</a></td><td>undated</td><td>2026-11-09</td><td>high</td></tr><tr id="src-17"><td>[17]</td><td>`google/uuid` namespaces and byte-level `NewSHA1`</td><td><a href="https://raw.githubusercontent.com/google/uuid/master/hash.go" target="_blank" rel="noopener">google/uuid (`hash.go`)</a></td><td>undated</td><td>2026-11-09</td><td>high</td></tr><tr id="src-18"><td>[18]</td><td>`.NET Guid.ToByteArray()` little-endian field order</td><td><a href="https://learn.microsoft.com/dotnet/api/system.guid.tobytearray" target="_blank" rel="noopener">Microsoft Learn (.NET API)</a></td><td>undated</td><td>2026-11-09</td><td>medium-high</td></tr><tr id="src-19"><td>[19]</td><td>PG `current` `uuid_generate_v5(uuid, text)` signature, silent on encoding</td><td><a href="https://www.postgresql.org/docs/current/uuid-ossp.html" target="_blank" rel="noopener">PostgreSQL Current Docs: uuid-ossp</a></td><td>undated</td><td>2026-11-09</td><td>high (signature), unverified (encoding)</td></tr></tbody></table>
+      </div>
+    </details>
+
+    <section id="staleness">
+      <h2>Staleness map</h2>
+      <p>Computed <code>2026-11-10</code> via <code>recon_kit.py staleness</code> (<code>versions_compatibility</code>: 1 mo, <code>ecosystem_signals</code>: 6 mo, <code>patterns</code>: 24 mo; undated pages use access date <code>2026-11-09</code>). Earliest upcoming re-check: <strong><code>2026-12-07</code></strong> (PG <code>devel</code> <a class="cite" href="#src-11">[11]</a>), then <strong><code>2026-12-09</code></strong> (PG 18 &amp; container packaging).</p>
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>Claim</th><th>Class</th><th>Date</th><th>Re-check</th><th>Stale?</th></tr></thead>
+          <tbody>
+            <tr><td><code>uuid_generate_v3</code>/<code>v5</code> <code>text</code>-only mailing-list thread <a class="cite" href="#src-12">[12]</a></td><td><code>ecosystem_signals</code></td><td>2017</td><td>2017-07-01</td><td><strong>Yes</strong> (historical)</td></tr>
+            <tr><td>RFC 9562 v5 spec, namespaces, A.4 vector <a class="cite" href="#src-14">[14]</a></td><td><code>patterns</code></td><td>2024-05</td><td>2026-05-01</td><td><strong>Yes</strong> (immutable RFC)</td></tr>
+            <tr><td>PG 18 core &amp; <code>devel</code> lack built-in <code>uuidv5</code> <a class="cite" href="#src-10">[10]</a><a class="cite" href="#src-11">[11]</a></td><td><code>versions_compatibility</code></td><td>2026-11-07</td><td>2026-12-07</td><td>No</td></tr>
+            <tr><td>Debian &amp; Alpine <code>--with-uuid=e2fs</code> build <a class="cite" href="#src-4">[4]</a><a class="cite" href="#src-6">[6]</a></td><td><code>versions_compatibility</code></td><td>2026-11-09</td><td>2026-12-09</td><td>No</td></tr>
+            <tr><td><code>uuid_generate_v5</code> <code>IMMUTABLE STRICT PARALLEL SAFE</code> <a class="cite" href="#src-3">[3]</a></td><td><code>versions_compatibility</code></td><td>2026-11-09</td><td>2026-12-09</td><td>No</td></tr>
+            <tr><td><code>uuid-ossp</code> <code>trusted</code> &amp; <code>relocatable</code> <a class="cite" href="#src-1">[1]</a><a class="cite" href="#src-2">[2]</a></td><td><code>versions_compatibility</code></td><td>2026-11-09</td><td>2026-12-09</td><td>No</td></tr>
+            <tr><td><code>uuid-ossp--1.1.sql</code> lacks <code>SET search_path</code> <a class="cite" href="#src-3">[3]</a></td><td><code>versions_compatibility</code></td><td>2026-11-09</td><td>2026-12-09</td><td>No</td></tr>
+            <tr><td><code>pgcrypto</code> <code>digest</code> &amp; missing FIPS <code>sha1</code> evidence <a class="cite" href="#src-8">[8]</a><a class="cite" href="#src-9">[9]</a></td><td><code>versions_compatibility</code></td><td>2026-11-09</td><td>2026-12-09</td><td>No</td></tr>
+            <tr><td>.NET byte order &amp; Unicode normalization caveats <a class="cite" href="#src-14">[14]</a><a class="cite" href="#src-18">[18]</a></td><td><code>patterns</code></td><td>2026-11-09</td><td>2028-11-09</td><td>No</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
+  </main>
+</div>
+</body>
+</html>
