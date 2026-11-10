@@ -2,7 +2,7 @@
 title: 'Per-job error boundary (second half of ticket 13; its status is in story-operational-alerts-and-per-job-error-boundary-plan.md)'
 type: 'feature'
 created: '2026-10-24'
-status: 'built'
+status: done
 baseline_revision: 'faf23f4bcdcd52f851c9751e430fa495ea25104a'
 route: 'full'
 route_source: 'auto'

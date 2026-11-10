@@ -3,7 +3,7 @@ title: 'First production deployment and acceptance demo'
 type: 'chore'
 ticket: '16'
 created: '2026-10-24'
-status: 'built'
+status: done
 baseline_revision: 'b295de207540daa3db89e644f97bc77c7e85bf8a'
 route: 'full'
 route_source: 'auto'
