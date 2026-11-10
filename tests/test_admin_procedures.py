@@ -203,3 +203,118 @@ def test_update_line_printed_text_validation_errors(
             "CALL retail_receipts_import.update_line_printed_text(%s, %s, %s)",
             (receipt_id, 99, "Valid Text"),
         )
+
+
+def _feed_events(conn: psycopg.Connection[tuple[Any, ...]], receipt_id: uuid.UUID) -> list[str]:
+    rows = conn.execute(
+        "SELECT event FROM resolver_v1.feed WHERE receipt_id = %s ORDER BY seq", (receipt_id,)
+    ).fetchall()
+    return [r[0] for r in rows]
+
+
+def _store(conn: psycopg.Connection[tuple[Any, ...]], message_id: int) -> uuid.UUID:
+    receipt_id = uuid.uuid7()
+    source = telegram_source(chat_id=100, message_id=message_id, buyer_name="Test")
+    # A distinct purchase time per receipt: the same chain and time would be a duplicate.
+    purchased_at = zagreb_to_utc(datetime(2026, 7, 1, 9, message_id))
+    write_receipt(conn, receipt_id, _synthetic_receipt(purchased_at), source)
+    return receipt_id
+
+
+@pytest.mark.integration
+def test_correction_emits_corrected_event_and_new_line_data(
+    receipts_conn: psycopg.Connection[tuple[Any, ...]],
+) -> None:
+    receipt_id = _store(receipts_conn, 10)
+    cursor = receipts_conn.execute("SELECT max(seq) FROM resolver_v1.feed").fetchone()
+    assert cursor is not None
+
+    receipts_conn.execute(
+        "CALL retail_receipts_import.update_line_printed_text(%s, %s, %s)",
+        (receipt_id, 1, "  CORRECTED CROISSANT "),
+    )
+
+    events = receipts_conn.execute(
+        "SELECT receipt_id, event FROM resolver_v1.feed WHERE seq > %s ORDER BY seq", cursor
+    ).fetchall()
+    assert events == [(receipt_id, "corrected")]
+    line = receipts_conn.execute(
+        "SELECT printed_text, item_key FROM resolver_v1.receipt_lines"
+        " WHERE receipt_id = %s AND line_no = 1",
+        (receipt_id,),
+    ).fetchone()
+    expected_key = receipts_conn.execute(
+        "SELECT retail_receipts_import.item_key('spar', 'CORRECTED CROISSANT')"
+    ).fetchone()
+    assert line is not None and expected_key is not None
+    assert line == ("CORRECTED CROISSANT", expected_key[0])
+
+
+@pytest.mark.integration
+def test_unchanged_text_emits_no_event(
+    receipts_conn: psycopg.Connection[tuple[Any, ...]],
+) -> None:
+    receipt_id = _store(receipts_conn, 11)
+
+    receipts_conn.execute(
+        "CALL retail_receipts_import.update_line_printed_text(%s, %s, %s)",
+        (receipt_id, 1, "  ORIGINAL CROISSANT  "),
+    )
+
+    assert _feed_events(receipts_conn, receipt_id) == ["stored"]
+
+
+@pytest.mark.integration
+def test_correction_leaves_other_receipts_without_events(
+    receipts_conn: psycopg.Connection[tuple[Any, ...]],
+) -> None:
+    corrected = _store(receipts_conn, 12)
+    other = _store(receipts_conn, 13)
+
+    receipts_conn.execute(
+        "CALL retail_receipts_import.update_line_printed_text(%s, %s, %s)",
+        (corrected, 2, "ESPRESSO"),
+    )
+
+    assert _feed_events(receipts_conn, corrected) == ["stored", "corrected"]
+    assert _feed_events(receipts_conn, other) == ["stored"]
+
+
+@pytest.mark.integration
+def test_repeated_corrections_repeat_the_event(
+    receipts_conn: psycopg.Connection[tuple[Any, ...]],
+) -> None:
+    receipt_id = _store(receipts_conn, 14)
+
+    for text in ("FIRST FIX", "SECOND FIX", "ORIGINAL CROISSANT"):
+        receipts_conn.execute(
+            "CALL retail_receipts_import.update_line_printed_text(%s, %s, %s)",
+            (receipt_id, 1, text),
+        )
+
+    assert _feed_events(receipts_conn, receipt_id) == [
+        "stored",
+        "corrected",
+        "corrected",
+        "corrected",
+    ]
+
+
+@pytest.mark.integration
+def test_stored_and_deleted_stay_unique_per_receipt(
+    receipts_conn: psycopg.Connection[tuple[Any, ...]],
+) -> None:
+    receipt_id = _store(receipts_conn, 15)
+    receipts_conn.execute("CALL retail_receipts_import.delete_receipt(%s)", (receipt_id,))
+
+    for event in ("stored", "deleted"):
+        with pytest.raises(errors.UniqueViolation):
+            receipts_conn.execute(
+                f"INSERT INTO {SCHEMA}.receipt_feed (receipt_id, event) VALUES (%s, %s)",
+                (receipt_id, event),
+            )
+    with pytest.raises(errors.CheckViolation):
+        receipts_conn.execute(
+            f"INSERT INTO {SCHEMA}.receipt_feed (receipt_id, event) VALUES (%s, 'bogus')",
+            (receipt_id,),
+        )

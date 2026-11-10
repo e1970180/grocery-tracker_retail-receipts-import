@@ -29,7 +29,7 @@ The changelog of receipt mutations. Consumers track their progress with a sequen
 | --- | --- | --- | --- |
 | `seq` | `bigint` | No | Monotonically increasing sequence number. May have gaps. |
 | `receipt_id` | `uuid` | No | Unique identifier of the receipt (UUIDv7). |
-| `event` | `text` | No | Mutation type: `stored` or `deleted`. |
+| `event` | `text` | No | Mutation type: `stored`, `deleted` or `corrected`. |
 
 ### `resolver_v1.receipts`
 
@@ -164,8 +164,9 @@ Payment tenders and settlement breakdowns recorded for the receipt.
 
 1. **Feed consumption and cursor:**
    `seq` grows in commit order of the single writer and may have gaps. A new consumer starts
-   from cursor `0`. Each receipt has at most one `stored` and one `deleted` event, so an event
-   seen twice can be skipped by (`receipt_id`, `event`). Consumers poll for new events using:
+   from cursor `0`. Each receipt has at most one `stored` and one `deleted` event, so a `stored` or
+   `deleted` event seen twice can be skipped by (`receipt_id`, `event`). `corrected` may occur
+   any number of times per receipt and is never skipped by (`receipt_id`, `event`). Consumers poll for new events using:
    ```sql
    SELECT seq, receipt_id, event
    FROM resolver_v1.feed
@@ -177,6 +178,9 @@ Payment tenders and settlement breakdowns recorded for the receipt.
      settlements tables.
    - `deleted`: a previously stored receipt was deleted. Its rows are no longer present in
      `resolver_v1.receipts`, `resolver_v1.receipt_lines` or `resolver_v1.receipt_settlements`.
+   - `corrected`: the receipt's lines changed (a line's `printed_text` was corrected, and with
+     it its `item_key`). The consumer re-reads the receipt's rows in
+     `resolver_v1.receipt_lines`. A receipt that was not corrected gets no such event.
 3. **Net purchases:**
    `receipt_lines` contains only purchase lines. A storno is netted into the line it cancels,
    and return lines are dropped. The service checks the printed lines, returns included,
@@ -184,7 +188,8 @@ Payment tenders and settlement breakdowns recorded for the receipt.
    the sum of settlement amounts when the receipt had a return. The header `total` equals the
    sum of the receipt's settlement amounts.
 4. **Ordering and deletion:**
-   A `stored` event always precedes the `deleted` event of the same receipt. When a receipt is
+   A `stored` event always precedes the `deleted` event of the same receipt. A `corrected`
+   event comes only after the receipt's `stored` event and before its `deleted` event. When a receipt is
    absent from `resolver_v1.receipts` for a `stored` event, a `deleted` event for it follows
    in the feed.
 5. **Number formatting:**
@@ -226,9 +231,13 @@ Semantic versioning from 1.0.0.
   or a new value of `event`, settlement `kind` or `currency`, introduces a new schema
   `resolver_v2`, published alongside `resolver_v1` until the consumer completes migration.
 - Consumers name the columns they read, never `SELECT *`, so an added column breaks nothing.
+- The new `event` value `corrected` is a breaking change by the rule above. While no consumer
+  of `resolver_v1` exists, compatibility is waived: it ships in `resolver_v1` under the
+  unchanged version number, with no `resolver_v2`.
 
 ### Changes
 
+- **1.2.0 (amended)**: Added the feed event `corrected`, written when a line's `printed_text` is corrected and actually changes; it may repeat per receipt. Reading rules 1, 2 and 4 describe it. The version number is unchanged because no consumer exists yet.
 - **1.2.0**: Added `item_key` column to `resolver_v1.receipt_lines` (deterministic UUIDv5 item key) and the Item key section with its construction, test vectors and stability rule. `canonical-products` is registered as a reader of `item_key`.
 - **1.1.0**: Added `total` column to `resolver_v1.receipts` (value of goods, equal to the sum of settlement amounts). Minor changes definition updated to adding columns to views.
 - **1.0.0**: Initial release of the resolver feed contract.
