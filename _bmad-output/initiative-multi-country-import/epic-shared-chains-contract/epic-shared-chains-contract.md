@@ -5,6 +5,7 @@ parent: initiative-multi-country-import
 covers: ["R1", "R2", "R3", "R4"]
 after: []
 assignee: ""
+status: done
 risk: high
 ---
 
@@ -52,3 +53,6 @@ The service reads chains from the shared reference owned by `common`, supporting
 
 - Decision: 2026-11-03: `chains_v1` modified in-place without bumping major view version (owner).
 - Decision: 2026-11-03: OIB generalized to `tax_numbers`, country code added without foreign key constraint to `public` (owner).
+- Decision: 2026-11-10: Keep the in-place `chains_v1` 1.2.0 decision in `docs/contracts/chains_v1.md` and `docs/contracts/external/chains.md` without a separate ADR (owner).
+- Decision: 2026-11-10: Close the deferred `CHECK`-constraint integration tests as covered by `grocery-tracker/common`'s conformance suite per `docs/contracts/external/chains.md` (owner).
+- Decision: 2026-11-10: Move the multi-country chain representation and shared tax-number question to `epic-multi-country-pipeline` and close `epic-shared-chains-contract` (owner).

@@ -41,8 +41,10 @@ The pipeline accepts and accurately processes receipts originating from multiple
 ## References
 
 - parent — _bmad-output/initiative-multi-country-import/initiative-multi-country-import.md
-- spec — docs/contracts/resolver_v1.md
+- contract — docs/contracts/receipt_feed_v1.md
+- contract — docs/contracts/chains_v1.md
 
 ## Notes
 
 - Waits on epic-shared-chains-contract because: multi-country receipts rely on the country-aware chain reference with optional tax numbers.
+- Open question: How is one retail chain operating in several countries represented in `public.chains` (given globally unique `chain_id` and one `country_code` per row), and may one tax number appear on two chain rows? Needs owner alignment with `grocery-tracker/common` (carried over from `epic-shared-chains-contract`, 2026-11-10).
