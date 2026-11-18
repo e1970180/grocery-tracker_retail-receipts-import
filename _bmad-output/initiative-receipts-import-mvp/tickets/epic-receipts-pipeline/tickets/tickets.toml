@@ -191,7 +191,7 @@ covers = ["R4", "R11"]
 after = [20]
 hitl = false
 risk = "high"
-references = ["architecture-receipts-import/architecture-receipts-import.md#ad-12--the-resolver-reads-a-feed-not-tables-adopted", "../../../docs/contracts/resolver_v1.md"]
+references = ["architecture-receipts-import/architecture-receipts-import.md#ad-12--the-resolver-reads-a-feed-not-tables-adopted", "docs/contracts/receipt_feed_v1.md"]
 notes = ["Decision: total is stored and part of resolver_v1 (owner, 2026-10-24).", "Decision: hitl false despite risk high; review thorough and the dev live run stay (owner, 2026-10-24).", "Can run in parallel with entry 10."]
 
 [[entry]]

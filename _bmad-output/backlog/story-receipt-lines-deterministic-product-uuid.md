@@ -32,7 +32,7 @@ Verify: every row of receipt_lines, old and new, has a non-null identifier; a co
 - sanitize_text routine — doc-inbox/sanitize-text.md; vendored contract docs/contracts/external/sanitize-text.md
 - unaccent_grocery_tracker routine — doc-inbox/unaccent-grocery-tracker.md; vendored contract docs/contracts/external/unaccent-grocery-tracker.md
 - external contracts (vendored, read-only) — docs/contracts/external/
-- outgoing contract — docs/contracts/resolver_v1.md
+- outgoing contract — docs/contracts/receipt_feed_v1.md
 
 ## Notes
 
