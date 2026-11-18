@@ -1,7 +1,7 @@
 ---
 type: migration
 title: Fold the pre-release spec and move breakdowns into tickets/ folders
-status: draft
+status: done
 created: 2026-11-18
 ---
 
@@ -53,4 +53,23 @@ Commits: one per step, on the branch; backups never staged; no push of the migra
 
 ## Checklist results
 
-_Filled in after the run._
+Approved by the owner 2026-11-18 (both steps).
+
+Migration 1 (fold and live-path items):
+
+- Pass: no `spec-<slug>/` folder holding `spec-<slug>.md` remains. The initiative holds R1 to R11 (CAP-1 to CAP-11), the Constraints and Boundaries, `receipt-outcomes.md` beside it as a References line, and one `.memlog.md` with the spec's entries. `CAP-` appears only inside Requirements parentheses, `.memlog.md` and this plan.
+- Pass: `migrate_v6.py --fold-specs` reported no unresolved companion and no problems, and rewrote 16 store files.
+- Pass: `_bmad/custom/config.toml` names `active_initiative`, and `core.output_folder` resolves to `_bmad-output`.
+- Pass: the backup holds every pre-migration file and is ignored by git.
+
+Migration 2:
+
+- Pass: no initiative or epic folder holds `tickets.toml`, an epic folder, a leaf file or a plan directly.
+- Pass: every file in the backup is in the store at its old or new path. The only exception is the folded `spec-receipts-import.md`, removed by migration 1.
+- Pass: `tickets.py status` exits 0 for both initiatives: `initiative-receipts-import-mvp` has 25 entries (24 done, 1 dropped), `initiative-multi-country-import` has 5 entries (all done) and epic 2 with no entries.
+- Pass: the rewritten `_bmad-output/...` paths resolve. Dead before the migration, left unchanged: `_bmad-output/.../architecture-receipts-import/...` (a prose ellipsis) and `../../../docs/contracts/resolver_v1.md` in `epic-receipts-pipeline/tickets/tickets.toml` (the contract is now `receipt_feed_v1.md`).
+- Pass: moved files keep their history (`git log --follow` reaches the pre-move commits). No commit includes a backup.
+- Pass: `.tickets-folder-migration-backup-20261118-1218/` holds the output folder and `_bmad/custom/` as they were.
+- Deviation: the path rewrites and the moves went into one commit rather than two. History still follows each file.
+
+No references to the old paths exist outside the store and `_bmad/`.
