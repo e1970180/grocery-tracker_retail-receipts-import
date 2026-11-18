@@ -59,7 +59,7 @@ The receipt model's total check sums only card and cash settlements, both checks
 
 ## References
 
-- parent — _bmad-output/initiative-receipts-import-mvp/epic-receipts-pipeline/epic-receipts-pipeline.md
+- parent — _bmad-output/initiative-receipts-import-mvp/tickets/epic-receipts-pipeline/epic-receipts-pipeline.md
 - spec — _bmad-output/initiative-receipts-import-mvp/initiative-receipts-import-mvp.md, R4, R5
 - spec companion — _bmad-output/initiative-receipts-import-mvp/receipt-outcomes.md, the two "disagree" rows
 - architecture — _bmad-output/initiative-receipts-import-mvp/architecture-receipts-import/architecture-receipts-import.md, the extraction rule ("A cash payment records the receipt total", "±0.01 EUR") and the `invalid` class ("beyond ±0.01 EUR")

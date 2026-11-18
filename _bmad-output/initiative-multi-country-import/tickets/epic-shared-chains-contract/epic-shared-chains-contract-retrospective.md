@@ -29,7 +29,7 @@ headless: false
   - **Full Epic Range:** `39f305c..HEAD` (`0587dab`), 6 commits, 0 merges.
 - **Evidence inventory:**
   - Available:
-    - Epic file: `_bmad-output/initiative-multi-country-import/epic-shared-chains-contract/epic-shared-chains-contract.md`
+    - Epic file: `_bmad-output/initiative-multi-country-import/tickets/epic-shared-chains-contract/epic-shared-chains-contract.md`
     - Initiative file: `_bmad-output/initiative-multi-country-import/initiative-multi-country-import.md`
     - Story file: `story-consumer-contract-chains-v1-update-and-common-ownership.md` (1.1)
     - Plan files for all 5 tickets

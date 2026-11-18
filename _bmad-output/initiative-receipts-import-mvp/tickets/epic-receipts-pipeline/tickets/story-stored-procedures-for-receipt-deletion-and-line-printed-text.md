@@ -21,4 +21,4 @@ Verify: Calling delete_receipt removes the receipt and records 'deleted' in reso
 
 ## References
 
-- parent — _bmad-output/initiative-receipts-import-mvp/epic-receipts-pipeline/epic-receipts-pipeline.md
+- parent — _bmad-output/initiative-receipts-import-mvp/tickets/epic-receipts-pipeline/epic-receipts-pipeline.md

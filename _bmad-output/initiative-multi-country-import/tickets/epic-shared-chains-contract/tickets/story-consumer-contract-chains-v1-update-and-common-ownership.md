@@ -21,4 +21,4 @@ Verify: Contract documents the in-place schema changes, rule updates, and api-ve
 
 ## References
 
-- parent — _bmad-output/initiative-multi-country-import/epic-shared-chains-contract/epic-shared-chains-contract.md
+- parent — _bmad-output/initiative-multi-country-import/tickets/epic-shared-chains-contract/epic-shared-chains-contract.md

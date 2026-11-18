@@ -1,6 +1,6 @@
 # Analyzer digest Q5: field origin in planning documents @ 7c1c47c
 
-Paths under `_bmad-output/initiative-receipts-import-mvp/`. SPEC = initiative-receipts-import-mvp.md, OUT = receipt-outcomes.md, ADD = brief-receipts-import/addendum.md, ARCH = architecture-receipts-import/architecture-receipts-import.md, P4A = epic-receipts-pipeline/story-receipt-model-and-storage-plan.md, memlogs = `.memlog.md` in the spec-, brief- and architecture- folders. These documents state intent; they are not evidence of what the code does.
+Paths under `_bmad-output/initiative-receipts-import-mvp/`. SPEC = initiative-receipts-import-mvp.md, OUT = receipt-outcomes.md, ADD = brief-receipts-import/addendum.md, ARCH = architecture-receipts-import/architecture-receipts-import.md, P4A = tickets/epic-receipts-pipeline/tickets/story-receipt-model-and-storage-plan.md, memlogs = `.memlog.md` in the spec-, brief- and architecture- folders. These documents state intent; they are not evidence of what the code does.
 
 Shape: SPEC and ADD name almost none of the stored field names. P4A sets the field list (owner decisions 2026-10-22 and 2026-10-23). ARCH AD-17 fixes the model's existence and four properties only. ARCH defers the column-level model and the resolver_v1 field list.
 

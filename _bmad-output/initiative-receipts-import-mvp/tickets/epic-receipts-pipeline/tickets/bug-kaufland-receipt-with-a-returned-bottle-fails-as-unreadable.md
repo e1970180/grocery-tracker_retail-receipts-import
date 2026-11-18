@@ -51,10 +51,10 @@ The Kaufland normalizer takes as deposit refunds only rows starting with "amb." 
 
 ## References
 
-- parent — _bmad-output/initiative-receipts-import-mvp/epic-receipts-pipeline/epic-receipts-pipeline.md
+- parent — _bmad-output/initiative-receipts-import-mvp/tickets/epic-receipts-pipeline/epic-receipts-pipeline.md
 - spec — _bmad-output/initiative-receipts-import-mvp/initiative-receipts-import-mvp.md, R3, R4
 - spec companion — _bmad-output/initiative-receipts-import-mvp/receipt-outcomes.md, the "no valid result" row
-- trial evidence — _bmad-output/initiative-receipts-import-mvp/epic-receipts-pipeline/story-first-production-deployment-and-acceptance-demo-plan.md, Implementation Notes
+- trial evidence — _bmad-output/initiative-receipts-import-mvp/tickets/epic-receipts-pipeline/tickets/story-first-production-deployment-and-acceptance-demo-plan.md, Implementation Notes
 - sample data — doc-inbox/fixtures/Kaufland receipts/20260427_231253.pdf (git-ignored, personal data)
 - diagnosis response — scratch/diagnose-pass2.json (local scratch, git-ignored)
 

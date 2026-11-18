@@ -39,6 +39,6 @@ Additional deliverables:
 
 ## References
 
-- parent — _bmad-output/initiative-receipts-import-mvp/epic-receipts-pipeline/epic-receipts-pipeline.md
+- parent — _bmad-output/initiative-receipts-import-mvp/tickets/epic-receipts-pipeline/epic-receipts-pipeline.md
 - deployment runbook — docs/deployment.md
 - configuration guide — README.md
