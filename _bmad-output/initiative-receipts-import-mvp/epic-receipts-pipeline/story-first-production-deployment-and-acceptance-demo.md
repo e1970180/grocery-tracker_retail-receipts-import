@@ -3,7 +3,7 @@ id: 16
 type: story
 title: "First production deployment and acceptance demo"
 parent: epic-receipts-pipeline
-covers: [CAP-1, CAP-2, CAP-6, CAP-8, CAP-9, CAP-10, CAP-11]
+covers: [R1, R2, R6, R8, R9, R10, R11]
 after: [15]
 hitl: true
 risk: high

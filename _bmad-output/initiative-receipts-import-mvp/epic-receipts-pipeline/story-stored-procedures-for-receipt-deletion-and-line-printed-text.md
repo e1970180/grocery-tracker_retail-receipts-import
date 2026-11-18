@@ -3,7 +3,7 @@ id: 23
 type: story
 title: "Stored procedures for receipt deletion and line printed-text updates"
 parent: epic-receipts-pipeline
-covers: [CAP-4, CAP-11]
+covers: [R4, R11]
 after: [14]
 hitl: false
 risk: medium

@@ -19,17 +19,17 @@ Note on scope: `tickets.toml` holds only the epic and no stories yet, so the div
 
 | Item | Landed in | Status |
 | --- | --- | --- |
-| CAP-1 intake, allowlist, private chat, photo / image doc / PDF | AD-2, AD-3, AD-15 | OK. The gate is inherited from telegram_core. |
-| CAP-2 extraction, chain traps | AD-4, AD-5, AD-6 | OK |
-| CAP-3 regular/effective price | AD-5 | OK in principle. The rule for checking against printed fields, not price × qty, is not stated (see below). |
-| CAP-4 settlement incl. negative | Money convention (signed) | Partial. The settlement-kind vocabulary (card, cash, bonus points, coupon, deposit refund) is deferred to the storage story (finding F3). |
-| CAP-5 ±0.01 EUR | AD-5, AD-7 | OK. Per the owner decision in the memlog, a mismatch is `invalid` and is re-extracted before the failure path. |
-| CAP-6 dedup + duplicate message | AD-8, AD-9 | OK |
-| CAP-7 atomic | AD-10 | OK |
-| CAP-8 outcome feedback | AD-3, AD-11, Config convention | OK, with gaps listed under the matrix |
-| CAP-9 durable waiting, bounded attempts | AD-1, AD-3, AD-7, AD-14 | OK, except non-transient Gemini errors (F1) |
-| CAP-10 alerts | AD-13 | OK. Internal-exception handling for a job is not stated (F4). |
-| CAP-11 Resolver contract | AD-12, Deferred field list | OK |
+| R1 intake, allowlist, private chat, photo / image doc / PDF | AD-2, AD-3, AD-15 | OK. The gate is inherited from telegram_core. |
+| R2 extraction, chain traps | AD-4, AD-5, AD-6 | OK |
+| R3 regular/effective price | AD-5 | OK in principle. The rule for checking against printed fields, not price × qty, is not stated (see below). |
+| R4 settlement incl. negative | Money convention (signed) | Partial. The settlement-kind vocabulary (card, cash, bonus points, coupon, deposit refund) is deferred to the storage story (finding F3). |
+| R5 ±0.01 EUR | AD-5, AD-7 | OK. Per the owner decision in the memlog, a mismatch is `invalid` and is re-extracted before the failure path. |
+| R6 dedup + duplicate message | AD-8, AD-9 | OK |
+| R7 atomic | AD-10 | OK |
+| R8 outcome feedback | AD-3, AD-11, Config convention | OK, with gaps listed under the matrix |
+| R9 durable waiting, bounded attempts | AD-1, AD-3, AD-7, AD-14 | OK, except non-transient Gemini errors (F1) |
+| R10 alerts | AD-13 | OK. Internal-exception handling for a job is not stated (F4). |
+| R11 Resolver contract | AD-12, Deferred field list | OK |
 
 ### Constraints
 
@@ -85,7 +85,7 @@ No raw JSON input, categorization, analytics, multi-currency, legacy migration, 
 ### Memlog consistency
 
 - All decisions and overrides in the memlog appear as ADs. No contradiction found.
-- Memlog line 30 says "purchase local time also exposed with Europe/Zagreb offset" in the contract. The spine's Time convention only says contract timestamps are UTC `Z`. Low: either add the local-time field to the convention or drop it from the memlog assumption, so that the CAP-11 story does not have to guess.
+- Memlog line 30 says "purchase local time also exposed with Europe/Zagreb offset" in the contract. The spine's Time convention only says contract timestamps are UTC `Z`. Low: either add the local-time field to the convention or drop it from the memlog assumption, so that the R11 story does not have to guess.
 - Memlog line 27 lists the states without `write_pending`. Line 35 adds it, and the spine has the final set. OK.
 
 ### AGENTS.md rules
@@ -141,7 +141,7 @@ Deployment, roles, a single volume and CI are covered. Missing items:
 
 ### Overengineering check (~2 receipts/day)
 
-Acceptable. Hexagonal with fakes is the minimum for "tests never touch network", the state machine is what CAP-9 requires, and AD-9 closes a real crash window cheaply. The versioned schema in AD-12 is the lightest form of an owned contract. Nothing should be removed. Watch two things in stories: the import-boundary enforcement for the hexagon (a single test, not a framework), and AD-14's shortened long-poll (a min() of two numbers, not a scheduler).
+Acceptable. Hexagonal with fakes is the minimum for "tests never touch network", the state machine is what R9 requires, and AD-9 closes a real crash window cheaply. The versioned schema in AD-12 is the lightest form of an owned contract. Nothing should be removed. Watch two things in stories: the import-boundary enforcement for the hexagon (a single test, not a framework), and AD-14's shortened long-poll (a min() of two numbers, not a scheduler).
 
 ## Summary of findings
 

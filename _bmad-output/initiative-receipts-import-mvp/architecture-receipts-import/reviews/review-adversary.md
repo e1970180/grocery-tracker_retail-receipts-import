@@ -65,7 +65,7 @@ A third story could instead map "anything else" to `failed`. The sender would th
 **Proposed rule, new AD:**
 
 > **AD-16 — Per-job error boundary**
-> - **Binds:** CAP-9, CAP-10, all
+> - **Binds:** R9, R10, all
 > - **Prevents:** one job's unexpected error stopping the loop, or two units choosing wait vs failure for the same error.
 > - **Rule:** The loop wraps each job step in one boundary. Errors fall into exactly these classes:
 >   - Gemini results go through AD-7.
@@ -93,7 +93,7 @@ The same split exists one step earlier. One chain plug-in declares printed amoun
 **Proposed rule, new AD:**
 
 > **AD-17 — One normalized receipt type and its persisted form**
-> - **Binds:** CAP-3, CAP-4, CAP-6, CAP-7, CAP-9
+> - **Binds:** R3, R4, R6, R7, R9
 > - **Prevents:** domain, queue and writer disagreeing on time, money or version of the receipt that waits in `write_pending`.
 > - **Rule:**
 >   - `domain/model` defines one pydantic `NormalizedReceipt`. It is the only type the domain hands to `app` and the only type the postgres writer accepts.
@@ -138,7 +138,7 @@ Evidence in the spine:
 Both choices obey the ADs. The first loses an accepted receipt, and the second stalls intake.
 
 Two related gaps:
-- **Accepted MIME set.** The intake unit accepts any `image/*` document, by CAP-1's "image". The preprocessing unit opens it with Pillow for the EXIF transpose. HEIC (common from iPhones sent as a file), TIFF and GIF fail to open. That makes an internal error, or a poison job under H2. Nothing defines the accepted MIME types in one place.
+- **Accepted MIME set.** The intake unit accepts any `image/*` document, by R1's "image". The preprocessing unit opens it with Pillow for the EXIF transpose. HEIC (common from iPhones sent as a file), TIFF and GIF fail to open. That makes an internal error, or a poison job under H2. Nothing defines the accepted MIME types in one place.
 - **Over-limit files.** The outcome matrix has no row for a file over 20 MB.
 
 **Proposed rule, tightening AD-2 and AD-3:**
@@ -164,7 +164,7 @@ The postgres writer story inserts `receipts` with two unique constraints: the de
 
 ### H7 — The dedup timestamp field is not fixed per chain, so a PDF and a photo get different keys (medium)
 
-Scenario: the same purchase arrives as a Lidl Plus app PDF and as a photo of the paper receipt. One printed time is the fiscal issue time on the JIR/ZKI line, and another is the transaction or terminal time. They can differ by seconds, and one format may print no seconds at all. Each chain plug-in author picks "the purchase time" independently. The two files then produce two keys, and the purchase is **stored twice**. CAP-6 names "a different photo of the same paper", and the PDF case is the same class of risk.
+Scenario: the same purchase arrives as a Lidl Plus app PDF and as a photo of the paper receipt. One printed time is the fiscal issue time on the JIR/ZKI line, and another is the transaction or terminal time. They can differ by seconds, and one format may print no seconds at all. Each chain plug-in author picks "the purchase time" independently. The two files then produce two keys, and the purchase is **stored twice**. R6 names "a different photo of the same paper", and the PDF case is the same class of risk.
 
 > **AD-8 (tightened)**
 > **Rule (added):**

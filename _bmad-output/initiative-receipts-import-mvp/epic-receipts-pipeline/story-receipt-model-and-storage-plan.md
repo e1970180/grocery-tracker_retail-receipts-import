@@ -157,7 +157,7 @@ Plan review, 2026-10-23: 1 high, 3 medium, 5 low; all patched in the plan.
 | --- | --- | --- |
 | A single discount kind cannot hold a Kaufland item with both `Štedite` and `Kaufland Card` | high | addendum Kaufland Discounts; replaced by included and separate amounts |
 | `total` undefined | medium | defined in Design Notes; later checked against card plus cash and not stored (owner) |
-| No storage test for the CAP-3/CAP-4 shapes | medium | added a round-trip integration test |
+| No storage test for the R3/R4 shapes | medium | added a round-trip integration test |
 | Image check ordered before the domain code, and not automated | medium | moved after the domain task, marked manual |
 | Settlement signs not enforced | low | added a validator per kind |
 | Column types open | low | specified branch, quantity and nullability |

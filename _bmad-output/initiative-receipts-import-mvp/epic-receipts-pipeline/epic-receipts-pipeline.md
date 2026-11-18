@@ -2,7 +2,7 @@
 type: epic
 title: "Receipts pipeline from Telegram to PostgreSQL"
 parent: initiative-receipts-import-mvp
-covers: [CAP-1, CAP-2, CAP-3, CAP-4, CAP-5, CAP-6, CAP-7, CAP-8, CAP-9, CAP-10, CAP-11]
+covers: [R1, R2, R3, R4, R5, R6, R7, R8, R9, R10, R11]
 after: []
 assignee: ""
 risk: high
@@ -20,7 +20,7 @@ Family members send receipts and see the success reaction while the spec's succe
 
 ## Requirements
 
-The spec's capabilities CAP-1 through CAP-11 and its companion `receipt-outcomes.md`; no epic-local ids.
+The spec's capabilities R1 through R11 and its companion `receipt-outcomes.md`; no epic-local ids.
 
 ## Done when
 
@@ -37,8 +37,8 @@ The whole initiative in one service; see the spec's non-goals. The platform base
 ## References
 
 - parent — _bmad-output/initiative-receipts-import-mvp/initiative-receipts-import-mvp.md
-- spec — _bmad-output/initiative-receipts-import-mvp/spec-receipts-import/spec-receipts-import.md, sections Capabilities and Constraints
-- spec companion — _bmad-output/initiative-receipts-import-mvp/spec-receipts-import/receipt-outcomes.md
+- spec — _bmad-output/initiative-receipts-import-mvp/initiative-receipts-import-mvp.md, sections Capabilities and Constraints
+- spec companion — _bmad-output/initiative-receipts-import-mvp/receipt-outcomes.md
 - addendum — _bmad-output/initiative-receipts-import-mvp/brief-receipts-import/addendum.md
 
 ## Notes

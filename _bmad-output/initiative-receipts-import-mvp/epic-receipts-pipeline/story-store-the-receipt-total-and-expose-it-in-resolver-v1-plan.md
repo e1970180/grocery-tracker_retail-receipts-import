@@ -19,7 +19,7 @@ context: []
 
 ## Intent
 
-**Problem:** The receipt total (the value of goods since 1.20) is checked before the write but never stored, so the Resolver cannot read it and the spec's CAP-4 success ("the stored total is readable through the Resolver contract") is unmet.
+**Problem:** The receipt total (the value of goods since 1.20) is checked before the write but never stored, so the Resolver cannot read it and the spec's R4 success ("the stored total is readable through the Resolver contract") is unmet.
 
 **Approach:** Migration 0005 adds a not-null `receipts.total`, backfilled for rows already stored; the writer stores `NormalizedReceipt.total`; `resolver_v1.receipts` gains `total` as a decimal string; `resolver_v1` 1.1.0 (additive) is published in `docs/contracts/` and `docs/api-versions.md`.
 
@@ -98,7 +98,7 @@ Thorough, pass 1 (blind-hunter, edge-case-hunter, verification-gap, intent-align
 | 9 | Hard-coded `000[1-4]` glob, duplicated role setup (blind) | false | reject | Migrations 0001–0004 are never renumbered (frozen Never); `resolver_session` applies all migrations, so it cannot stage a pre-0005 schema. |
 | 10 | `api-versions.md` lacks changelog link and date (blind) | false | reject | The row links the contract, which carries the Changes section; the table has no date column for any contract. |
 | 11 | Tests do not prove the plug-in total is the value of goods (intent) | false | reject | Covered by 1.20's fixtures; checks and plug-ins are out of this intent. |
-| 12 | CAP-4 fixtures (Müller, coupon, negative payout) not read through `resolver_v1` (intent) | medium | defer | Pre-existing: fixtures do not exist yet; recorded in `deferred-work.md`. |
+| 12 | R4 fixtures (Müller, coupon, negative payout) not read through `resolver_v1` (intent) | medium | defer | Pre-existing: fixtures do not exist yet; recorded in `deferred-work.md`. |
 | 13 | Dev migrate and live run absent from the diff (intent) | false | reject | Orchestrator steps after review, gated on owner approval. |
 | 14 | Matrix row "Kaufland-like 78.13" has no test (intent) | false | reject | Round trip stores a total (6.30) that differs from its stored lines and reads it back; the value is incidental. |
 | 15 | README not confirmed (intent) | false | reject | agy checked it; `README.md` names neither view columns nor 0004 as last migration. |

@@ -94,11 +94,11 @@
   resolution: built in story 23 via delete_receipt locking receipt_feed in EXCLUSIVE mode (owner, 2026-10-24).
 
 - source_plan: `_bmad-output/initiative-receipts-import-mvp/epic-receipts-pipeline/story-kaufland-plug-in-plan.md`
-  summary: A recorded fixture of a receipt whose deposit refund exceeds the purchase (negative payout), as the spec's CAP-4 success asks.
+  summary: A recorded fixture of a receipt whose deposit refund exceeds the purchase (negative payout), as the spec's R4 success asks.
   evidence: None of the 208 Kaufland sample PDFs has a negative `Za platiti`; the owner chose a synthetic test for 1.9 and a real fixture when such a receipt appears (2026-10-24).
 
 - source_plan: `_bmad-output/initiative-receipts-import-mvp/epic-receipts-pipeline/story-kaufland-plug-in-plan.md`
-  summary: A recorded fixture of a receipt settled partly by a receipt-level coupon, as the spec's CAP-4 success asks.
+  summary: A recorded fixture of a receipt settled partly by a receipt-level coupon, as the spec's R4 success asks.
   evidence: The only Kaufland candidate, `Popust na kupnju -0,37`, is a discount on the item above by the owner's decision for 1.9 (2026-10-24); no other Kaufland sample prints a coupon.
 
 - source_plan: `_bmad-output/initiative-receipts-import-mvp/epic-receipts-pipeline/story-kaufland-plug-in-plan.md`
@@ -107,7 +107,7 @@
   resolution: fixed in the 1.15 refactor sweep on owner approval (2026-10-24).
 
 - source_plan: `_bmad-output/initiative-receipts-import-mvp/epic-receipts-pipeline/story-store-the-receipt-total-and-expose-it-in-resolver-v1-plan.md`
-  summary: CAP-4 success asks that recorded Müller bonus-point, coupon and negative-payout fixtures be read back through `resolver_v1` with their total; 1.21 proves the total path only with synthetic receipts.
+  summary: R4 success asks that recorded Müller bonus-point, coupon and negative-payout fixtures be read back through `resolver_v1` with their total; 1.21 proves the total path only with synthetic receipts.
   evidence: Intent-alignment lens on 1.21; no Müller plug-in exists yet and the coupon and negative-payout fixtures are already missing (Kaufland entries above). Close when those fixtures exist: a writer-to-`resolver_v1.receipts` read of each total.
 
 - source_plan: `_bmad-output/initiative-receipts-import-mvp/epic-receipts-pipeline/story-first-production-deployment-and-acceptance-demo-plan.md`

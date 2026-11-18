@@ -3,7 +3,7 @@ id: 22
 type: bug
 title: "Kaufland receipt with a returned bottle fails as unreadable"
 parent: epic-receipts-pipeline
-covers: [CAP-3, CAP-4]
+covers: [R3, R4]
 after: [9]
 assignee: ""
 refined: true
@@ -52,8 +52,8 @@ The Kaufland normalizer takes as deposit refunds only rows starting with "amb." 
 ## References
 
 - parent — _bmad-output/initiative-receipts-import-mvp/epic-receipts-pipeline/epic-receipts-pipeline.md
-- spec — _bmad-output/initiative-receipts-import-mvp/spec-receipts-import/spec-receipts-import.md, CAP-3, CAP-4
-- spec companion — _bmad-output/initiative-receipts-import-mvp/spec-receipts-import/receipt-outcomes.md, the "no valid result" row
+- spec — _bmad-output/initiative-receipts-import-mvp/initiative-receipts-import-mvp.md, R3, R4
+- spec companion — _bmad-output/initiative-receipts-import-mvp/receipt-outcomes.md, the "no valid result" row
 - trial evidence — _bmad-output/initiative-receipts-import-mvp/epic-receipts-pipeline/story-first-production-deployment-and-acceptance-demo-plan.md, Implementation Notes
 - sample data — doc-inbox/fixtures/Kaufland receipts/20260427_231253.pdf (git-ignored, personal data)
 - diagnosis response — scratch/diagnose-pass2.json (local scratch, git-ignored)

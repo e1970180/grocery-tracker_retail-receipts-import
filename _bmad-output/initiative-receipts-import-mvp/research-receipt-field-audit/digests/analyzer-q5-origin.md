@@ -1,6 +1,6 @@
 # Analyzer digest Q5: field origin in planning documents @ 7c1c47c
 
-Paths under `_bmad-output/initiative-receipts-import-mvp/`. SPEC = spec-receipts-import/spec-receipts-import.md, OUT = spec-receipts-import/receipt-outcomes.md, ADD = brief-receipts-import/addendum.md, ARCH = architecture-receipts-import/architecture-receipts-import.md, P4A = epic-receipts-pipeline/story-receipt-model-and-storage-plan.md, memlogs = `.memlog.md` in the spec-, brief- and architecture- folders. These documents state intent; they are not evidence of what the code does.
+Paths under `_bmad-output/initiative-receipts-import-mvp/`. SPEC = initiative-receipts-import-mvp.md, OUT = receipt-outcomes.md, ADD = brief-receipts-import/addendum.md, ARCH = architecture-receipts-import/architecture-receipts-import.md, P4A = epic-receipts-pipeline/story-receipt-model-and-storage-plan.md, memlogs = `.memlog.md` in the spec-, brief- and architecture- folders. These documents state intent; they are not evidence of what the code does.
 
 Shape: SPEC and ADD name almost none of the stored field names. P4A sets the field list (owner decisions 2026-10-22 and 2026-10-23). ARCH AD-17 fixes the model's existence and four properties only. ARCH defers the column-level model and the resolver_v1 field list.
 
@@ -11,7 +11,7 @@ Load-bearing claims:
 - ARCH:340 and ARCH:343 defer the column model and the resolver_v1 field list.
 
 ## chain_id
-- SPEC:24 (CAP-2, "chain"); SPEC:64 supported chains.
+- SPEC:24 (R2, "chain"); SPEC:64 supported chains.
 - ARCH:131 (AD-6): plug-in sets chain_id from its own key, never from model text; seller-OIB cross-check added by owner 2026-10-23.
 - ARCH:231 (AD-18): reference table `chains_v1`, chain_id a stable ASCII slug, receipt tables hold chain_id with no FK. ARCH:240 (Conventions): lowercase slugs (kaufland, lidl, dm, mueller, spar). architecture memlog:40: slugs frozen "because part of dedup key".
 - P4A:39 [owner 2026-10-23]: never printed or model text; only a reference slug, never `other` or `unreadable`. P4A:90 model validator; P4A:97 CHECK `^[a-z][a-z0-9_]{0,31}$`, no FK per AD-18.
@@ -25,7 +25,7 @@ Load-bearing claims:
 - No document says the Resolver reads store_name. P4A:31 lists what the Resolver needs ("receipt number, store address, currency, masked loyalty card and buyer"); store_name is absent.
 
 ## branch_number
-- SPEC:24 (CAP-2) "branch". ADD:9, 20, 25 per chain: Kaufland PJ####, Lidl IBR/PJ "Keep the leading zeros", DM alphanumeric middle segment of receipt number. ADD:9: Kaufland branch ID must match the receipt-number middle segment.
+- SPEC:24 (R2) "branch". ADD:9, 20, 25 per chain: Kaufland PJ####, Lidl IBR/PJ "Keep the leading zeros", DM alphanumeric middle segment of receipt number. ADD:9: Kaufland branch ID must match the receipt-number middle segment.
 - P4A:90: keeps leading zeros, may be alphanumeric. P4A:97: text NULL. Rename branch -> branch_number at P4A:128.
 - Owner 2026-10-23 (P4A:124): "stays nullable ... a photo may not show it". No stated reader.
 
@@ -62,13 +62,13 @@ Load-bearing claims:
 - P4A:90 NormalizedReceipt still has `total`.
 
 ## lines
-- SPEC:27 (CAP-3): keeps what was printed, plus the regular price before discount and the effective price paid. ADD:34-39 pricing logic. ARCH:125 (AD-5): model returns printed values only; code derives regular/effective.
+- SPEC:27 (R3): keeps what was printed, plus the regular price before discount and the effective price paid. ADD:34-39 pricing logic. ARCH:125 (AD-5): model returns printed values only; code derives regular/effective.
 - P4A:88 (model) and :98 (table): printed_text, quantity (> 0, numeric(12,3)), unit, unit_price, printed_amount, included_discount and separate_discount (default 0, >= 0), discount_text; regular_amount and effective_amount GENERATED STORED. P4A:158, :172: single discount "kind" replaced by two amounts because a Kaufland item can carry both (ADD:13).
 - kind and cancels_line: model only (P4A:88), not stored. Storno/return rules P4A:34 (netted into the sale line, never stored); P4A:33 return-only receipt not stored. ADD:26 (DM STORNO RETKA: "drop both") is earlier, different wording; P4A:171: which line a storno cancels is the plug-in's reading.
 - P4A:35 line_id UUIDv7; ARCH:241. P4A:170: stored lines can exceed settlements when a receipt has a return; the Resolver contract must say so.
 
 ## settlements
-- SPEC:30-31 (CAP-4): card, cash, bonus points, coupons, deposit refunds; amount may be negative. ADD:30-32 Müller bonus points.
+- SPEC:30-31 (R4): card, cash, bonus points, coupons, deposit refunds; amount may be negative. ADD:30-32 Müller bonus points.
 - P4A:88: kinds card, cash, bonus_points, coupon, deposit_refund; printed_text; signed amount (bonus_points/coupon/deposit_refund > 0; card and cash may be negative). P4A:99 table keyed (receipt_id, settlement_no). P4A:171, :178 rationale.
 
 ## buyer_name
@@ -85,19 +85,19 @@ Load-bearing claims:
 - ARCH:131 (AD-6): plug-in rejects as `invalid` when the printed seller OIB is not one of the chain's OIBs in the reference (owner 2026-10-23). ARCH:231 (AD-18): chains_v1 gains OIBs from 1.1.0. P4A:39, :127. Not a field in NormalizedReceipt or in the receipts table (P4A:90, :97).
 
 ## resolver_v1
-- SPEC:50-52 (CAP-11): contract in docs/contracts/, semver, recorded in docs/api-versions.md. SPEC:91: handoff mechanism deferred to architecture.
+- SPEC:50-52 (R11): contract in docs/contracts/, semver, recorded in docs/api-versions.md. SPEC:91: handoff mechanism deferred to architecture.
 - ARCH:181 (AD-12): read-only views in a `resolver_v<major>` schema exposing the feed (bigint `seq` + receipt_id) and "the stored receipt data"; Resolver has SELECT on that schema only. Architecture memlog:20: feed + views, LISTEN/NOTIFY only a hint.
-- ARCH:343 (Deferred): "Contract field list for resolver_v1" written with the CAP-11 story; ARCH:340: column-level model deferred to the storage story.
+- ARCH:343 (Deferred): "Contract field list for resolver_v1" written with the R11 story; ARCH:340: column-level model deferred to the storage story.
 - No document read lists resolver_v1 fields. Statements of what the Resolver needs: P4A:31 (receipt number, address, currency, masked loyalty card, buyer), P4A:170, P4A:173, ARCH:243.
 
 ## Conflicts and tensions between documents
 1. Dedup key granularity: SPEC:91 and architecture memlog:13 (to the second) vs ARCH:149, P4A:30, architecture memlog:58 (to the minute); memlog:58 states it supersedes.
 2. "No currency column" (earlier ARCH Conventions, quoted in P4A:31) vs ARCH:242 (column with CHECK). Resolved in later text.
 3. SPEC:67 "no manual-correction path" vs P4A:32 (admin delete, owner 2026-10-23).
-4. SPEC CAP-5 (SPEC:33-34) names only items vs settlement; OUT:13 / P4A:38 add the total check.
+4. SPEC R5 (SPEC:33-34) names only items vs settlement; OUT:13 / P4A:38 add the total check.
 5. ADD:26 "drop both" for DM storno vs P4A:34 netting; ADD:3 labels the addendum "reference material, not a decision".
 6. store_name: pass-1 "printed store name" (ARCH:119, :131) is defined for the admin message; P4A:90 puts it in the persisted model and table without a stated reason; absent from the P4A:31 Resolver list; nullability not stated in P4A:97/:118 unlike the four reference fields.
-7. SPEC:24 (CAP-2) lists "chain, branch" as extraction targets; P4A:124 makes branch_number nullable.
+7. SPEC:24 (R2) lists "chain, branch" as extraction targets; P4A:124 makes branch_number nullable.
 8. P4A:90 keeps `total` in the model while P4A:38/:103 do not store it.
 
 ## Not found
