@@ -3,7 +3,7 @@
 
 ## retail-receipts-import
 
-Import pipeline for retail grocery receipts into PostgreSQL over LAN. Python 3.14+, `uv`, Docker compose (`git clone + compose build` with sparse-checkout). Planning and tickets live in `_bmad-output/` via `bmad-ticket`.
+Import pipeline for retail grocery receipts into PostgreSQL over LAN. Python 3.14+, `uv`, Docker compose (`git clone + compose build` with sparse-checkout). Planning and tickets live in `_bmad-output/` via `bmad-agent-po`.
 
 ## Policy
 
@@ -15,7 +15,7 @@ Import pipeline for retail grocery receipts into PostgreSQL over LAN. Python 3.1
 - Create project skills only in `.claude/skills/`, then run `pwsh -File ~/.claude/skills/harness-parity/scripts/parity-sync.ps1 -Path .` and commit the regenerated `.agents/`.
 - `AGENTS.md` is canonical for all harnesses; `CLAUDE.md` only imports it (`@AGENTS.md`). Never create `GEMINI.md`.
 - Treat `doc-inbox/` as non-normative: drafts, raw scrapes, sample zips, and receipts. Normative docs and contracts live only in `docs/`.
-- Track epics, stories, and tasks exclusively through `bmad-ticket` in `_bmad-output/`. Never invent independent backlog trackers.
+- Track epics, stories, and tasks exclusively through `bmad-agent-po` in `_bmad-output/`. Never invent independent backlog trackers.
 - Adding a call to an external service needs a written justification and the owner's approval before code is written. State data leaving the host, costs, and downtime behavior.
 - When exchanging data with another project, depend only on the contract vendored in `docs/contracts/`. Never read, import, or rely on another project's code or behavior. Vendored contracts are read-only; version this project's own contracts with semver from day one.
 - Read credentials only from config or environment, and redact them from logs and exception messages. Never commit secrets, `.env`, or real credentials.
